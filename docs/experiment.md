@@ -84,7 +84,7 @@ Der Export erzeugt `reviews.jsonl`, `ratings_a.csv`, `ratings_b.csv` und die get
 uv run python -m security_lab review-import --mapping runs/review/mapping.json --packets runs/review/reviews.jsonl --ratings runs/review/ratings_a.csv runs/review/ratings_b.csv --output runs/review/combined.json
 ```
 
-Der Import verlangt die tatsächlich bewertete Paketdatei, zwei unterschiedliche, benannte Bewertende, vollständige Urteile und nichtleere Begründungen. Er prüft jedes Paket gegen den beim Export gespeicherten Hash und lehnt veränderte, fehlende, zusätzliche oder doppelte Pakete ab. Er bewahrt beide Originalbewertungen und markiert Abweichungen. Übereinstimmende Urteile können anschließend in die Zusammenfassung aufgenommen werden:
+Die Ausgabedateien von `review-import` und `review-adjudicate` müssen auf `.json` enden, damit sie als Bewertungsnachweise geprüft und archiviert werden. Der Import verlangt die tatsächlich bewertete Paketdatei, zwei unterschiedliche, benannte Bewertende, vollständige Urteile und nichtleere Begründungen. Er prüft jedes Paket gegen den beim Export gespeicherten Hash und lehnt veränderte, fehlende, zusätzliche oder doppelte Pakete ab. Er bewahrt beide Originalbewertungen und markiert Abweichungen. Übereinstimmende Urteile können anschließend in die Zusammenfassung aufgenommen werden:
 
 ```powershell
 uv run python -m security_lab summarize runs/pilot --reviews runs/review/combined.json --output runs/pilot/summary-reviewed.json

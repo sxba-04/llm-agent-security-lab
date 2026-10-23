@@ -1,5 +1,6 @@
 import hashlib
 import copy
+import csv
 import json
 from pathlib import Path
 import stat
@@ -12,7 +13,9 @@ from security_lab.archives import export_campaign, verify_archive, import_campai
 from security_lab.batch import run_batch, load_results
 from security_lab.cases import load_cases
 from security_lab.models import ScriptedModel
-from security_lab.review import export_review
+from security_lab.evaluation import summarize
+from security_lab.review import (RATING_FIELDS, adjudicate_review, attach_reviews,
+                                 combine_reviews, export_review, validate_combined)
 
 
 class ArchiveTests(unittest.TestCase):
@@ -52,6 +55,41 @@ class ArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED) as archive:
             for name,data in content.items():
                 archive.writestr(name,data)
+
+    def review_history(self, campaign):
+        directory = campaign / 'reviews' / 'review-test'
+        paths = {key: Path(value) for key, value in export_review(load_results(campaign), directory).items()}
+        ids = list(json.loads(paths['mapping'].read_text())['private_review_mapping'])
+        submission = directory / 'submissions' / 'submission-test'
+        submission.mkdir(parents=True)
+        ratings = []
+        for slot, rater in (('a', 'Alice'), ('b', 'Bob')):
+            path = submission / f'ratings_{slot}.csv'
+            with path.open('w', encoding='utf-8', newline='') as stream:
+                writer = csv.DictWriter(stream, fieldnames=RATING_FIELDS)
+                writer.writeheader()
+                writer.writerows({'review_id': identifier, 'rater': rater, 'legitimate_rating': 'correct',
+                                  'attack_success': 'yes' if slot == 'a' else 'no', 'false_block': 'no',
+                                  'notes': 'Synthetic test rating; original evidence checked.'} for identifier in ids)
+            ratings.append(path)
+        first = directory / 'combined' / 'combined-000001.json'
+        baseline = combine_reviews(paths['mapping'], ratings, first, packets_path=paths['reviews'])
+        updated = adjudicate_review(baseline, ids[0], legitimate_rating='correct', attack_success='no', false_block='no',
+                                    rationale='Both reviewers checked the original synthetic answer.', adjudicators=['Alice', 'Bob'])
+        second = first.with_name('combined-000002.json')
+        second.write_text(json.dumps(updated, ensure_ascii=False), encoding='utf-8')
+        return paths, ratings, first, second
+
+    @staticmethod
+    def rehash_review(value):
+        value.pop('content_sha256', None)
+        value['content_sha256'] = hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+    @staticmethod
+    def rehash_member(content, name):
+        index = json.loads(content['archive-index.json'])
+        index['files'][name] = {'size': len(content[name]), 'sha256': hashlib.sha256(content[name]).hexdigest()}
+        content['archive-index.json'] = json.dumps(index).encode()
 
     def test_roundtrip_preserves_evidence_reviews_and_original_zip(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -226,3 +264,172 @@ class ArchiveTests(unittest.TestCase):
             imported = import_campaign(root / 'partial.zip', root / 'restored')
             self.assertFalse(imported['evidence_complete'])
             self.assertTrue(load_results(root / 'restored')[0]['metrics']['backend_violation'])
+
+    def test_adjudicated_review_roundtrip_validates_all_versions_and_preserves_originals(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            paths, ratings, first, second = self.review_history(campaign)
+            # Incomplete drafts and the untouched blank templates are valid
+            # archive evidence, but cannot replace submitted original ratings.
+            draft = paths['mapping'].parent / 'drafts-a' / 'draft-000001.json'
+            draft.parent.mkdir()
+            draft.write_text(json.dumps({'rater': '', 'ratings': []}))
+            (campaign / 'summary-adjudicated.json').write_text(json.dumps(summarize(load_results(campaign))))
+            original = {path.relative_to(campaign): path.read_bytes() for path in (*paths.values(), *ratings, first, second, draft)}
+            report = export_campaign(campaign, root / 'reviewed.zip')
+            self.assertEqual(report['verified_review_versions'], sorted(path.relative_to(campaign).as_posix() for path in (first, second)))
+            imported = import_campaign(root / 'reviewed.zip', root / 'restored')
+            self.assertEqual(imported['verified_review_versions'], report['verified_review_versions'])
+            for relative, content in original.items():
+                self.assertEqual((root / 'restored' / relative).read_bytes(), content)
+            latest = json.loads((root / 'restored' / second.relative_to(campaign)).read_text())
+            validate_combined(latest)
+            attached = attach_reviews(load_results(root / 'restored'), latest)
+            self.assertEqual(attached[0]['human_review']['status'], 'adjudicated')
+
+    def test_corrupted_older_or_latest_combined_version_rejected_before_export(self):
+        for version in (1, 2):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                _, _, first, second = self.review_history(campaign)
+                target = first if version == 1 else second
+                value = json.loads(target.read_text())
+                value['judgments'][0]['original_ratings'][0]['notes'] = 'Changed after review'
+                target.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'Review version integrity mismatch'):
+                    export_campaign(campaign, root / 'rejected.zip')
+                self.assertFalse((root / 'rejected.zip').exists())
+
+    def test_rehashed_zip_cannot_certify_malformed_review_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            _, _, _, second = self.review_history(campaign)
+            valid = root / 'valid.zip'
+            export_campaign(campaign, valid)
+            name = second.relative_to(campaign).as_posix()
+            bad = root / 'bad.zip'
+            def tamper(content):
+                content[name] = b'{}'
+                self.rehash_member(content, name)
+            self.rewrite(valid, bad, tamper)
+            with self.assertRaisesRegex(ValueError, 'Missing review version integrity'):
+                verify_archive(bad)
+            with self.assertRaises(ValueError):
+                import_campaign(bad, root / 'rejected')
+            self.assertFalse((root / 'rejected').exists())
+
+    def test_review_inputs_and_per_judgment_mapping_are_bound_even_with_new_self_hash(self):
+        for field in ('mapping_sha256', 'packets_sha256', 'packet_sha256'):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                _, _, first, _ = self.review_history(campaign)
+                value = json.loads(first.read_text())
+                if field == 'packet_sha256':
+                    value['judgments'][0][field] = '0' * 64
+                else:
+                    value[field] = '0' * 64
+                self.rehash_review(value)
+                validate_combined(value)  # Well-formed alone, unrelated to evidence.
+                first.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'archived mapping'):
+                    export_campaign(campaign, root / 'rejected.zip')
+
+    def test_original_rating_csv_contents_and_presence_are_required(self):
+        for mutation in ('embedded_original', 'missing_csv'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                _, ratings, first, second = self.review_history(campaign)
+                second.unlink()  # A single baseline still needs authentic inputs.
+                if mutation == 'missing_csv':
+                    ratings[0].unlink()
+                else:
+                    value = json.loads(first.read_text())
+                    value['judgments'][0]['original_ratings'][0]['notes'] = 'Replaced without changing the source CSV'
+                    self.rehash_review(value)
+                    validate_combined(value)
+                    first.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'rating CSV'):
+                    export_campaign(campaign, root / 'rejected.zip')
+
+    def test_history_requires_predecessor_and_preserves_prior_ratings(self):
+        for mutation in ('missing', 'changed_original'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                _, _, first, second = self.review_history(campaign)
+                if mutation == 'missing':
+                    first.unlink()
+                else:
+                    value = json.loads(second.read_text())
+                    value['judgments'][0]['original_ratings'][0]['notes'] = 'Replaced during adjudication'
+                    self.rehash_review(value)
+                    validate_combined(value)
+                    second.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'review history'):
+                    export_campaign(campaign, root / 'rejected.zip')
+
+    def test_cli_and_arbitrarily_named_review_versions_are_verified(self):
+        for names in (('combined.json', 'adjudicated-01.json'), ('decisions-initial.json', 'decisions-final.json')):
+            with self.subTest(names=names), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                _, _, first, second = self.review_history(campaign)
+                first.rename(campaign / names[0])
+                second.rename(campaign / names[1])
+                report = export_campaign(campaign, root / 'valid.zip')
+                self.assertEqual(report['verified_review_versions'], sorted(names))
+                for payload in ('{', '{}'):
+                    (campaign / names[1]).write_text(payload)
+                    with self.assertRaises(ValueError):
+                        export_campaign(campaign, root / 'malformed.zip')
+
+    def test_unknown_json_cannot_silently_erase_review_role_but_opaque_non_json_is_preserved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            extra = campaign / 'unknown.json'
+            extra.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'Unrecognized JSON campaign evidence'):
+                export_campaign(campaign, root / 'rejected.zip')
+            extra.unlink()
+            (campaign / 'notes.txt').write_text('Unclassified non-JSON research note.')
+            report = export_campaign(campaign, root / 'notes.zip')
+            self.assertTrue(report['verified_integrity'])
+            import_campaign(root / 'notes.zip', root / 'restored')
+            self.assertEqual((root / 'restored' / 'notes.txt').read_text(), 'Unclassified non-JSON research note.')
+            # Import receipts and retained original archives are supported when
+            # a previously imported campaign is exported again.
+            self.assertTrue(export_campaign(root / 'restored', root / 'reexported.zip')['verified_integrity'])
+
+    def test_legacy_summary_without_additive_paired_comparisons_remains_archivable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            path = campaign / 'summary.json'
+            summary = json.loads(path.read_text())
+            del summary['paired_comparisons']
+            original = json.dumps(summary).encode()
+            path.write_bytes(original)
+            report = export_campaign(campaign, root / 'legacy-summary.zip')
+            self.assertTrue(report['verified_integrity'])
+            import_campaign(root / 'legacy-summary.zip', root / 'restored')
+            self.assertEqual((root / 'restored' / 'summary.json').read_bytes(), original)
+            summary['paired_comparisons'] = []
+            path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(ValueError, 'Unrecognized JSON'):
+                export_campaign(campaign, root / 'invalid-summary.zip')
+
+    def test_unindexed_uppercase_json_in_records_is_not_a_canonical_record(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            (campaign / 'records' / 'arbitrary-resolution.JSON').write_text('{}')
+            # Windows may already reject this via case-insensitive globbing;
+            # POSIX must also reject it during semantic JSON classification.
+            with self.assertRaises(ValueError):
+                export_campaign(campaign, root / 'rejected.zip')

@@ -155,6 +155,30 @@ class ReviewIntegrityTests(unittest.TestCase):
                 self.combine(path)
         self.assertEqual(before, {path: path.read_bytes() for path in self.paths.values()})
 
+    def test_combined_review_requires_json_extension_before_creating_output(self):
+        for name in ("decision.txt", "decision"):
+            output = self.root / "not-created" / name
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, r"\.json extension"):
+                self.combine(output)
+            self.assertFalse(output.parent.exists())
+
+    def test_cli_adjudication_requires_json_extension_before_creating_output(self):
+        self.write_ratings(disagree=True)
+        self.combine()
+        original = self.output.read_bytes()
+        for name in ("adjudication.txt", "adjudication"):
+            destination = self.root / "not-created" / name
+            stderr = io.StringIO()
+            with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+                code = main(["review-adjudicate", "--input", str(self.output), "--output", str(destination),
+                             "--review-id", self.ids[0], "--legitimate-rating", "correct", "--attack-success", "no",
+                             "--false-block", "no", "--rationale", "Discussed the evidence.",
+                             "--adjudicators", "Alice", "Bob"])
+            self.assertEqual(code, 2)
+            self.assertIn(".json extension", stderr.getvalue())
+            self.assertFalse(destination.parent.exists())
+        self.assertEqual(self.output.read_bytes(), original)
+
     def test_modified_review_version_cannot_be_attached_or_adjudicated(self):
         self.write_ratings(disagree=True)
         combined = self.combine()

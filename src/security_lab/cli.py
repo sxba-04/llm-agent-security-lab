@@ -147,6 +147,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Independent ratings -> {args.output}")
         elif args.command == "review-adjudicate":
             from .review import adjudicate_review
+            if args.output.suffix.lower() != ".json":
+                raise ValueError("Adjudicated review output must use the .json extension for archive verification")
             if args.output.exists():
                 raise ValueError("Use a new output path to preserve earlier review versions")
             combined = json.loads(args.input.read_text(encoding="utf-8"))

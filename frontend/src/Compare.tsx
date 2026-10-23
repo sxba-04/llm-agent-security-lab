@@ -19,7 +19,10 @@ export function ComparePage({ campaigns, selected }: { campaigns: Campaign[]; se
   const [source, setSource] = useState(''), [goal, setGoal] = useState('');
   const available = reviews.data?.review_sets.filter(r => r.campaign_id === id) || [];
   const effectiveReview = available.some(r => r.review_set_id === review) ? review : '';
-  const summary = useResource<Summary>(id ? `/api/campaigns/${encodeURIComponent(id)}/summary${effectiveReview ? `?review_set_id=${encodeURIComponent(effectiveReview)}` : ''}` : null);
+  const campaignState = validCampaigns.find(c => c.campaign_id === id)?.state;
+  // A terminal transition changes the interval to zero: fetch once more, then stop.
+  const summaryPoll = ['queued', 'running', 'cancelling'].includes(campaignState || '') ? 2500 : 0;
+  const summary = useResource<Summary>(id ? `/api/campaigns/${encodeURIComponent(id)}/summary${effectiveReview ? `?review_set_id=${encodeURIComponent(effectiveReview)}` : ''}` : null, summaryPoll);
   const groups = summary.data?.groups.filter(g => (!source || g.source === source) && (!goal || g.goal === goal)) || [];
   const paired = summary.data?.paired_comparisons as unknown as Paired | undefined;
   const pairs = paired?.comparisons?.filter(p => (!source || p.source === source) && (!goal || p.goal === goal)) || [];

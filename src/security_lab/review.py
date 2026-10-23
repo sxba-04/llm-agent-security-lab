@@ -248,6 +248,8 @@ def combine_reviews(mapping_path: str | Path, ratings_paths: list[str | Path], o
     inputs = [Path(mapping_path), Path(packets_path), *(Path(path) for path in ratings_paths)]
     if output_path.resolve() in {path.resolve() for path in inputs} or output_path.exists():
         raise FileExistsError("Review output must be a new file, separate from all inputs")
+    if output_path.suffix.lower() != ".json":
+        raise ValueError("Combined review output must use the .json extension for archive verification")
     mapping, mapping_bytes = _read_mapping(Path(mapping_path))
     _, packet_bytes = _read_packets(mapping, Path(packets_path))
     loaded = [_load_ratings(Path(path), set(mapping)) for path in ratings_paths]

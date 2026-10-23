@@ -274,3 +274,35 @@ describe('damaged campaign isolation', () => {
     expect(calls.some(c => c.method === 'POST')).toBe(false);
   });
 });
+
+describe('live comparison lifecycle', () => {
+  it('polls a running summary, refreshes immediately on completion and stops polling terminal results', async () => {
+    vi.useFakeTimers();
+    try {
+      const campaign: Campaign = { campaign_id: 'live-comparison', created_at: '2026-10-23T12:00:00Z', state: 'running', completed_runs: 0, planned_runs: 2, engineering_only: true, valid_evidence: true };
+      let recordedRuns = 0;
+      const summaryCalls = () => calls.filter(c => c.url === '/api/campaigns/live-comparison/summary').length;
+      vi.stubGlobal('fetch', transport(request => request.url.endsWith('/summary') ? { n_runs: recordedRuns, engineering_only: true, groups: [] } : undefined));
+      let view!: ReturnType<typeof render>;
+      await act(async () => { view = render(<ComparePage selected={campaign.campaign_id} campaigns={[campaign]} />); });
+      expect(summaryCalls()).toBe(1);
+      expect(screen.getByText('0 protokollierte Läufe')).toBeInTheDocument();
+
+      recordedRuns = 1;
+      await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+      expect(summaryCalls()).toBe(2);
+      expect(screen.getByText('1 protokollierte Läufe')).toBeInTheDocument();
+
+      recordedRuns = 2;
+      await act(async () => { view.rerender(<ComparePage selected={campaign.campaign_id} campaigns={[{ ...campaign, state: 'completed', completed_runs: 2 }]} />); });
+      expect(summaryCalls()).toBe(3);
+      expect(screen.getByText('2 protokollierte Läufe')).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+      expect(summaryCalls()).toBe(3);
+      expect(screen.getByText('2 protokollierte Läufe')).toBeInTheDocument();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
+});

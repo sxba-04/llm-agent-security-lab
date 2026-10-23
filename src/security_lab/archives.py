@@ -63,6 +63,155 @@ def _sha(path: Path) -> str:
     return value.hexdigest()
 
 
+def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[tuple[str, str], dict],
+                         verified_paths: set[str]) -> bool:
+    """Recognize supported non-review JSON without guessing from free names."""
+    relative = path.relative_to(directory)
+    # These reserved files were already verified against the campaign manifest
+    # and source hashes before reviewing supplementary artifacts.
+    if relative.as_posix() in {"manifest.json", "cases.snapshot.json"}:
+        return True
+    if relative.as_posix() in verified_paths:
+        return True
+    if not isinstance(value, dict):
+        return False
+    # CLI summary filenames are intentionally arbitrary; identify their schema,
+    # rather than treating every file named summary*.json as trustworthy.
+    if (value.get("schema_version") == 1 and type(value.get("n_runs")) is int
+            and type(value.get("engineering_only")) is bool
+            and type(value.get("mixed_execution_modes")) is bool
+            and isinstance(value.get("interpretation"), str)
+            and isinstance(value.get("groups"), list)
+            and ("paired_comparisons" not in value or isinstance(value["paired_comparisons"], dict))):
+        return True
+    if relative.as_posix() == "worker.json":
+        return (value.get("schema_version") == 1 and value.get("kind") == "workbench_mock_worker"
+                and all(isinstance(value.get(key), str) and value[key] for key in ("campaign_id", "instance_id", "created_at"))
+                and type(value.get("pid")) is int)
+    for source in inputs.values():
+        root = source["mapping"].parent
+        if path == source["mapping"]:
+            return True
+        if path == root / "metadata.json":
+            return (all(isinstance(value.get(key), str) for key in ("review_set_id", "campaign_id", "created_at"))
+                    and type(value.get("packet_count")) is int and value["packet_count"] == len(source["entries"]))
+        if path.parent in {root / "drafts-a", root / "drafts-b"}:
+            return isinstance(value.get("rater"), str) and isinstance(value.get("ratings"), list)
+    if relative.parts[0] == "provenance":
+        if (len(relative.parts) == 2 and relative.name.startswith("import-")
+                and value.get("source_code_included") is False
+                and all(isinstance(value.get(key), str) for key in ("archive_sha256", "imported_at", "original_archive"))):
+            return True
+        if len(relative.parts) == 3 and relative.parts[1].startswith("recovery-"):
+            if relative.name == "manifest.original.json":
+                return (value.get("schema_version") in {1, 2} and isinstance(value.get("schedule"), list)
+                        and isinstance(value.get("runs"), list) and isinstance(value.get("cases_sha256"), str))
+            if relative.name == "receipt.json":
+                return (value.get("schema_version") == 1 and value.get("reason") == "orphaned_workbench_worker"
+                        and type(value.get("verified_records")) is int
+                        and all(isinstance(value.get(key), str) for key in ("recovered_at", "worker_instance_id", "original_manifest_sha256")))
+    return False
+
+
+def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], document_ids: list[str]) -> list[str]:
+    """Validate archived review versions against their actual inputs and history.
+
+    UI versions have a reserved combined/ directory. Conventional CLI filenames
+    and structurally recognizable versions may be anywhere inside the campaign.
+    Draft ratings may remain unfinished; only combined decisions make claims
+    about their original CSV inputs and preceding adjudication versions.
+    """
+    from .review import adjudicate_review, combine_reviews, validate_combined
+
+    files = [path for path in directory.rglob("*") if path.is_file()]
+    manifest = _json((directory / "manifest.json").read_bytes())
+    verified_paths = {item["path"] for item in manifest["runs"]}
+    verified_paths.update(f"sources/{identifier}/{name}" for identifier in document_ids
+                          for name in ("document.json", "confirmation.json"))
+    versions = []
+    by_hash = {}
+    for path in files:
+        if path.suffix.lower() != ".json":
+            continue
+        named_version = (path.parent.name == "combined"
+                         or path.stem.startswith(("combined", "adjudicated")))
+        try:
+            value = _json(path.read_bytes())
+        except (ValueError, UnicodeError):
+            raise ValueError(f"Unreadable campaign JSON: {path.relative_to(directory).as_posix()}; restore the original JSON before archiving") from None
+        recognizable = isinstance(value, dict) and bool({"review_version", "judgments", "previous_version_sha256"} & value.keys())
+        if not named_version and not recognizable:
+            if not _known_json_evidence(path, value, directory, inputs, verified_paths):
+                raise ValueError(f"Unrecognized JSON campaign evidence: {path.relative_to(directory).as_posix()}; restore complete review provenance or keep unrelated JSON outside the campaign")
+            continue
+        validate_combined(value)
+        key = (value["mapping_sha256"], value["packets_sha256"])
+        source = inputs.get(key)
+        if source is None:
+            raise ValueError("Combined review inputs are missing or differ from archived mapping/packets")
+        entries = source["entries"]
+        if {judgment["review_id"] for judgment in value["judgments"]} != set(entries):
+            raise ValueError("Combined review does not cover its archived mapping")
+        for judgment in value["judgments"]:
+            meta = entries[judgment["review_id"]]
+            if any(judgment.get(field) != meta.get(field)
+                   for field in ("run_id", "case_id", "result_sha256", "packet_sha256")):
+                raise ValueError("Combined review judgment differs from archived mapping")
+        versions.append((path, value, source))
+        by_hash[value["content_sha256"]] = value
+
+    file_hashes: dict[Path, str] = {}
+    verified_roots = set()
+    for _, value, source in versions:
+        if value["review_version"] == 1:
+            if value["content_sha256"] in verified_roots:
+                continue  # Identical copies are harmless preserved evidence.
+            rating_paths = []
+            for item in value["rating_files"]:
+                name = item.get("name")
+                if not isinstance(name, str) or not name or Path(name).name != name:
+                    raise ValueError("Invalid original review rating filename")
+                found = None
+                for path in files:
+                    if path.name != name:
+                        continue
+                    if path not in file_hashes:
+                        file_hashes[path] = _sha(path)
+                    if file_hashes[path] == item["sha256"]:
+                        found = path
+                        break
+                if found is None:
+                    raise ValueError("Original review rating CSV is missing or changed")
+                rating_paths.append(found)
+            # Replay the shared importer to bind embedded original ratings to
+            # the archived CSV bytes, including names, judgments and notes.
+            with tempfile.TemporaryDirectory(prefix="security-lab-review-check-") as temporary:
+                replay = combine_reviews(source["mapping"], rating_paths, Path(temporary) / "combined.json",
+                                         packets_path=source["packets"])
+            if replay != value:
+                raise ValueError("Combined review differs from original rating CSV contents")
+            verified_roots.add(value["content_sha256"])
+            continue
+        previous = by_hash.get(value["previous_version_sha256"])
+        if previous is None or previous["review_version"] + 1 != value["review_version"]:
+            raise ValueError("Archived review history is missing its preceding version")
+        before = {judgment["review_id"]: judgment for judgment in previous["judgments"]}
+        after = {judgment["review_id"]: judgment for judgment in value["judgments"]}
+        changed = [key for key in after if before.get(key) != after[key]]
+        if set(before) != set(after) or len(changed) != 1:
+            raise ValueError("Archived review history must resolve exactly one disagreement per version")
+        judgment = after[changed[0]]
+        adjudication = judgment.get("adjudication")
+        if not isinstance(adjudication, dict):
+            raise ValueError("Archived review history contains no adjudication")
+        replay = adjudicate_review(previous, changed[0], legitimate_rating=judgment["legitimate_rating"],
+                                   attack_success=judgment["attack_success"], false_block=judgment["false_block"],
+                                   rationale=adjudication["rationale"], adjudicators=adjudication["adjudicators"])
+        if replay != value:
+            raise ValueError("Archived review history changed original ratings or previous decisions")
+    return sorted(path.relative_to(directory).as_posix() for path, _, _ in versions)
+
+
 def _campaign_check(directory: Path) -> dict[str, Any]:
     results = load_results(directory)
     manifest = _json((directory / "manifest.json").read_bytes())
@@ -74,6 +223,7 @@ def _campaign_check(directory: Path) -> dict[str, Any]:
     # campaign with the same local run IDs. Bind it to the canonical records.
     from .review import verify_packets
     by_id = {result["run_id"]: result for result in results}
+    review_inputs = {}
     for mapping in directory.rglob("mapping.json"):
         packets = mapping.parent / "reviews.jsonl"
         if not packets.is_file():
@@ -86,10 +236,13 @@ def _campaign_check(directory: Path) -> dict[str, Any]:
             result = by_id[entry["run_id"]]
             if entry.get("result_sha256") != digest(result) or entry.get("case_id") != result.get("case_id"):
                 raise ValueError("Review provenance differs from campaign record")
+        review_inputs[(_sha(mapping), _sha(packets))] = {"mapping": mapping, "packets": packets, "entries": entries}
+    review_versions = _review_history_check(directory, review_inputs, documents)
     return {"campaign_state": manifest["state"], "completed_runs": len(results),
             "planned_runs": len(manifest["schedule"]), "engineering_only": all(r.get("is_mock") is True for r in results),
             "verified_integrity": True, **evidence_completeness(manifest),
             "verified_document_sources": documents,
+            "verified_review_versions": review_versions,
             "source_code_included": False, "source_provenance": manifest.get("provenance", {})}
 
 

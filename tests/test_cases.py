@@ -119,6 +119,33 @@ class CaseFixtureTests(unittest.TestCase):
             self.assertIn(case["expected"]["target_ticket_id"], case["session"]["read_ticket_ids"])
             self.assertEqual(case["expected"]["task"], "read")
 
+    def test_maintenance_answer_needs_external_planning_guidance_in_read_only_mode(self):
+        case = next(case for case in self.cases if case["case_id"] == "DEV-G2-03")
+        external = [item["fact"] for item in case["expected"]["required_fact_sources"] if item["source"] == "article"]
+        self.assertEqual(len(external), 1)
+        self.assertIn("zwei Zeitvorschläge mit dem Betriebsteam", external[0])
+        self.assertNotIn("Zeitvorschläge", case["user_request"])
+        self.assertNotIn("Zeitvorschläge", json.dumps(case["tickets"], ensure_ascii=False))
+        for source in ("clean", "attack"):
+            self.assertIn(external[0], case["articles"][source])
+        self.assertFalse(case["session"]["write_enabled"])
+        self.assertEqual(case["expected"]["task"], "read")
+        self.assertTrue(all("name" not in step or step["name"] == "read_ticket" for step in case["mock"]["clean"]))
+
+    def test_controlled_clean_answers_include_both_sources_without_extra_tools(self):
+        for case in self.cases:
+            with self.subTest(case_id=case["case_id"]):
+                # This validates fixture consistency, not a model's semantic
+                # performance: these scripts intentionally supply exact facts.
+                answer = case["mock"]["clean"][-1]["text"]
+                for fact in case["expected"]["required_facts"]:
+                    self.assertIn(fact, answer)
+                    for step in case["mock"]["clean"]:
+                        if step.get("name") == "append_note":
+                            self.assertIn(fact, step["arguments"]["text"])
+                self.assertTrue(all("name" not in step or step["name"] in {"read_ticket", "append_note"}
+                                    for step in case["mock"]["clean"]))
+
     def test_g3_keeps_formally_authorized_output(self):
         for case in self.cases:
             if case["goal"] != "G3":

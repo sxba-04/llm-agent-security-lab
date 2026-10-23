@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import re
 import threading
+import stat
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any
 import uuid
@@ -19,6 +21,8 @@ from .models import ScriptedModel
 
 NEW_ID = re.compile(r"campaign-[0-9a-f]{32}\Z")
 ACTIVE_STATES = {"queued", "running", "cancelling"}
+MAX_LIST_CACHE_ENTRIES = 128
+MAX_FINGERPRINT_ENTRIES = 10_000
 
 
 def _worker_lease(path: Path):
@@ -73,6 +77,9 @@ class CampaignJobs:
         self._lock = threading.RLock()
         self._jobs: dict[str, dict[str, Any]] = {}
         self._active: str | None = None
+        # Only lightweight listing results are cached, never records or a
+        # replacement for explicit brief()/record/archive integrity checks.
+        self._list_cache: OrderedDict[str, tuple[bytes, dict[str, Any]]] = OrderedDict()
 
     @property
     def running(self) -> bool:
@@ -248,8 +255,92 @@ class CampaignJobs:
                     "valid_evidence": False, "error": "Die Kampagnenbelege sind beschädigt oder unvollständig. Originaldateien bleiben unverändert; vor einer Auswertung ist eine Prüfung erforderlich.",
                     **worker}
 
+    def _listing_fingerprint(self, campaign_id: str, directory: Path) -> bytes | None:
+        """Stat a bounded tree without opening file contents or following links.
+
+        This is a local change detector, not an integrity proof: explicit opens
+        still verify hashes. Identity, size and nanosecond modification/change
+        times catch ordinary rewrites, replacements and restored-mtime edits.
+        Files can still change after a stat; hostile metadata preservation is
+        outside this lightweight listing cache's guarantee.
+        """
+        directory = reject_symlinks(directory)
+        digest = hashlib.sha256()
+
+        def stamp(path: Path, name: str):
+            try:
+                value = path.lstat()
+            except FileNotFoundError:
+                digest.update(json.dumps([name, "missing"]).encode())
+                return None
+            attributes = getattr(value, "st_file_attributes", 0)
+            fields = [name, value.st_dev, value.st_ino, value.st_mode, value.st_size,
+                      value.st_mtime_ns, value.st_ctime_ns, attributes]
+            digest.update(json.dumps(fields, ensure_ascii=True, separators=(",", ":")).encode())
+            return value
+
+        root_stat = stamp(directory, str(directory))
+        if root_stat is None:
+            return digest.digest()
+        pending = [directory]
+        count = 0
+        while pending:
+            parent = pending.pop()
+            with os.scandir(parent) as entries:
+                children = []
+                for entry in entries:
+                    count += 1
+                    if count > MAX_FINGERPRINT_ENTRIES:
+                        return None  # Fall back to fresh validation, no cache.
+                    children.append(entry.name)
+            for name in sorted(children):
+                path = parent / name
+                value = stamp(path, path.relative_to(directory).as_posix())
+                if value is not None and stat.S_ISDIR(value.st_mode) and not (
+                    getattr(value, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                ):
+                    pending.append(path)
+        # Ownership affects crash recovery and displayed worker capabilities.
+        for suffix in ("json", "lock"):
+            path = reject_symlinks(self.workers / f"{campaign_id}.{suffix}", self.workspace)
+            stamp(path, "worker/" + path.name)
+        return digest.digest()
+
+    def _listed_brief(self, campaign_id: str, directory: Path) -> dict[str, Any]:
+        try:
+            before = self._listing_fingerprint(campaign_id, directory)
+        except (OSError, ValueError):
+            before = None
+        with self._lock:
+            cached = self._list_cache.get(campaign_id)
+            if before is not None and cached is not None and cached[0] == before:
+                self._list_cache.move_to_end(campaign_id)
+                return copy.deepcopy(cached[1])
+            self._list_cache.pop(campaign_id, None)
+        result = self.brief(campaign_id)
+        # Never cache a live/unknown worker. Process death changes its lease,
+        # not necessarily file metadata, and must still trigger recovery.
+        if (before is not None and result.get("worker_active") is False
+                and result.get("state") in {"completed", "cancelled", "stopped", "interrupted", "failed", "damaged"}):
+            try:
+                after = self._listing_fingerprint(campaign_id, directory)
+            except (OSError, ValueError):
+                after = None
+            if before == after:
+                with self._lock:
+                    self._list_cache[campaign_id] = (after, copy.deepcopy(result))
+                    self._list_cache.move_to_end(campaign_id)
+                    while len(self._list_cache) > MAX_LIST_CACHE_ENTRIES:
+                        self._list_cache.popitem(last=False)
+        return result
+
     def list(self) -> list[dict[str, Any]]:
-        return sorted([self.brief(identifier) for identifier in self._discover()],
+        discovered = self._discover()
+        with self._lock:
+            for identifier in list(self._list_cache):
+                if identifier not in discovered:
+                    del self._list_cache[identifier]
+        return sorted([self._listed_brief(identifier, directory) for identifier, directory in discovered.items()],
                       key=lambda row: row.get("created_at") or "", reverse=True)
 
     def start(self, cases: list[dict[str, Any]], *, variants: list[str], sources: list[str],
