@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,7 +18,8 @@ export default defineConfig({
     viewport: { width: 1440, height: 1000 },
   },
   webServer: {
-    command: 'uv run --project .. --locked --extra web security-lab-web --workspace ../runs/browser-ci --cases ../cases/dev --frontend-dir dist',
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    command: 'uv run --locked --extra web security-lab-web --workspace runs/browser-ci',
     url: 'http://127.0.0.1:8765/api/health',
     reuseExistingServer: false,
     timeout: 60000,
