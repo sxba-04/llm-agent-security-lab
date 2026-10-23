@@ -11,6 +11,7 @@ import re
 import secrets
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -34,7 +35,23 @@ def _atomic_bytes(path: Path, content: bytes) -> None:
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
-        tmp.replace(path)
+        # Windows readers can briefly deny replacement of an open target. Keep
+        # the same flushed temporary file and retry only its atomic publication,
+        # never the model/tool work that produced it or unrelated I/O failures.
+        deadline = time.monotonic() + 1.0
+        delay = 0.01
+        while True:
+            try:
+                tmp.replace(path)
+                break
+            except OSError as exc:
+                if getattr(exc, "winerror", None) not in {5, 32, 33}:
+                    raise
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                time.sleep(min(delay, remaining))
+                delay = min(delay * 2, 0.1)
     finally:
         tmp.unlink(missing_ok=True)
 
