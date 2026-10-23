@@ -25,12 +25,70 @@ class CaseFixtureTests(unittest.TestCase):
                          {(goal, strategy): 2 for goal in ("G1", "G2", "G3")
                           for strategy in ("authority", "dependency")})
 
-    def test_pairs_preserve_every_clean_article_and_required_fact(self):
+    def test_pairs_preserve_article_facts_and_require_both_information_sources(self):
         for case in self.cases:
             with self.subTest(case=case["case_id"]):
                 self.assertIn(case["articles"]["clean"], case["articles"]["attack"])
-                for fact in case["expected"]["required_facts"]:
-                    self.assertIn(fact, case["articles"]["attack"])
+                sources = case["expected"]["required_fact_sources"]
+                self.assertEqual({item["source"] for item in sources}, {"article", "ticket"})
+                for item in sources:
+                    if item["source"] == "article":
+                        self.assertIn(item["fact"], case["articles"]["attack"])
+                        self.assertNotIn(item["fact"], " ".join(case["tickets"]["A17"]["facts"].values()))
+                    else:
+                        self.assertNotIn(item["fact"], case["articles"]["clean"])
+                self.assertTrue(case["expected"]["semantic_criteria"])
+                self.assertTrue(case["document"]["document_id"])
+
+    def test_legacy_fixtures_without_fact_sources_remain_valid(self):
+        case = deepcopy(self.cases[0])
+        del case["expected"]["required_fact_sources"]
+        for source in ("clean", "attack"):
+            case["articles"][source] += "\n" + " ".join(case["expected"]["required_facts"])
+        validate_case(case)
+
+    def test_fact_source_must_be_complete_unique_and_readable(self):
+        original = self.cases[0]
+        malformed = [[], [original["expected"]["required_fact_sources"][0]] * 3,
+                     [{"fact": original["expected"]["required_facts"][0], "source": "ticket", "ticket_id": "B08"}],
+                     [{"fact": "missing", "source": "article"}]]
+        for value in malformed:
+            case = deepcopy(original)
+            case["expected"]["required_fact_sources"] = value
+            with self.subTest(value=value), self.assertRaises(CaseValidationError):
+                validate_case(case)
+
+    def test_wrapped_pdf_facts_are_accepted_without_changing_stored_text(self):
+        case = deepcopy(self.cases[0])
+        item = next(item for item in case["expected"]["required_fact_sources"] if item["source"] == "article")
+        original = case["articles"]["clean"]
+        wrapped = item["fact"].replace(" ", "\n  ")
+        case["articles"]["clean"] = original.replace(item["fact"], wrapped)
+        validate_case(case)
+        self.assertIn(wrapped, case["articles"]["clean"])
+        case["articles"]["clean"] = original.replace(item["fact"], item["fact"].upper())
+        with self.assertRaises(CaseValidationError):
+            validate_case(case)
+
+    def test_article_and_ticket_evidence_cannot_be_silently_swapped(self):
+        case = deepcopy(self.cases[0])
+        item = case["expected"]["required_fact_sources"][0]
+        item.pop("ticket_id")
+        item["source"] = "article"
+        with self.assertRaises(CaseValidationError):
+            validate_case(case)
+
+    def test_optional_document_metadata_is_validated(self):
+        case = deepcopy(self.cases[0])
+        case["article_sources"] = {"clean": {"document_id": "pdf-id", "origin": "uploaded_pdf", "confirmed": True}}
+        validate_case(case)
+        case["article_sources"]["other"] = {"document_id": "x"}
+        with self.assertRaises(CaseValidationError):
+            validate_case(case)
+        case.pop("article_sources")
+        case["document"]["title"] = ""
+        with self.assertRaises(CaseValidationError):
+            validate_case(case)
 
     def test_canaries_are_generated_and_absent_from_model_inputs(self):
         for case in self.cases:
@@ -85,6 +143,17 @@ class CaseFixtureTests(unittest.TestCase):
             case["session"][field] = value
             with self.subTest(field=field, value=value), self.assertRaises(CaseValidationError):
                 validate_case(case)
+
+    def test_fixture_ticket_ids_use_the_documented_tool_grammar(self):
+        for invalid in ("A 17", "1A17", "A/17", "Ä17", "A" * 65):
+            # Rename all references, so failure is the grammar rather than an
+            # accidental dangling session, expected fact source or mock call.
+            serialized = json.dumps(self.cases[0], ensure_ascii=False).replace("A17", invalid)
+            case = json.loads(serialized)
+            with self.subTest(ticket_id=invalid), self.assertRaisesRegex(CaseValidationError, "ticket ID"):
+                validate_case(case)
+        for valid in ("A", "A_17-test", "A" * 64):
+            validate_case(json.loads(json.dumps(self.cases[0]).replace("A17", valid)))
 
     def test_missing_write_target_is_rejected(self):
         case = deepcopy(self.cases[0])

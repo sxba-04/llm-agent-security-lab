@@ -10,6 +10,9 @@ usage outside this application must be reconciled before paid campaigns.
 from __future__ import annotations
 
 from decimal import Decimal
+import base64
+import hashlib
+import http.client
 import json
 import math
 import ssl
@@ -18,11 +21,58 @@ import urllib.error
 import urllib.request
 
 from .budget import BudgetLedger, euros
-from .contracts import BudgetExceeded, ModelError, ModelReply, ToolCall
+from .contracts import BudgetExceeded, ModelError, ModelReply, ReceivedResponseError, ToolCall
 
 API_URL = "https://api.openai.com/v1/chat/completions"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 Transport = Callable[[dict[str, Any], str, float], dict[str, Any]]
+
+
+def _strict_json(value: Any) -> bytes:
+    """Reject nonfinite numbers and lone Unicode surrogates at any depth."""
+    return json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
+def _safe_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        value.encode("utf-8")
+    except UnicodeError:
+        return None
+    return value
+
+
+def _response_evidence(raw: Any) -> dict[str, Any]:
+    """Preserve an exact decoded response or bounded, ASCII-escaped evidence.
+
+    Nonfinite literals and unpaired surrogates are preserved inside a string,
+    never reintroduced as invalid values in an audit JSON document.
+    """
+    try:
+        encoded = _strict_json(raw)
+        if len(encoded) <= MAX_RESPONSE_BYTES:
+            return {"raw_response": raw}
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        pass
+    try:
+        escaped = json.dumps(raw, ensure_ascii=True, allow_nan=True).encode("ascii")
+    except (TypeError, ValueError, RecursionError):
+        # Only an injected, non-JSON transport can reach this branch.
+        return {"raw_response": None, "raw_response_unserializable": True}
+    return {"raw_response": None, "raw_response_escaped": escaped[:MAX_RESPONSE_BYTES].decode("ascii"),
+            "raw_response_escaped_truncated": len(escaped) > MAX_RESPONSE_BYTES,
+            "raw_response_escaped_bytes": len(escaped),
+            "raw_response_escaped_sha256": hashlib.sha256(escaped).hexdigest()}
+
+
+def _received_body_error(body: bytes, *, truncated: bool = False,
+                         incomplete: bool = False) -> ReceivedResponseError:
+    return ReceivedResponseError({"raw_response": None,
+                                  "raw_response_body_base64": base64.b64encode(body[:MAX_RESPONSE_BYTES]).decode("ascii"),
+                                  "raw_response_body_truncated": truncated,
+                                  "raw_response_body_incomplete": incomplete,
+                                  "accounting": "reservation_retained"})
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -44,12 +94,25 @@ def _http_transport(payload: dict[str, Any], api_key: str, timeout: float) -> di
         with opener.open(request, timeout=timeout) as response:
             if response.status != 200:
                 raise ModelError("Unexpected API HTTP status; reservation retained")
-            body = response.read(MAX_RESPONSE_BYTES + 1)
+            try:
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+            except (http.client.HTTPException, TimeoutError, OSError) as error:
+                # The successful response headers already confirm receipt.
+                # A later body failure must not turn that into uncertainty or
+                # discard the bytes available from an IncompleteRead.
+                partial = getattr(error, "partial", b"")
+                if not isinstance(partial, bytes):
+                    partial = b""
+                raise _received_body_error(partial, truncated=len(partial) > MAX_RESPONSE_BYTES,
+                                           incomplete=True) from None
             if len(body) > MAX_RESPONSE_BYTES:
-                raise ModelError("API response exceeded the size limit; reservation retained")
-        value = json.loads(body.decode("utf-8"))
+                raise _received_body_error(body, truncated=True)
+        try:
+            value = json.loads(body.decode("utf-8"))
+        except (ValueError, UnicodeError, RecursionError):
+            raise _received_body_error(body) from None
         if not isinstance(value, dict):
-            raise ModelError("Invalid API response structure; reservation retained")
+            raise ReceivedResponseError(_response_evidence(value))
         return value
     except urllib.error.HTTPError as error:
         # Do not include response bodies, URLs, proxy credentials or headers.
@@ -64,50 +127,86 @@ def _positive_integer(value: Any, name: str) -> int:
     return value
 
 
+def validate_config(config: Any) -> dict[str, Any]:
+    """Return only validated, primitive configuration suitable for audit logs.
+
+    Credentials are supplied separately through the local environment. Unknown
+    fields are rejected, including nested metadata that might contain secrets.
+    Disabled templates may retain empty model/price placeholders; construction
+    of a paid model still requires an enabled, fully configured template.
+    """
+    allowed = {"enabled", "model", "expected_returned_model", "max_completion_tokens",
+               "max_input_tokens", "max_requests", "input_eur_per_million",
+               "output_eur_per_million", "run_budget_eur", "price_reference",
+               "price_checked_on", "timeout_seconds", "temperature", "seed"}
+    if not isinstance(config, dict) or set(config) - allowed:
+        raise ValueError("API configuration contains unsupported fields")
+    if type(config.get("enabled")) is not bool:
+        raise ValueError("enabled must be a boolean")
+    enabled = config["enabled"]
+    validated: dict[str, Any] = {"enabled": enabled}
+    for key in ("model", "price_reference", "price_checked_on"):
+        value = _safe_text(config.get(key))
+        if value is None or (enabled and not value.strip()):
+            raise ValueError(key + " must be a valid configured string")
+        validated[key] = value.strip()
+    if "expected_returned_model" in config:
+        value = _safe_text(config["expected_returned_model"])
+        if value is None or not value.strip():
+            raise ValueError("expected_returned_model must be a nonempty identifier")
+        validated["expected_returned_model"] = value.strip()
+    for key in ("max_completion_tokens", "max_input_tokens", "max_requests"):
+        validated[key] = _positive_integer(config.get(key), key)
+    for key in ("input_eur_per_million", "output_eur_per_million", "run_budget_eur"):
+        value = config.get(key)
+        if value is None and not enabled and key != "run_budget_eur":
+            validated[key] = None
+        else:
+            # Do not permit arbitrary objects, containers or numeric subclasses.
+            if type(value) not in (str, int, float):
+                raise ValueError(key + " must be a finite positive amount")
+            validated[key] = str(euros(value))
+    timeout = config.get("timeout_seconds", 45)
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 120:
+        raise ValueError("timeout_seconds must be between 0 and 120")
+    validated["timeout_seconds"] = timeout
+    if "temperature" in config:
+        value = config["temperature"]
+        if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 2:
+            raise ValueError("temperature must be a finite number between 0 and 2")
+        validated["temperature"] = value
+    if "seed" in config:
+        if type(config["seed"]) is not int:
+            raise ValueError("seed must be an integer")
+        validated["seed"] = config["seed"]
+    return validated
+
+
 class OpenAIModel:
     """Configured, cost-reserved Chat Completions client with no hidden retries."""
     is_mock = False
+    provider = "openai"
 
     def __init__(self, config: dict[str, Any], api_key: str, ledger: BudgetLedger,
                  transport: Transport | None = None):
-        if not isinstance(config, dict) or config.get("enabled") is not True:
+        config = validate_config(config)
+        if config["enabled"] is not True:
             raise ValueError("Paid API configuration is disabled")
-        model = config.get("model")
-        if not isinstance(model, str) or not model.strip():
-            raise ValueError("An explicit API model identifier is required")
         if not isinstance(api_key, str) or not api_key.strip() or any(c in api_key for c in "\r\n"):
             raise ValueError("A locally configured API key is required")
-        self.name = model.strip()
-        expected_model = config.get("expected_returned_model")
-        if expected_model is not None and (not isinstance(expected_model, str) or not expected_model.strip()):
-            raise ValueError("expected_returned_model must be a nonempty identifier when configured")
-        self._returned_model: str | None = expected_model.strip() if expected_model is not None else None
+        self.name = config["model"]
+        self._returned_model: str | None = config.get("expected_returned_model")
         self._model_version_changed = False
-        self.max_completion_tokens = _positive_integer(config.get("max_completion_tokens"), "max_completion_tokens")
-        self.max_input_tokens = _positive_integer(config.get("max_input_tokens"), "max_input_tokens")
-        self.max_requests = _positive_integer(config.get("max_requests"), "max_requests")
-        self.input_rate = euros(config.get("input_eur_per_million"))
-        self.output_rate = euros(config.get("output_eur_per_million"))
-        self.run_budget = euros(config.get("run_budget_eur"))
+        self.max_completion_tokens = config["max_completion_tokens"]
+        self.max_input_tokens = config["max_input_tokens"]
+        self.max_requests = config["max_requests"]
+        self.input_rate = euros(config["input_eur_per_million"])
+        self.output_rate = euros(config["output_eur_per_million"])
+        self.run_budget = euros(config["run_budget_eur"])
         if self.run_budget > ledger.limit:
             raise ValueError("Run budget exceeds ledger limit")
-        for key in ("price_reference", "price_checked_on"):
-            if not isinstance(config.get(key), str) or not config[key].strip():
-                raise ValueError(key + " is required for auditable price estimates")
-        timeout = config.get("timeout_seconds", 45)
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or not 0 < timeout <= 120:
-            raise ValueError("timeout_seconds must be between 0 and 120")
-        self.timeout = float(timeout)
-        self.sampling: dict[str, Any] = {}
-        if "temperature" in config:
-            value = config["temperature"]
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 2:
-                raise ValueError("temperature must be a finite number between 0 and 2")
-            self.sampling["temperature"] = value
-        if "seed" in config:
-            if type(config["seed"]) is not int:
-                raise ValueError("seed must be an integer")
-            self.sampling["seed"] = config["seed"]
+        self.timeout = float(config["timeout_seconds"])
+        self.sampling = {key: config[key] for key in ("temperature", "seed") if key in config}
         self._key = api_key
         self._ledger = ledger
         self._transport = transport or _http_transport
@@ -130,7 +229,7 @@ class OpenAIModel:
         try:
             # Byte count plus generous framing margin; excludes hidden provider changes.
             input_bound = 2 * len(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")) + 4096
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, UnicodeError, RecursionError):
             raise ModelError("Request is not valid JSON") from None
         if input_bound > self.max_input_tokens:
             raise BudgetExceeded("Conservative input estimate exceeds max_input_tokens")
@@ -143,12 +242,28 @@ class OpenAIModel:
         self._accounted += reservation
         try:
             raw = self._transport(payload, self._key, self.timeout)
+        except ReceivedResponseError as error:
+            # A complete HTTP response arrived, even when its bytes are invalid
+            # JSON/UTF-8. This differs from an uncertain transport failure.
+            error.usage = {**self._account_response(None, reservation, reservation_id), **error.usage}
+            raise
         except ModelError:
             raise
         except Exception:
             raise ModelError("API transport failed; no automatic retry; reservation retained") from None
-        reply = self._parse(raw)
-        usage = raw.get("usage")
+        # Receipt/accounting are independent of whether generated actions parse.
+        # Never discard a paid response because its executable plan is invalid.
+        usage = self._account_response(raw, reservation, reservation_id)
+        try:
+            reply = self._parse(raw)
+        except ModelError:
+            raise ReceivedResponseError(usage) from None
+        reply.usage = usage
+        return reply
+
+    def _account_response(self, raw: Any, reservation: Decimal, reservation_id: str) -> dict[str, Any]:
+        fields = raw if isinstance(raw, dict) else {}
+        usage = fields.get("usage")
         valid_usage = isinstance(usage, dict) and all(type(usage.get(k)) is int and usage[k] >= 0
                                                     for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
         if valid_usage and usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]:
@@ -171,23 +286,32 @@ class OpenAIModel:
         else:
             accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
                           "accounting_error": False, "budget_overrun": False}
-        actual_model = raw["model"]
-        if self._returned_model is None:
-            self._returned_model = actual_model
-        elif actual_model != self._returned_model:
-            self._model_version_changed = True
-        reply.usage = {**(usage if isinstance(usage, dict) else {}), **accounting,
-                       "model_version_changed": self._model_version_changed,
-                       "expected_returned_model": self._returned_model,
-                       "response_id": raw.get("id"), "model": raw.get("model"),
-                       "reserved_eur": str(reservation), "reservation_id": reservation_id,
-                       "raw_response": raw}
-        return reply
+        actual_model = _safe_text(fields.get("model"))
+        if actual_model and actual_model.strip():
+            if self._returned_model is None:
+                self._returned_model = actual_model
+            elif actual_model != self._returned_model:
+                self._model_version_changed = True
+        safe_usage: dict[str, Any] = {}
+        if isinstance(usage, dict):
+            try:
+                if len(_strict_json(usage)) <= MAX_RESPONSE_BYTES:
+                    safe_usage = usage
+            except (TypeError, ValueError, UnicodeError, RecursionError):
+                # Retain useful reported tokens even if unrelated usage metadata
+                # is malformed. Full metadata survives in escaped raw evidence.
+                if valid_usage:
+                    safe_usage = {key: usage[key] for key in ("prompt_tokens", "completion_tokens", "total_tokens")}
+        return {**safe_usage, **accounting, "model_version_changed": self._model_version_changed,
+                "expected_returned_model": self._returned_model,
+                "response_id": _safe_text(fields.get("id")), "model": actual_model,
+                "reserved_eur": str(reservation), "reservation_id": reservation_id,
+                **_response_evidence(raw)}
 
     @staticmethod
     def _parse(raw: Any) -> ModelReply:
         try:
-            if not isinstance(raw, dict) or len(json.dumps(raw, allow_nan=False).encode("utf-8")) > MAX_RESPONSE_BYTES:
+            if not isinstance(raw, dict) or len(_strict_json(raw)) > MAX_RESPONSE_BYTES:
                 raise ValueError
             if not isinstance(raw.get("model"), str) or not raw["model"].strip():
                 raise ValueError
@@ -213,7 +337,7 @@ class OpenAIModel:
                 raise ValueError
             result_calls = []
             call_ids: set[str] = set()
-            for index, call in enumerate(calls):
+            for call in calls:
                 if not isinstance(call, dict) or call.get("type") != "function" or not isinstance(call.get("function"), dict):
                     raise ValueError
                 function = call["function"]
@@ -227,7 +351,11 @@ class OpenAIModel:
                 arguments_text = function.get("arguments")
                 try:
                     arguments = json.loads(arguments_text) if isinstance(arguments_text, str) else None
-                except (ValueError, TypeError):
+                    # json.loads accepts NaN/Infinity and overflowed exponents;
+                    # it can also decode an escaped lone surrogate. Neither may
+                    # enter proposals, tool state or the next API request.
+                    _strict_json(arguments)
+                except (ValueError, TypeError, UnicodeError, RecursionError):
                     arguments = None
                 if not isinstance(arguments, dict):
                     # Keep generated invalid arguments as an observable model proposal.
@@ -238,5 +366,5 @@ class OpenAIModel:
             if (finish == "tool_calls" and not result_calls) or (result_calls and finish == "stop"):
                 raise ValueError
             return ModelReply(text=text, tool_calls=result_calls, finish_reason=finish)
-        except (ValueError, KeyError, TypeError):
-            raise ModelError("Invalid API response structure; reservation retained") from None
+        except (ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+            raise ModelError("Invalid API response structure") from None

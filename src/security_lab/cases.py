@@ -29,6 +29,15 @@ def _object(value: Any, label: str, required: set[str]) -> None:
     _require(required <= value.keys(), f"{label}: missing fields {sorted(required - value.keys())}")
 
 
+def _contains_fact(text: str, fact: str) -> bool:
+    """Compare text with whitespace collapsed; retain case and actual content.
+
+    PDF line wrapping must not remove a fact. This check never rewrites the
+    stored source and does not certify meaning or permit lexical substitutions.
+    """
+    return " ".join(fact.split()) in " ".join(text.split())
+
+
 def validate_case(case: dict[str, Any]) -> None:
     """Reject inconsistent permissions, absent facts and invalid mock scripts.
 
@@ -52,6 +61,8 @@ def validate_case(case: dict[str, Any]) -> None:
     _require(isinstance(tickets, dict) and bool(tickets), "tickets: non-empty object required")
     for ticket_id, ticket in tickets.items():
         _text(ticket_id, "ticket ID")
+        _require(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", ticket_id) is not None,
+                 "ticket ID: expected a letter followed by up to 63 letters, digits, underscores or hyphens")
         _object(ticket, f"ticket {ticket_id}", {"id", "project", "title", "facts", "notes"})
         _require(ticket["id"] == ticket_id, f"ticket {ticket_id}: id does not match mapping key")
         _text(ticket["project"], f"ticket {ticket_id}.project")
@@ -93,6 +104,19 @@ def validate_case(case: dict[str, Any]) -> None:
         _require("__GENERATE__" not in articles[source] and "{{secret:" not in articles[source],
                  f"articles.{source}: must not include secret fixtures")
     _require(articles["clean"] != articles["attack"], "articles: clean and attack versions must differ")
+    if "document" in case:
+        _object(case["document"], "document", {"document_id", "title", "origin"})
+        for field in ("document_id", "title", "origin"):
+            _text(case["document"][field], f"document.{field}")
+    if "article_sources" in case:
+        _require(isinstance(case["article_sources"], dict), "article_sources: object required")
+        _require(set(case["article_sources"]) <= {"clean", "attack"}, "article_sources: unknown source version")
+        for source, metadata in case["article_sources"].items():
+            _require(isinstance(metadata, dict) and bool(metadata), f"article_sources.{source}: metadata object required")
+            try:
+                json.dumps(metadata, allow_nan=False)
+            except (TypeError, ValueError) as exc:
+                raise CaseValidationError(f"article_sources.{source}: finite JSON metadata required") from exc
     _require("__GENERATE__" not in case["user_request"] and "{{secret:" not in case["user_request"],
              "user_request: must not include secret fixtures")
 
@@ -106,8 +130,38 @@ def validate_case(case: dict[str, Any]) -> None:
     _require(isinstance(facts, list) and bool(facts), "expected.required_facts: non-empty list required")
     for fact in facts:
         _text(fact, "expected.required_facts item")
-        _require(fact in articles["clean"] and fact in articles["attack"],
-                 "expected.required_facts: clean and attack article must preserve required facts")
+    _require(len(set(facts)) == len(facts), "expected.required_facts: duplicate fact")
+    fact_sources = expected.get("required_fact_sources")
+    if fact_sources is None:
+        # Legacy fixtures put all required facts in the article. New fixtures
+        # identify their source so a legitimate task can need both sources.
+        fact_sources = [{"fact": fact, "source": "article"} for fact in facts]
+    _require(isinstance(fact_sources, list), "expected.required_fact_sources: list required")
+    mapped_facts = []
+    for entry in fact_sources:
+        _object(entry, "expected.required_fact_sources item", {"fact", "source"})
+        _text(entry["fact"], "fact source.fact")
+        _text(entry["source"], "fact source.source")
+        _require(entry["source"] in {"article", "ticket"}, "fact source: article or ticket required")
+        mapped_facts.append(entry["fact"])
+        if entry["source"] == "article":
+            _require(set(entry) == {"fact", "source"}, "article fact source: unexpected fields")
+            _require(all(_contains_fact(articles[s], entry["fact"]) for s in ("clean", "attack")),
+                     "article facts: clean and attack must preserve required facts")
+        else:
+            _require(set(entry) == {"fact", "source", "ticket_id"}, "ticket fact source: ticket_id required")
+            ticket_id = entry["ticket_id"]
+            _require(isinstance(ticket_id, str) and ticket_id in allowed,
+                     "ticket fact source: readable ticket required")
+            ticket_text = "\n".join(tickets[ticket_id]["facts"].values())
+            _require(_contains_fact(ticket_text, entry["fact"]), "ticket fact source: fact absent from ticket facts")
+    _require(len(mapped_facts) == len(facts) and set(mapped_facts) == set(facts),
+             "expected.required_fact_sources: exactly one source per required fact required")
+    if "semantic_criteria" in expected:
+        criteria = expected["semantic_criteria"]
+        _require(isinstance(criteria, list) and bool(criteria), "expected.semantic_criteria: nonempty list required")
+        for criterion in criteria:
+            _text(criterion, "expected.semantic_criteria item")
     _require(isinstance(expected["false_claim"], str), "expected.false_claim: string required")
     _text(expected["task"], "expected.task")
     _require(expected["task"] in {"read", "write"}, "expected.task: read or write required")

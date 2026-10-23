@@ -13,9 +13,9 @@ import re
 import secrets
 import time
 import uuid
-from typing import Any
+from typing import Any, Callable
 
-from .contracts import BudgetExceeded, Model, ModelError, ToolCall
+from .contracts import BudgetExceeded, Model, ModelError, ReceivedResponseError, ToolCall
 
 VARIANTS = {"B": (False, False), "F": (True, False), "P": (False, True), "FP": (True, True)}
 FILTER_VERSION = "patterns-v1"
@@ -109,6 +109,7 @@ def run_case(
     repetition: int = 1, max_tool_calls: int = 8, max_model_calls: int = 12,
     timeout_seconds: float = 120, run_id: str | None = None,
     fixture_seed: str | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Run a fresh case and return an audit record, never a scientific verdict.
 
@@ -134,6 +135,14 @@ def run_case(
     article = case["articles"][source]
     if not isinstance(article, str) or not isinstance(case["user_request"], str):
         raise ValueError("Article and user request must be strings")
+    document_source = {
+        "document_id": case.get("document", {}).get("document_id", case["case_id"] + "-article"),
+        "title": case.get("document", {}).get("title", "Synthetischer Wissensartikel"),
+        "origin": case.get("document", {}).get("origin", "case_fixture"),
+        "format": "fixture_text",
+        **copy.deepcopy(case.get("article_sources", {}).get(source, {})),
+        "text_sha256": hashlib.sha256(article.encode("utf-8")).hexdigest(),
+    }
     for ticket_id, ticket in tickets.items():
         if ticket.get("secret") == "__GENERATE__":
             material = f"{case['case_id']}:{repetition}:{ticket_id}".encode()
@@ -163,6 +172,9 @@ def run_case(
     def deadline_reached() -> bool:
         return time.monotonic() - start >= timeout_seconds
 
+    def cancelled() -> bool:
+        return should_cancel is not None and bool(should_cancel())
+
     def gateway(call: ToolCall) -> dict[str, Any]:
         """Only place that can read or mutate a ticket."""
         syntax_error = _syntax_error(call, tickets)
@@ -178,6 +190,8 @@ def run_case(
              reason="permitted" if allowed else "not_authorized")
         if not allowed:
             return {"error": "not_authorized"}
+        if cancelled():
+            return {"error": "cancelled"}
         if deadline_reached():
             return {"error": "time_limit"}
         ticket_id = call.arguments["ticket_id"]
@@ -197,6 +211,9 @@ def run_case(
                                     "secret": record.get("secret"), "call_id": call.call_id})
         return response
 
+    # Fixed, application-controlled document selection; no retrieval probability
+    # or extra model-controlled tool is introduced by file import.
+    emit("document_provided", document=document_source, source=source, text=article)
     article_allowed = content_allowed(article, "article")
     provided_article = article if article_allowed else "[External article blocked by content policy.]"
     messages: list[dict[str, Any]] = [
@@ -208,6 +225,10 @@ def run_case(
          policy_version=POLICY_VERSION, limits={"max_tool_calls": max_tool_calls,
          "max_model_calls": max_model_calls, "timeout_seconds": timeout_seconds})
     while True:
+        if cancelled():
+            status = "cancelled"
+            emit("cancelled", reason="operator_request")
+            break
         if deadline_reached() or model_calls >= max_model_calls:
             status = "limit_exceeded"
             emit("limit", reason="time" if deadline_reached() else "model_calls")
@@ -219,6 +240,18 @@ def run_case(
         except BudgetExceeded:
             status = "budget_exhausted"
             emit("model_error", kind="budget_exhausted")
+            break
+        except ReceivedResponseError as error:
+            # Parsing a received response failed, so submitted context is known
+            # to have reached the provider. Retain safe raw evidence/accounting
+            # without executing any proposed calls from that response.
+            for exposure in pending_context:
+                emit("context_exposure", **exposure)
+            pending_context.clear()
+            emit("model_response", text=None, tool_calls=[], usage=error.usage,
+                 finish_reason="invalid_response")
+            status = "technical_error"
+            emit("model_error", kind="provider_response_invalid")
             break
         except ModelError:
             status = "technical_error"
@@ -238,6 +271,10 @@ def run_case(
         if reply.usage.get("model_version_changed") or reply.usage.get("accounting_error"):
             status = "technical_error"
             emit("model_error", kind="model_version_changed" if reply.usage.get("model_version_changed") else "accounting_error")
+            break
+        if cancelled():
+            status = "cancelled"
+            emit("cancelled", reason="operator_request")
             break
         if deadline_reached():
             status = "limit_exceeded"
@@ -261,6 +298,10 @@ def run_case(
                              "tool_calls": [{"id": call.call_id, "type": "function", "function": {
                                  "name": call.name, "arguments": _json(call.arguments)}} for call in reply.tool_calls]})
             for call in reply.tool_calls:
+                if cancelled():
+                    status = "cancelled"
+                    emit("cancelled", reason="operator_request")
+                    break
                 if tool_calls >= max_tool_calls:
                     status = "limit_exceeded"
                     emit("limit", reason="tool_calls")
@@ -268,7 +309,11 @@ def run_case(
                 tool_calls += 1
                 response = gateway(call)
                 messages.append({"role": "tool", "tool_call_id": call.call_id, "content": _json(response)})
-            if status == "limit_exceeded":
+                if response.get("error") == "cancelled":
+                    status = "cancelled"
+                    emit("cancelled", reason="operator_request")
+                    break
+            if status in {"limit_exceeded", "cancelled"}:
                 break
             continue
         candidate = reply.text or ""
@@ -299,6 +344,7 @@ def run_case(
         "final_text": final_text, "events": events,
         "user_request": case["user_request"], "article_text": provided_article,
         "original_article": article,
+        "document_source": document_source,
         "initial_tickets": initial_tickets, "final_tickets": copy.deepcopy(tickets),
         "session": session, "expected": expected, "model_calls": model_calls,
         "tool_calls": tool_calls, "duration_seconds": time.monotonic() - start,

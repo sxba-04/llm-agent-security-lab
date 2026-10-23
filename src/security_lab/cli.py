@@ -50,6 +50,7 @@ def parser() -> argparse.ArgumentParser:
     cmd.add_argument("--output", type=Path, required=True)
     cmd = sub.add_parser("review-import", help="Combine two independent ratings without hiding disagreement")
     cmd.add_argument("--mapping", type=Path, required=True)
+    cmd.add_argument("--packets", type=Path, required=True, help="The exact reviews.jsonl file used by both raters")
     cmd.add_argument("--ratings", nargs=2, type=Path, required=True)
     cmd.add_argument("--output", type=Path, required=True)
     cmd = sub.add_parser("freeze", help="Record a development snapshot; not a release of the main experiment")
@@ -57,6 +58,14 @@ def parser() -> argparse.ArgumentParser:
     cmd.add_argument("--output", type=Path, required=True)
     cmd = sub.add_parser("validate", help="Validate case structure and paired source data")
     cmd.add_argument("--cases", type=Path, default=Path("cases/dev"))
+    cmd = sub.add_parser("archive", help="Export and verify a complete campaign archive")
+    cmd.add_argument("directory", type=Path)
+    cmd.add_argument("--output", type=Path, required=True)
+    cmd = sub.add_parser("verify-archive", help="Verify every member of a campaign ZIP")
+    cmd.add_argument("archive", type=Path)
+    cmd = sub.add_parser("restore-archive", help="Restore a verified campaign into a new directory")
+    cmd.add_argument("archive", type=Path)
+    cmd.add_argument("--output", type=Path, required=True)
     return p
 
 
@@ -68,14 +77,12 @@ def _factory(args: argparse.Namespace):
         raise ValueError("Live calls require --allow-paid-api and --isolation-acknowledged. No network request was made.")
     if args.api_config is None:
         raise ValueError("Specify --api-config with verified model, price and request limits")
-    config = json.loads(args.api_config.read_text(encoding="utf-8"))
-    if not isinstance(config, dict) or any("key" in key.lower() or "secret" in key.lower() for key in config):
-        raise ValueError("API configuration must be an object without credentials; use OPENAI_API_KEY")
+    from .providers import OpenAIModel, validate_config
+    config = validate_config(json.loads(args.api_config.read_text(encoding="utf-8")))
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key.strip():
         raise ValueError("OPENAI_API_KEY is not configured")
     from .budget import BudgetLedger
-    from .providers import OpenAIModel
     ledger = BudgetLedger(args.ledger, limit_eur=250, request_limit_eur=1.0)
     model = OpenAIModel(config, api_key, ledger)
     # One provider instance shares its run cap across all cases, not one cap per case.
@@ -116,7 +123,13 @@ def main(argv: list[str] | None = None) -> int:
             manifest = json.loads((args.directory / "manifest.json").read_text(encoding="utf-8"))
             protected = [(args.directory / entry["path"]).resolve() for entry in manifest["runs"]]
             protected += [(args.directory / name).resolve() for name in ("manifest.json", "cases.snapshot.json")]
-            if args.output.resolve() in protected:
+            # Evidence lives in whole subdirectories, including future source and review formats.
+            evidence_dirs = [args.directory / name for name in ("records", "events", "sources", "reviews")]
+            if args.reviews:
+                protected.append(args.reviews.resolve())
+            target = args.output.resolve()
+            if (target in protected or any(target.is_relative_to(path.resolve()) for path in evidence_dirs)
+                    or any(path.exists() and args.output.exists() and path.samefile(args.output) for path in protected)):
                 raise ValueError("Summary output must not overwrite original campaign evidence")
             value.update(campaign_state=manifest["state"], planned_runs=len(manifest["schedule"]), completed_runs=len(manifest["runs"]))
             write_json(args.output, value)
@@ -127,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Blinded review material -> {args.output}")
         elif args.command == "review-import":
             from .review import combine_reviews
-            combine_reviews(args.mapping, args.ratings, args.output)
+            combine_reviews(args.mapping, args.ratings, args.output, packets_path=args.packets)
             print(f"Independent ratings -> {args.output}")
         elif args.command == "review-adjudicate":
             from .review import adjudicate_review
@@ -149,6 +162,15 @@ def main(argv: list[str] | None = None) -> int:
                                     "created_at": datetime.now(timezone.utc).isoformat(), "provenance": provenance(),
                                     "cases_sha256": digest(cases), "cases": cases})
             print(f"Development snapshot -> {args.output}")
+        elif args.command == "archive":
+            from .archives import export_campaign
+            print(json.dumps(export_campaign(args.directory, args.output), ensure_ascii=False))
+        elif args.command == "verify-archive":
+            from .archives import verify_archive
+            print(json.dumps(verify_archive(args.archive), ensure_ascii=False))
+        elif args.command == "restore-archive":
+            from .archives import import_campaign
+            print(json.dumps(import_campaign(args.archive, args.output), ensure_ascii=False))
         return 0
     except (ValueError, OSError, KeyError) as exc:
         print(f"Error: {exc}", file=__import__("sys").stderr)

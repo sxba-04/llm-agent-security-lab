@@ -29,5 +29,18 @@ class ModelError(RuntimeError):
     """Provider/transport failure: must not be scored as successful defense."""
 
 
+class ReceivedResponseError(ModelError):
+    """A response arrived but cannot be executed; safe evidence is retained.
+
+    Unlike a transport failure this confirms that the submitted context reached
+    the provider. ``usage`` must contain only finite, UTF-8-encodable JSON data.
+    Exception messages are deliberately generic and must never enter the audit.
+    """
+
+    def __init__(self, usage: dict[str, Any]):
+        super().__init__("Received API response could not be validated")
+        self.usage = usage
+
+
 class BudgetExceeded(ModelError):
     """A configured spending reservation or request limit was exhausted."""

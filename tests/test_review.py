@@ -51,7 +51,7 @@ class ReviewTests(unittest.TestCase):
     def test_agreement_keeps_originals(self):
         a = self.ratings("a.csv", "Sebastian")
         b = self.ratings("b.csv", "Jonah")
-        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
         self.assertEqual(combined["n_disagreements"], 0)
         self.assertEqual(combined["judgments"][0]["status"], "consensus")
         self.assertEqual(len(combined["judgments"][0]["original_ratings"]), 2)
@@ -60,30 +60,30 @@ class ReviewTests(unittest.TestCase):
         a = self.ratings("a.csv", "Sebastian")
         b = self.ratings("b.csv", "sebastian")
         with self.assertRaises(ValueError):
-            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
 
     def test_missing_rows_rejected(self):
         a = self.ratings("a.csv", "A", ids=self.ids[:1])
         b = self.ratings("b.csv", "B")
         with self.assertRaises(ValueError):
-            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
 
     def test_duplicate_rows_rejected(self):
         a = self.ratings("a.csv", "A", ids=[self.ids[0], self.ids[0]])
         b = self.ratings("b.csv", "B")
         with self.assertRaises(ValueError):
-            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
 
     def test_unknown_review_rejected(self):
         a = self.ratings("a.csv", "A", ids=["invented"])
         b = self.ratings("b.csv", "B")
         with self.assertRaises(ValueError):
-            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
 
     def test_disagreement_requires_explicit_adjudication(self):
         a = self.ratings("a.csv", "A", attack="yes")
         b = self.ratings("b.csv", "B", attack="no")
-        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
         judgment = combined["judgments"][0]
         self.assertEqual(judgment["status"], "disagreement")
         self.assertIsNone(judgment["attack_success"])
@@ -99,7 +99,7 @@ class ReviewTests(unittest.TestCase):
     def test_attach_requires_exact_campaign_provenance(self):
         a = self.ratings("a.csv", "A")
         b = self.ratings("b.csv", "B")
-        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
         originals = [result_fixture(), result_fixture("run-2")]
         attached = attach_reviews(originals, combined)
         self.assertEqual(attached[0]["human_review"]["status"], "consensus")
@@ -111,14 +111,14 @@ class ReviewTests(unittest.TestCase):
     def test_attach_requires_complete_set(self):
         a = self.ratings("a.csv", "A")
         b = self.ratings("b.csv", "B")
-        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
         with self.assertRaises(ValueError):
             attach_reviews([result_fixture()], combined)
 
     def test_false_block_disagreement_requires_adjudication(self):
         a = self.ratings("a.csv", "A", false_block="yes")
         b = self.ratings("b.csv", "B", false_block="no")
-        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+        combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
         judgment = combined["judgments"][0]
         self.assertEqual(judgment["status"], "disagreement")
         self.assertIsNone(judgment["false_block"])
@@ -149,15 +149,15 @@ class ReviewTests(unittest.TestCase):
         a = self.ratings("a.csv", "A", false_block="")
         b = self.ratings("b.csv", "B")
         with self.assertRaises(ValueError):
-            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json")
+            combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
 
     def test_combined_file_not_overwritten(self):
         a = self.ratings("a.csv", "A")
         b = self.ratings("b.csv", "B")
         target = self.path / "combined.json"
-        combine_reviews(self.paths["mapping"], [a, b], target)
+        combine_reviews(self.paths["mapping"], [a, b], target, packets_path=self.paths["reviews"])
         with self.assertRaises(FileExistsError):
-            combine_reviews(self.paths["mapping"], [a, b], target)
+            combine_reviews(self.paths["mapping"], [a, b], target, packets_path=self.paths["reviews"])
 
 
 if __name__ == "__main__":
