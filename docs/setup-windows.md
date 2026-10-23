@@ -35,6 +35,8 @@ $env:PYTHONPATH = "$PWD\src"
 
 ## VS Code
 
+Die optionale FastAPI-/React-Oberfläche benötigt zusätzlich Node.js 24. Installation, Build und Start stehen in [Laboroberfläche](workbench.md). Die bestehenden CLI-Befehle bleiben nutzbar; für den vollständigen Testumfang mit PDF- und HTTP-Prüfungen `uv sync --locked --extra web --group dev` ausführen.
+
 1. Den gesamten Repository-Ordner öffnen.
 2. Die Python-Erweiterung installieren, falls sie fehlt.
 3. Über **Python: Select Interpreter** den Interpreter `.venv\Scripts\python.exe` auswählen.

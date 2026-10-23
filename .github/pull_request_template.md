@@ -17,3 +17,12 @@ Welche entscheidenden Tests wurden durchgeführt, mit welchem Ergebnis? Mock-Pr�
 ## Beiträge und Gegenprüfung
 
 Eigene Arbeit, KI-Unterstützung und noch ausstehende menschliche Prüfung nachvollziehbar angeben.
+
+## Vor dem Zusammenführen
+
+- [ ] Der hier geprüfte Commit entspricht dem aktuellen PR-Head.
+- [ ] Alle erforderlichen Windows-/Linux- und Frontend-Prüfungen sind abgeschlossen und erfolgreich.
+- [ ] Angeforderte automatische und unabhängige Reviews sind abgeschlossen (nicht nur gestartet).
+- [ ] Jeder Befund ist behoben und nachgeprüft oder mit konkreter Begründung eingeordnet.
+- [ ] Nach der letzten Änderung wurden betroffene Prüfungen erneut ausgeführt; Reviews gelten für diesen Stand.
+- [ ] Fachliche Änderungen und noch offene menschliche Abnahmen sind dokumentiert.

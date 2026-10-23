@@ -53,7 +53,7 @@ class IntegrationTests(unittest.TestCase):
                     writer = csv.DictWriter(stream, fieldnames=fields)
                     writer.writeheader(); writer.writerows(rows)
             combined = Path(tmp)/'combined.json'
-            combine_reviews(exported['mapping'], [exported['ratings_a'],exported['ratings_b']], combined)
+            combine_reviews(exported['mapping'], [exported['ratings_a'],exported['ratings_b']], combined, packets_path=exported['reviews'])
             summary_path = Path(tmp)/'summary.json'
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(main(['summarize', str(out), '--reviews', str(combined), '--output', str(summary_path)]), 0)

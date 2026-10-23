@@ -8,6 +8,9 @@ Die Studienarbeit wird von Sebastian Herrmann und Jonah Häuser verantwortet. Ei
 |---|---|---|---|
 | 22.10.2026 | Bestätigung der Betreuerfreigabe, Arbeitsgeräte, API-Budget und Python-Wahl | Rückmeldung des Teams im Projektchat | Als Eingabe für den Projektstart übernommen |
 | 22.10.2026 | Erster Implementierungsentwurf, Entwicklungsfälle, technische Tests und Projektdokumentation | ChatGPT/Codex mit parallelen Teilaufgaben | Technische Prüfungen im Implementierungsprozess; menschliches Review durch die Autoren steht aus |
+| 23.10.2026 | Einrichtung auf dem LUBW-Laptop, Git/uv/Python und 104 erfolgreiche Tests | Rückmeldung und Screenshots von Sebastian; Einrichtung mit lokalem Codex | Vom Nutzer als erfolgreich gemeldet; keine Behauptung einer bereits geprüften äußeren Isolation |
+| 23.10.2026 | Auswahl FastAPI/React und PDF-Artikelimport, Zustimmung zur abgeschlossenen Review-Prüfung vor Merge | Ausdrückliche Entscheidung des Teams im Projektchat | In Implementierung und Projektregeln übernommen |
+| 23.10.2026 | Review-Korrekturen, Quellenzuordnung, Vergleichsauswertung, Weboberfläche, PDF-Verarbeitung und Archive | ChatGPT/Codex mit paralleler Implementierung und unabhängigen technischen Gegenprüfungen | Technischer Prüfstand siehe validation.md; fachliche Freigabe der Fälle und echte menschliche Bewertungen stehen aus |
 
 Diese Tabelle behauptet nicht, dass die Autoren den generierten Code bereits selbst geschrieben, vollständig geprüft oder empirisch validiert haben. Der tatsächliche Prüfstand wird nach dem Review ergänzt.
 

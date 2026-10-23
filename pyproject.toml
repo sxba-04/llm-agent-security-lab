@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-agent-security-lab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Synthetic, reproducible lab for indirect prompt injection and tool authorization"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,20 @@ dependencies = []
 
 [project.scripts]
 security-lab = "security_lab.cli:main"
+security-lab-web = "security_lab.web_cli:main"
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.161.1",
+    "pypdf>=6.21.2",
+    "python-multipart>=0.0.32",
+    "uvicorn>=0.54.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]

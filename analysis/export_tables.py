@@ -22,7 +22,7 @@ def main():
         writer.writeheader()
         for group in summary["groups"]:
             for metric, values in group["metrics"].items():
-                writer.writerow({"engineering_only": summary["engineering_only"],
+                writer.writerow({"engineering_only": group["engineering_only"],
                                  **{key: group.get(key) for key in ("variant", "source", "goal", "model")},
                                  "metric": metric, **values})
 

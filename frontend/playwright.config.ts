@@ -1,0 +1,28 @@
+import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 90000,
+  expect: { timeout: 15000 },
+  fullyParallel: false,
+  workers: 1,
+  forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 1 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: 'http://127.0.0.1:8765',
+    actionTimeout: 15000,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    ...devices['Desktop Chrome'],
+    viewport: { width: 1440, height: 1000 },
+  },
+  webServer: {
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    command: 'uv run --locked --extra web security-lab-web --workspace runs/browser-ci',
+    url: 'http://127.0.0.1:8765/api/health',
+    reuseExistingServer: false,
+    timeout: 60000,
+  },
+});
