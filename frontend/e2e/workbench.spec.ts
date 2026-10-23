@@ -14,7 +14,7 @@ test('explicit eight-run experiment, evidence, PDF provenance and independent re
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
     expect((await campaigns()).length).toBe(baseline);
-    await page.screenshot({ path: testInfo.outputPath('desktop-overview.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('desktop-overview.png'), fullPage: true, animations: 'disabled' });
   });
 
   await test.step('A deliberate click starts exactly one eight-run mock campaign', async () => {
@@ -32,7 +32,7 @@ test('explicit eight-run experiment, evidence, PDF provenance and independent re
     await expect(page.locator('.timeline-event').first()).toBeVisible();
     await page.getByRole('tab', { name: 'Tickets vorher / nachher' }).click();
     await expect(page.locator('.ticket-diff').first()).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('campaign-tickets.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('campaign-tickets.png'), fullPage: true, animations: 'disabled' });
   });
 
   await test.step('Comparison exposes counts, pending judgments and paired evidence', async () => {
@@ -99,7 +99,9 @@ test('mobile navigation remains accessible without horizontal page overflow', as
   await page.getByRole('button', { name: 'Menü öffnen', exact: true }).click();
   await page.getByRole('link', { name: 'Fälle', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Der Ausgangspunkt jedes Versuchs.' })).toBeVisible();
+  await expect(page.locator('.sidebar')).not.toHaveClass(/\bopen\b/);
+  await expect.poll(async () => page.locator('.sidebar').evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(1);
   const size = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
   expect(size.scroll).toBeLessThanOrEqual(size.width + 1);
-  await page.screenshot({ path: testInfo.outputPath('mobile-cases.png'), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('mobile-cases.png'), fullPage: true, animations: 'disabled' });
 });
