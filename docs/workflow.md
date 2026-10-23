@@ -25,6 +25,14 @@ git push -u origin feat/kurze-aufgabe
 
 Ein Pull Request beschreibt Problem, Änderung, erwartetes Verhalten und Prüfung. Die andere Person prüft insbesondere Berechtigungsgrenzen, vergleichbare Bedingungen und den Bezug zum Versuchsplan. Erst anschließend wird zusammengeführt. Ein eigener dauerhafter `develop`-Branch ist für diesen Umfang nicht nötig.
 
+## Verbindlicher Abschluss eines Pull Requests
+
+Vor dem Merge werden die Windows-/Linux- und gegebenenfalls Frontend-Prüfungen sowie alle angeforderten Reviews abgewartet. Ein gestarteter Review und ein grüner Testlauf sind noch kein abgeschlossener Review. Der geprüfte Commit muss dem aktuellen PR-Head entsprechen. Nach einer Korrektur werden die betroffenen Tests erneut ausgeführt und die geänderten Stellen nochmals geprüft; veraltete Review-Ergebnisse werden nicht als Freigabe des neuen Stands dargestellt.
+
+Jeder Befund erhält eine nachvollziehbare Behandlung: behoben und nachgeprüft oder mit konkreten Belegen als nicht zutreffend beziehungsweise bewusst begrenzt eingeordnet. Ein Thread wird nicht allein deshalb geschlossen, weil der ursprüngliche PR bereits gemergt ist. PR #1 wurde am 22.10.2026 vor Ende der automatischen Reviews zusammengeführt; dieser Ablauf wird nicht wiederholt.
+
+Die Checkliste in der PR-Vorlage unterstützt diesen Prozess. Sie behauptet keine technisch eingerichtete Branch Protection; Repository-Regeln müssen getrennt geprüft und gegebenenfalls durch die Eigentümer eingerichtet werden. Fachliche Autorenprüfungen bleiben auch nach automatischen Code-Reviews erforderlich.
+
 Technisch erzwungene Branchregeln hängen vom GitHub-Tarif und den Repository-Einstellungen ab. Die gemeinsame Review-Regel gilt unabhängig davon.
 
 ## Parallel arbeiten

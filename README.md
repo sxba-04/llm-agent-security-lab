@@ -11,7 +11,24 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 | P | Aus | Ein |
 | FP | Ein | Ein |
 
-**Projektstand:** Entwicklungsinstrument mit zwölf Fallpaaren, kontrolliertem Testmodell, Laufprotokollen, automatisierter technischer Auswertung und Vorlagen für die unabhängige menschliche Bewertung. Der endgültige Testkatalog und empirische Ergebnisse mit einem echten LLM liegen noch nicht vor. Ausgaben des Testmodells sind **keine Forschungsergebnisse zur Wirksamkeit der Schutzmaßnahmen**.
+**Projektstand 0.2:** Lokale FastAPI-/React-Laboroberfläche, zwölf überarbeitete Fallpaare, kontrolliertes Testmodell, PDF-Wissensartikel, prüfbare Laufarchive und unabhängige Bewertung mit gepaarten Vergleichen. Der endgültige Testkatalog und empirische Ergebnisse mit einem echten LLM liegen noch nicht vor. Ausgaben des Testmodells sind **keine Forschungsergebnisse zur Wirksamkeit der Schutzmaßnahmen**.
+
+## Grafische Oberfläche unter Windows
+
+Zusätzlich zu Git, uv und Python wird **Node.js 24** für den Frontend-Build benötigt. Im Repository-Verzeichnis:
+
+```powershell
+uv sync --locked --extra web --group dev
+cd frontend
+npm ci
+npm run build
+cd ..
+uv run --locked --extra web security-lab-web
+```
+
+Im Browser **http://127.0.0.1:8765** öffnen. Die Oberfläche startet ausschließlich kostenlose lokale Mock-Läufe. Sie zeigt Fälle, Artikel, Ticketänderungen, Laufverläufe, Vergleiche und getrennte Bewertungsformulare. Beispiel-PDFs können heruntergeladen, wieder importiert, als extrahierter Text geprüft und ausdrücklich einer Fallquelle zugeordnet werden.
+
+[Bedienung und Einrichtung](docs/workbench.md) · [PDF-Quellen](docs/pdf-sources.md) · [Sicherung und Wiederherstellung](docs/archives.md)
 
 ## Schnellstart unter Windows
 
@@ -65,6 +82,7 @@ In einem Ausgabeordner enthält `manifest.json` die Konfiguration und Reihenfolg
 | `tests/` | Automatisierte technische Prüfungen ohne echte API-Aufrufe |
 | `configs/` | Überprüfbare Konfigurationen und lokale API-Vorlage |
 | `docs/` | Architektur, Einrichtung, Methode, Entscheidungen und Beiträge |
+| `frontend/` | React-/TypeScript-Oberfläche mit Vite, Tests und Lockdatei |
 | `runs/` | Lokale Laufdaten; nicht automatisch Teil der Git-Historie |
 
 ## Grenzen des Labors
@@ -76,5 +94,7 @@ Eine Python-Umgebung ist keine Sicherheitssandbox. Vor echten Angriffsversuchen 
 ## Zusammenarbeit
 
 Arbeiten erfolgen in kurzen Branches mit Pull Requests und nachvollziehbarer Gegenprüfung. [Arbeitsablauf](docs/workflow.md), [Entscheidungsstand](docs/decisions.md) und [Beiträge und KI-Unterstützung](docs/contributions.md) halten fest, wie technische Änderungen und wissenschaftliche Verantwortung zusammengehören.
+
+Vor dem Zusammenführen müssen die Tests und angeforderten Reviews für den aktuellen Commit abgeschlossen und sämtliche Befunde geprüft sein. Die vorhandenen Tests ersetzen keine abgeschlossene Gegenprüfung.
 
 Die aktuelle Implementierung wurde mit ChatGPT/Codex erstellt. Die Autoren prüfen, verstehen und überarbeiten die übernommenen Bestandteile vor der wissenschaftlichen Verwendung. Ein Commit ist kein Nachweis einer bereits erfolgten menschlichen Prüfung.
