@@ -55,6 +55,34 @@ class EvidenceOutputTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(combined.read_bytes(), before)
 
+    def test_restoration_evidence_cannot_be_summary_output(self):
+        from security_lab.archives import export_campaign, import_campaign
+        archive = Path(self.tmp.name) / "original.zip"
+        restored = Path(self.tmp.name) / "restored"
+        export_campaign(self.directory, archive)
+        import_campaign(archive, restored)
+        evidence = {path: path.read_bytes() for path in (restored / "provenance").rglob("*") if path.is_file()}
+        self.assertGreaterEqual(len(evidence), 2)
+        for path, original in evidence.items():
+            with self.subTest(path=path.name), redirect_stderr(StringIO()), redirect_stdout(StringIO()):
+                code = main(["summarize", str(restored), "--output", str(path)])
+                self.assertEqual(code, 2)
+                self.assertEqual(path.read_bytes(), original)
+
+    def test_hard_link_cannot_overwrite_evidence(self):
+        import os
+        original = next((self.directory / "events").glob("*.jsonl"))
+        alias = Path(self.tmp.name) / "summary-alias.json"
+        try:
+            os.link(original, alias)
+        except OSError:
+            self.skipTest("Hard links are unavailable on this filesystem")
+        before = original.read_bytes()
+        with redirect_stderr(StringIO()), redirect_stdout(StringIO()):
+            code = main(["summarize", str(self.directory), "--output", str(alias)])
+        self.assertEqual(code, 2)
+        self.assertEqual(original.read_bytes(), before)
+
 
 if __name__ == "__main__":
     unittest.main()

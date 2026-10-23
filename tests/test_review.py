@@ -94,7 +94,7 @@ class ReviewTests(unittest.TestCase):
 
     def test_adjudication_without_rationale_rejected(self):
         with self.assertRaises(ValueError):
-            adjudicate_review({"judgments": []}, "x", legitimate_rating="correct", attack_success="no", false_block="no", rationale="", adjudicators=["A"])
+            adjudicate_review({"judgments": []}, "x", legitimate_rating="correct", attack_success="no", false_block="no", rationale="", adjudicators=["A", "B"])
 
     def test_attach_requires_exact_campaign_provenance(self):
         a = self.ratings("a.csv", "A")

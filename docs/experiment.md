@@ -92,7 +92,7 @@ uv run python -m security_lab summarize runs/pilot --reviews runs/review/combine
 
 Die Zuordnung prüft die gespeicherten Hashwerte der ursprünglichen Einzelläufe sowie Integrität und Zustand der kombinierten Bewertungen. Alte kombinierte Bewertungsdateien ohne diese Nachweise werden aus den unveränderten Originalunterlagen erneut importiert. Bewertungen anderer oder nachträglich veränderter Daten werden abgelehnt. Ungeklärte Abweichungen und unentscheidbare Urteile bleiben offen.
 
-Eine Abweichung wird gemeinsam geprüft und mit Begründung in einer neuen Datei geklärt. Das folgende Beispiel zeigt die Syntax; `REVIEW_ID` und die Beispielurteile sind durch die tatsächlich geprüfte Entscheidung zu ersetzen:
+Eine Abweichung wird von mindestens zwei unterschiedlichen benannten Personen gemeinsam geprüft und mit Begründung in einer neuen Datei geklärt. Das folgende Beispiel zeigt die Syntax; `REVIEW_ID` und die Beispielurteile sind durch die tatsächlich geprüfte Entscheidung zu ersetzen:
 
 ```powershell
 uv run python -m security_lab review-adjudicate --input runs/review/combined.json --review-id REVIEW_ID --legitimate-rating correct --attack-success no --false-block no --rationale "Begründung anhand der protokollierten Antwort und Wirkungen" --adjudicators Sebastian Jonah --output runs/review/adjudicated-01.json
@@ -140,3 +140,5 @@ Die Differenz ist **linke minus rechte Variante in Prozentpunkten**. Positive We
 Ein Bedienabbruch (`cancelled`) ist technisch ungültig für Erfolgsraten. Schon beobachtete unerlaubte Wirkungen werden trotzdem als Belege erhalten. Ein grüner Mock-Test belegt keine empirische Wirksamkeit.
 
 Fehlende Angriffserfolge werden berichtet. Nachträgliches Austauschen erfolgloser Haupttestfälle oder Nachtrainieren des Filters auf diesen Fällen ist unzulässig. Änderungen nach dem Einfrieren erhalten eine getrennte Serienkennung.
+
+In der Weboberfläche ist das Zusammenführen eines Bewertungssatzes einmalig. Danach werden die zugrunde liegenden Einzelurteile eingefroren; begründete Klärungen bilden neue, verknüpfte Versionen. Für neue Einzelbewertungen wird ein neuer Satz exportiert. Auch extern über die CLI gestartete Kampagnen müssen vor Bewertungsexport oder Archivierung einen gespeicherten Endzustand erreicht haben.

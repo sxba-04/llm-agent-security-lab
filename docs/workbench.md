@@ -28,7 +28,7 @@ Nach einem Update erst `git pull --ff-only`, dann die Installations- und Buildsc
 3. Nach Abschluss einen Lauf öffnen. Vorschläge, Filter-/Policyentscheidungen, tatsächliche Wirkungen und Ticketzustände getrennt untersuchen.
 4. Unter **Vergleich** Zähler, Nenner und offene semantische Urteile ansehen. Mock-Raten sind technische Kontrollen, keine Aussagen zur Angreifbarkeit eines LLM.
 5. Ein Review-Paket exportieren. Beide Autoren bewerten unabhängig in getrennten Bewertungsplätzen. Die Verwaltungsansichten mit Schutzvarianten während der Bewertung nicht parallel verwenden.
-6. Erst nach vollständiger Eingabe beider Bewertungen kombinieren; Abweichungen gemeinsam und mit eigener Begründung klären. Einzelurteile bleiben erhalten.
+6. Erst nach vollständiger Eingabe beider Bewertungen einmalig kombinieren; danach sind die Einzelurteile eingefroren. Abweichungen gemeinsam mit mindestens zwei unterschiedlichen Personen und eigener Begründung klären. Einzelurteile bleiben erhalten. Für einen Neubeginn einen neuen Bewertungssatz erstellen.
 7. Das vollständige Kampagnenarchiv herunterladen und mit der CLI verifizieren.
 
 Die Trennung der Bewertungsansichten unterstützt Verblindung. Sie ist keine Zugriffssperre gegen einen Autor, der dieselben lokalen Rohdateien selbst öffnet. Manche Ausgaben lassen außerdem eine Schutzmaßnahme vermuten; vollständige Verblindung wird nicht behauptet.
@@ -42,6 +42,8 @@ uv run --locked --extra web security-lab-web --workspace runs --port 8765
 ```
 
 Es läuft höchstens eine UI-Serie gleichzeitig. Browser-Neuladen startet keinen weiteren Versuch. Abbrechen beendet eine Serie an einer kontrollierten Grenze; bereits ausgeführte Wirkungen und gespeicherte Läufe werden erhalten. Abgebrochene Aufgaben erhalten keine gültigen Erfolgsraten. Die Fortschrittsanzeige arbeitet auf der Ebene abgeschlossener Aufgaben; die detaillierte Ereignisansicht zeigt gespeicherte Laufprotokolle, keinen erfundenen Live-Stream.
+
+Nach einem harten Prozessabbruch kann die Werkbank eine nachweislich verwaiste eigene Serie als unterbrochen abschließen. Dafür prüft sie gespeicherte Worker-Zuordnung und Betriebssystem-Dateisperre; ein noch lebender fremder Worker wird nicht übernommen. Originalmanifest und gegebenenfalls alte Zusammenfassung bleiben als Wiederherstellungsbelege unter `provenance/` erhalten. Alte oder über die CLI gestartete Serien ohne eindeutige Worker-Zuordnung werden nicht automatisch umgeschrieben. Beschädigte Kampagnen erscheinen mit Fehlermeldung und bleiben von Auswertung und Bewertung ausgeschlossen; gesunde Kampagnen bleiben erreichbar.
 
 ## Lokale Schnittstelle
 

@@ -289,12 +289,12 @@ def _valid_adjudication(value: Any) -> bool:
     if not isinstance(value, dict) or not isinstance(value.get("rationale"), str) or not value["rationale"].strip():
         return False
     names = value.get("adjudicators")
-    return (isinstance(names, list) and bool(names)
+    return (isinstance(names, list) and len(names) >= 2
             and all(isinstance(name, str) and name.strip() for name in names)
             and len({name.strip().casefold() for name in names}) == len(names))
 
 
-def _validate_combined(combined: Any) -> None:
+def validate_combined(combined: Any) -> None:
     """Reject modified versions and judgments inconsistent with their originals."""
     if not isinstance(combined, dict) or not _is_digest(combined.get("content_sha256")):
         raise ValueError("Missing review version integrity; combine the verified packets again")
@@ -368,8 +368,8 @@ def adjudicate_review(combined: dict[str, Any], review_id: str, *, legitimate_ra
             or not isinstance(false_block, str) or false_block not in FALSE_BLOCK_RATINGS):
         raise ValueError("Invalid adjudicated rating")
     if not _valid_adjudication({"rationale": rationale, "adjudicators": adjudicators}):
-        raise ValueError("Adjudication requires named participants and a rationale")
-    _validate_combined(combined)
+        raise ValueError("Adjudication requires at least two distinct named participants and a rationale")
+    validate_combined(combined)
     updated = copy.deepcopy(combined)
     matches = [j for j in updated.get("judgments", []) if j.get("review_id") == review_id]
     if len(matches) != 1:
@@ -394,7 +394,7 @@ def attach_reviews(results: list[dict[str, Any]], combined: dict[str, Any]) -> l
     Campaign-local run IDs may collide; full-result hashes and case IDs must
     match. Neither immutable source records nor imported ratings are changed.
     """
-    _validate_combined(combined)
+    validate_combined(combined)
     judgments = combined["judgments"]
     result_ids = [r.get("run_id") for r in results]
     review_ids = [j.get("run_id") for j in judgments]

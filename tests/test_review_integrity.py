@@ -1,11 +1,15 @@
 import copy
+from contextlib import redirect_stderr, redirect_stdout
 import csv
 import hashlib
+import io
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
+from security_lab.cli import main
 from security_lab.review import (
     RATING_FIELDS, adjudicate_review, attach_reviews, combine_reviews,
     export_review, verify_packets,
@@ -188,6 +192,98 @@ class ReviewIntegrityTests(unittest.TestCase):
         self.assertEqual(len(attach_reviews(self.results, current)), 2)
         self.assertEqual(combined, original_copy)
         self.assertEqual(self.output.read_bytes(), original_bytes)
+
+    def test_adjudication_requires_two_distinct_nonempty_participant_names(self):
+        self.write_ratings(disagree=True)
+        combined = self.combine()
+        original = copy.deepcopy(combined)
+        for names in ([], ["Alice"], ["Alice", "Alice"], ["Alice", " alice "],
+                      ["Alice", "  "], ["", "Bob"], ["Alice", 1],
+                      ["Straße", "STRASSE"]):
+            with self.subTest(names=names), self.assertRaisesRegex(ValueError, "two distinct"):
+                adjudicate_review(combined, self.ids[0], legitimate_rating="correct", attack_success="no",
+                                  false_block="no", rationale="Discussed the evidence.", adjudicators=names)
+        self.assertEqual(combined, original)
+        updated = adjudicate_review(combined, self.ids[0], legitimate_rating="correct", attack_success="no",
+                                    false_block="no", rationale="Discussed the evidence.",
+                                    adjudicators=[" Alice ", "Bob"])
+        self.assertEqual(updated["judgments"][0]["status"], "adjudicated")
+        self.assertEqual(len(attach_reviews(self.results, updated)), 2)
+
+    def test_reloaded_adjudication_rejects_single_or_duplicate_participants_even_with_new_hash(self):
+        self.write_ratings(disagree=True)
+        combined = self.combine()
+        valid = adjudicate_review(combined, self.ids[0], legitimate_rating="correct", attack_success="no",
+                                  false_block="no", rationale="Discussed the evidence.", adjudicators=["Alice", "Bob"])
+        for names in (["Alice"], ["Alice", " alice "], ["Alice", ""]):
+            modified = copy.deepcopy(valid)
+            modified["judgments"][0]["adjudication"]["adjudicators"] = names
+            del modified["content_sha256"]
+            modified["content_sha256"] = hashlib.sha256(
+                json.dumps(modified, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            reloaded = json.loads(json.dumps(modified))
+            with self.subTest(names=names), self.assertRaisesRegex(ValueError, "Invalid adjudication"):
+                attach_reviews(self.results, reloaded)
+            with self.subTest(names=names), self.assertRaisesRegex(ValueError, "Invalid adjudication"):
+                adjudicate_review(reloaded, self.ids[1], legitimate_rating="correct", attack_success="no",
+                                  false_block="no", rationale="Discussed the remaining case.", adjudicators=["Alice", "Bob"])
+
+    def test_cli_cannot_adjudicate_with_only_one_or_duplicate_participants(self):
+        self.write_ratings(disagree=True)
+        self.combine()
+        before = self.output.read_bytes()
+        for index, names in enumerate((["Alice"], ["Alice", " ALICE "])):
+            destination = self.root / f"invalid-adjudication-{index}.json"
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                code = main(["review-adjudicate", "--input", str(self.output), "--output", str(destination),
+                             "--review-id", self.ids[0], "--legitimate-rating", "correct", "--attack-success", "no",
+                             "--false-block", "no", "--rationale", "Discussed the evidence.", "--adjudicators", *names])
+            self.assertEqual(code, 2)
+            self.assertFalse(destination.exists())
+        self.assertEqual(self.output.read_bytes(), before)
+
+    def test_http_adjudication_uses_the_same_two_person_requirement(self):
+        try:
+            from fastapi.testclient import TestClient
+            from security_lab.server import create_app
+        except ImportError:
+            self.skipTest("Optional web dependencies are not installed")
+        self.write_ratings(disagree=True)
+        combined = self.combine()
+        identifier = "review-" + "a" * 32
+        directory = self.root / "reviews" / identifier
+        shutil.copytree(self.root / "review", directory)
+        (directory / "metadata.json").write_text(json.dumps({"review_set_id": identifier}))
+        (directory / "combined").mkdir()
+        (directory / "combined" / "combined-000001.json").write_text(json.dumps(combined))
+        body = {"review_id": self.ids[0], "legitimate_rating": "correct", "attack_success": "no",
+                "false_block": "no", "rationale": "Discussed the evidence."}
+        with TestClient(create_app(self.root, Path(__file__).parents[1] / "cases/dev"),
+                        base_url="http://127.0.0.1") as client:
+            headers = {"X-Lab-Token": client.get("/api/health").json()["csrf_token"]}
+            for names in (["Alice"], ["Alice", " ALICE "]):
+                result = client.post(f"/api/reviews/{identifier}/adjudicate", headers=headers,
+                                     json={**body, "adjudicators": names})
+                self.assertEqual(result.status_code, 400)
+            self.assertEqual(len(list((directory / "combined").glob("combined-*.json"))), 1)
+            result = client.post(f"/api/reviews/{identifier}/adjudicate", headers=headers,
+                                 json={**body, "adjudicators": ["Alice", "Bob"]})
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(len(attach_reviews(self.results, result.json())), 2)
+            reloaded = client.get(f"/api/reviews/{identifier}/combined")
+            self.assertEqual(reloaded.status_code, 200)
+            self.assertEqual(reloaded.json(), result.json())
+            # Even a hash-consistent legacy one-person adjudication must not be
+            # served as a valid combined review when it is loaded from disk.
+            legacy = result.json()
+            legacy["judgments"][0]["adjudication"]["adjudicators"] = ["Alice"]
+            del legacy["content_sha256"]
+            legacy["content_sha256"] = hashlib.sha256(
+                json.dumps(legacy, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            (directory / "combined" / "combined-000002.json").write_text(json.dumps(legacy))
+            rejected = client.get(f"/api/reviews/{identifier}/combined")
+            self.assertEqual(rejected.status_code, 400)
+            self.assertIn("Invalid adjudication", rejected.json()["detail"])
 
     def test_unverified_legacy_combination_requires_recombining(self):
         combined = self.combine()

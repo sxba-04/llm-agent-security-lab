@@ -9,6 +9,7 @@ export interface LabCase {
 }
 export interface Campaign {
   campaign_id: string; created_at: string; state: string; completed_runs: number; planned_runs: number; engineering_only: boolean;
+  valid_evidence?: boolean; error?: string; worker_active?: boolean | null; managed_worker?: boolean; can_cancel?: boolean;
 }
 export interface Manifest extends Data {
   state: string; created_at: string; schedule: Data[]; runs: Data[];

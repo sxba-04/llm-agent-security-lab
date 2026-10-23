@@ -186,13 +186,22 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
             directory = jobs.directory(identifier)
         except KeyError as exc:
             raise HTTPException(404, "Versuch nicht gefunden.") from exc
-        if finished and jobs.is_active(identifier):
-            raise HTTPException(409, "Bitte den laufenden Versuch zuerst abschließen oder abbrechen.")
+        if finished:
+            # CLI workers are not registered in this app. Only a durable terminal
+            # state makes the campaign's record set safe to export or review.
+            if jobs.is_active(identifier) or _read_json(directory / "manifest.json", workspace).get("state") not in {
+                "completed", "cancelled", "stopped", "interrupted"
+            }:
+                raise HTTPException(409, "Bitte den laufenden Versuch zuerst abschließen oder abbrechen.")
         return directory
 
     def review_locations() -> list[Path]:
         locations = [review_root]
         for campaign in jobs.list():
+            # Keep damaged evidence visible in the campaign list, but do not
+            # resolve its review sets or let it block unrelated healthy sets.
+            if campaign.get("valid_evidence") is False or campaign.get("state") == "damaged":
+                continue
             locations.append(campaign_directory(campaign["campaign_id"]) / "reviews")
         return locations
 
@@ -215,7 +224,20 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         versions = sorted((directory / "combined").glob("combined-*.json"))
         if not versions:
             raise HTTPException(404, "Noch keine zusammengeführten Bewertungen.")
-        return _read_json(versions[-1], workspace)
+        combined = _read_json(versions[-1], workspace)
+        review.validate_combined(combined)
+        return combined
+
+    def ratings_locked(directory: Path) -> bool:
+        return any((directory / "combined").glob("combined-*.json"))
+
+    def require_open_ratings(directory: Path) -> None:
+        # Call under the shared write lock so simultaneous saves/combines cannot
+        # bypass the transition from drafts to immutable combined decisions.
+        if ratings_locked(directory):
+            raise HTTPException(409, "Dieser Bewertungssatz wurde bereits zusammengeführt. "
+                                "Einzelbewertungen sind eingefroren; offene Abweichungen können entschieden werden. "
+                                "Für eine neue Bewertung einen neuen Bewertungssatz exportieren.")
 
     def latest_ratings(directory: Path, slot: str) -> dict[str, Any]:
         versions = sorted((directory / f"drafts-{slot}").glob("draft-*.json"))
@@ -375,7 +397,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         directory = review_directory(review_set_id)
         packets(directory)
         with lock:
-            return latest_ratings(directory, slot)
+            return {**latest_ratings(directory, slot), "locked": ratings_locked(directory)}
 
     @app.put("/api/reviews/{review_set_id}/ratings/{slot}")
     def ratings_put(review_set_id: str, slot: Literal["a", "b"], body: RatingsRequest):
@@ -388,6 +410,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         complete = bool(body.rater.strip()) and set(supplied) == known and all(
             row["legitimate_rating"] and row["attack_success"] and row["false_block"] and row["notes"].strip() for row in values)
         with lock:
+            require_open_ratings(directory)
             _write_new(_version_path(directory / f"drafts-{slot}", "draft"),
                        {"rater": body.rater, "ratings": values}, workspace)
         return {"saved": len(values), "complete": complete}
@@ -396,6 +419,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
     def combine(review_set_id: str):
         directory = review_directory(review_set_id)
         with lock:
+            require_open_ratings(directory)
             packets(directory)
             submission = directory / "submissions" / ("submission-" + uuid.uuid4().hex)
             submission.mkdir(parents=True, exist_ok=False)

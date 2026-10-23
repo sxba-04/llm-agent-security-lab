@@ -124,7 +124,10 @@ def main(argv: list[str] | None = None) -> int:
             protected = [(args.directory / entry["path"]).resolve() for entry in manifest["runs"]]
             protected += [(args.directory / name).resolve() for name in ("manifest.json", "cases.snapshot.json")]
             # Evidence lives in whole subdirectories, including future source and review formats.
-            evidence_dirs = [args.directory / name for name in ("records", "events", "sources", "reviews")]
+            evidence_dirs = [args.directory / name for name in ("records", "events", "sources", "reviews", "provenance")]
+            # Include file identities as well as paths so a hard-link alias
+            # cannot overwrite an original outside its protected directory.
+            protected += [path for directory in evidence_dirs for path in directory.rglob("*") if path.is_file()]
             if args.reviews:
                 protected.append(args.reviews.resolve())
             target = args.output.resolve()

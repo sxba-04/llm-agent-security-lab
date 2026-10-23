@@ -96,7 +96,7 @@ class ServerTests(unittest.TestCase):
         response = self.client.put(url + "/ratings/a", json=draft, headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["complete"])
-        self.assertEqual(self.client.get(url + "/ratings/b").json(), {"rater": "", "ratings": []})
+        self.assertEqual(self.client.get(url + "/ratings/b").json(), {"rater": "", "ratings": [], "locked": False})
         self.assertEqual(self.client.post(url + "/combine", headers=self.headers).status_code, 400)
         a = self.ratings(packets, "Rater A")
         b = self.ratings(packets, "Rater B")
@@ -131,6 +131,76 @@ class ServerTests(unittest.TestCase):
         with zipfile.ZipFile(BytesIO(response.content)) as archive:
             self.assertTrue(any("combined-000002.json" in name for name in archive.namelist()))
         self.assertEqual(list((self.workspace / "exports").glob("*.zip")), [])
+
+    def test_combined_reviews_freeze_drafts_and_recombine_preserves_adjudication(self):
+        campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
+        review_set, packets = self.review_set(campaign)
+        url = f"/api/reviews/{review_set}"
+        drafts = {"a": self.ratings(packets, "Rater A"), "b": self.ratings(packets, "Rater B")}
+        drafts["b"]["ratings"][0]["legitimate_rating"] = "partial"
+        for slot, body in drafts.items():
+            self.assertEqual(self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers).status_code, 200)
+        combined = self.client.post(url + "/combine", headers=self.headers)
+        self.assertEqual(combined.status_code, 200, combined.text)
+        directory = self.workspace / "campaigns" / campaign / "reviews" / review_set
+        for phase in ("combined", "adjudicated"):
+            if phase == "adjudicated":
+                adjudication = self.client.post(url + "/adjudicate", headers=self.headers, json={
+                    "review_id": packets[0]["review_id"], "legitimate_rating": "partial", "attack_success": "no",
+                    "false_block": "no", "rationale": "Synthetic explicit adjudication to verify preservation.",
+                    "adjudicators": ["Rater A", "Rater B"],
+                })
+                self.assertEqual(adjudication.status_code, 200, adjudication.text)
+                self.assertEqual(adjudication.json()["review_version"], 2)
+            before = {path.relative_to(directory): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+            decision = self.client.get(url + "/combined").json()
+            with self.subTest(phase=phase):
+                recombine = self.client.post(url + "/combine", headers=self.headers)
+                self.assertEqual(recombine.status_code, 409, recombine.text)
+                for slot in ("a", "b"):
+                    changed = self.ratings(packets, "Changed Rater")
+                    response = self.client.put(url + f"/ratings/{slot}", json=changed, headers=self.headers)
+                    self.assertEqual(response.status_code, 409, response.text)
+                    self.assertEqual(self.client.get(url + f"/ratings/{slot}").json(), {**drafts[slot], "locked": True})
+                self.assertEqual(self.client.get(url + "/combined").json(), decision)
+                after = {path.relative_to(directory): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+                self.assertEqual(after, before, "Rejected writes must create no submissions, drafts or combined versions")
+
+    def test_external_cli_campaign_must_finish_before_review_or_archive(self):
+        # Pause the actual CLI batch engine after its first durable result. The
+        # workbench has no in-memory job registration for this campaign.
+        directory = self.workspace / "external-cli-run"
+        paused, release = threading.Event(), threading.Event()
+        def progress(manifest):
+            if manifest["state"] == "running" and manifest["completed_runs"] == 1:
+                paused.set()
+                if not release.wait(timeout=10):
+                    raise RuntimeError("Test failed to release the external campaign")
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_batch, [self.case], directory,
+                                     lambda case, source: ScriptedModel(case, source),
+                                     variants=["B", "P"], sources=["clean"], repeats=1, on_progress=progress)
+            try:
+                self.assertTrue(paused.wait(timeout=5))
+                campaign = self.client.get("/api/campaigns").json()["campaigns"][0]["campaign_id"]
+                self.assertFalse(self.client.get("/api/health").json()["running"])
+                self.assertEqual(len(self.client.get(f"/api/campaigns/{campaign}/records").json()["records"]), 1)
+                before = {path.relative_to(directory): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+                response = self.client.post(f"/api/campaigns/{campaign}/review-export", headers=self.headers)
+                self.assertEqual(response.status_code, 409, response.text)
+                response = self.client.get(f"/api/campaigns/{campaign}/archive")
+                self.assertEqual(response.status_code, 409, response.text)
+                after = {path.relative_to(directory): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+                self.assertEqual(after, before)
+                self.assertFalse((directory / "reviews").exists())
+            finally:
+                release.set()
+            self.assertEqual(future.result(timeout=5)["state"], "completed")
+        response = self.client.post(f"/api/campaigns/{campaign}/review-export", headers=self.headers)
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["packet_count"], 2)
+        response = self.client.get(f"/api/campaigns/{campaign}/archive")
+        self.assertEqual(response.status_code, 200, response.text[:200])
 
     def test_pdf_preview_confirmation_and_provenance_in_campaign_archive(self):
         response = self.client.get(f"/api/cases/{self.case['case_id']}/articles/clean/pdf")
@@ -237,6 +307,46 @@ class ServerTests(unittest.TestCase):
             self.skipTest("Symlink creation unavailable")
         response = self.client.get(f"/api/campaigns/{campaign}/records")
         self.assertEqual(response.status_code, 400, response.text)
+
+    def test_damaged_campaign_does_not_block_healthy_review_sets(self):
+        body = {**self.body, "variants": ["B"], "sources": ["clean"]}
+        healthy_campaign = self.start(body)
+        healthy_set, healthy_packets = self.review_set(healthy_campaign)
+        damaged_campaign = self.start(body)
+        damaged_set, _ = self.review_set(damaged_campaign)
+        damaged_directory = self.workspace / "campaigns" / damaged_campaign
+        record = next((damaged_directory / "records").glob("*.json"))
+        original_record = record.read_bytes()
+        manifest = damaged_directory / "manifest.json"
+        original_manifest = manifest.read_bytes()
+        for damage in ("record_hash", "manifest_type", "manifest_date_type"):
+            record.write_bytes(original_record)
+            manifest.write_bytes(original_manifest)
+            if damage == "record_hash":
+                record.write_text("{}", encoding="utf-8")
+            elif damage == "manifest_type":
+                manifest.write_text("[]", encoding="utf-8")
+            else:
+                value = json.loads(original_manifest)
+                value["created_at"] = {"not": "a sortable timestamp"}
+                manifest.write_text(json.dumps(value), encoding="utf-8")
+            with self.subTest(damage=damage):
+                response = self.client.get("/api/campaigns")
+                self.assertEqual(response.status_code, 200, response.text)
+                campaigns = {row["campaign_id"]: row for row in response.json()["campaigns"]}
+                self.assertEqual(campaigns[damaged_campaign]["state"], "damaged")
+                self.assertFalse(campaigns[damaged_campaign]["valid_evidence"])
+                response = self.client.get("/api/reviews")
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual([row["review_set_id"] for row in response.json()["review_sets"]], [healthy_set])
+                response = self.client.get(f"/api/reviews/{healthy_set}/packets")
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["packets"], healthy_packets)
+                self.assertEqual(self.client.get(f"/api/reviews/{damaged_set}/packets").status_code, 404)
+        response = self.client.put(f"/api/reviews/{healthy_set}/ratings/a", headers=self.headers,
+                                   json=self.ratings(healthy_packets, "Rater A"))
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["complete"])
 
     def test_changed_packets_and_invalid_draft_ids_are_rejected(self):
         campaign = self.start()
