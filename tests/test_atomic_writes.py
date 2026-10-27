@@ -8,6 +8,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 from security_lab import batch
 from security_lab.cases import load_cases
@@ -151,6 +153,61 @@ class AtomicWriteTests(unittest.TestCase):
         self.assertEqual(len(models), 8)
         self.assertEqual(sum(model.calls for model in models), sum(row["model_calls"] for row in records))
         self.assertEqual(list(campaign.rglob("*.tmp")), [])
+
+    def test_new_json_is_fully_synced_before_exclusive_publication(self):
+        output = self.root / "decision.json"
+        value = {"rater": "Prüfer", "notes": "Immutable original"}
+        real_link = os.link
+        with patch("security_lab.batch.os.fsync", wraps=os.fsync) as synced:
+            def publish(source, target):
+                self.assertFalse(output.exists())
+                self.assertEqual(synced.call_count, 1)
+                self.assertEqual(json.loads(Path(source).read_bytes()), value)
+                return real_link(source, target)
+            with patch("security_lab.batch.os.link", side_effect=publish):
+                batch.write_json_new(output, value)
+        self.assertEqual(json.loads(output.read_bytes()), value)
+        with self.assertRaises(FileExistsError):
+            batch.write_json_new(output, {"replacement": True})
+        self.assertEqual(json.loads(output.read_bytes()), value)
+        self.assertEqual(list(self.root.glob("*.tmp")), [])
+
+    def test_new_json_failed_sync_or_publication_leaves_no_partial_final_version(self):
+        for operation in ("fsync", "link"):
+            with self.subTest(operation=operation):
+                output = self.root / "new-decision.json"
+                with patch("security_lab.batch.os." + operation, side_effect=OSError(errno.ENOSPC, "Synthetic storage failure")):
+                    with self.assertRaises(OSError):
+                        batch.write_json_new(output, {"notes": "Complete decision"})
+                self.assertFalse(output.exists())
+                self.assertEqual(list(self.root.glob("*.tmp")), [])
+                self.assertEqual(self.target.read_bytes(), self.original)
+
+    def test_new_json_invalid_value_creates_no_directory(self):
+        output = self.root / "never-created" / "decision.json"
+        with self.assertRaises(ValueError):
+            batch.write_json_new(output, {"invalid": float("nan")})
+        self.assertFalse(output.parent.exists())
+
+    def test_concurrent_new_json_writers_cannot_replace_the_winner(self):
+        output = self.root / "race.json"
+        real_link = os.link
+        barrier = threading.Barrier(2)
+        def publish(source, target):
+            barrier.wait(timeout=5)
+            return real_link(source, target)
+        def write(value):
+            try:
+                batch.write_json_new(output, {"writer": value})
+                return value
+            except FileExistsError:
+                return None
+        with patch("security_lab.batch.os.link", side_effect=publish), ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(write, ["first", "second"]))
+        winners = [value for value in results if value is not None]
+        self.assertEqual(len(winners), 1)
+        self.assertEqual(json.loads(output.read_bytes()), {"writer": winners[0]})
+        self.assertEqual(list(self.root.glob("*.tmp")), [])
 
 
 if __name__ == "__main__":

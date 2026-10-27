@@ -18,7 +18,7 @@ except ImportError:
 from security_lab.cases import load_cases
 from security_lab.documents import (
     DocumentError, MAX_PDF_BYTES, apply_document_override, confirm_document,
-    extract_pdf, import_document, load_document, reject_symlinks,
+    extract_pdf, import_document, list_documents, load_document, reject_symlinks,
 )
 from security_lab.sample_pdf import article_pdf
 
@@ -108,6 +108,34 @@ class DocumentTests(unittest.TestCase):
             load_document(self.storage, "../outside")
         with self.assertRaises(DocumentError):
             reject_symlinks(self.storage / ".." / "outside", self.storage)
+
+    def test_failed_confirmation_can_be_retried_without_partial_confirmation(self):
+        document = import_document(self.storage, "article.pdf", self.pdf)
+        path = self.storage / document["document_id"] / "confirmation.json"
+        with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
+            with self.assertRaises(OSError):
+                confirm_document(self.storage, document["document_id"], document["text_sha256"])
+        self.assertFalse(path.exists())
+        self.assertFalse(load_document(self.storage, document["document_id"])["confirmed"])
+        self.assertEqual(list(path.parent.glob("*.tmp")), [])
+        self.assertTrue(confirm_document(self.storage, document["document_id"], document["text_sha256"])["confirmed"])
+
+    def test_damaged_source_does_not_hide_healthy_documents_or_repair_evidence(self):
+        healthy = import_document(self.storage, "healthy.pdf", self.pdf)
+        damaged = import_document(self.storage, "damaged.pdf", self.pdf)
+        path = self.storage / damaged["document_id"] / "confirmation.json"
+        path.write_bytes(b'{"partial":')
+        listed = {entry["document_id"]: entry for entry in list_documents(self.storage)}
+        self.assertTrue(listed[healthy["document_id"]]["valid_evidence"])
+        self.assertEqual(listed[healthy["document_id"]]["extracted_text"], healthy["extracted_text"])
+        rejected = listed[damaged["document_id"]]
+        self.assertFalse(rejected["valid_evidence"])
+        self.assertIn("error", rejected)
+        self.assertNotIn("confirmed", rejected)
+        self.assertNotIn("extracted_text", rejected)
+        with self.assertRaises(ValueError):
+            load_document(self.storage, damaged["document_id"])
+        self.assertEqual(path.read_bytes(), b'{"partial":')
 
 
 if __name__ == "__main__":

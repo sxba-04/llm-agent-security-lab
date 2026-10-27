@@ -4,10 +4,12 @@ import csv
 import hashlib
 import io
 import json
+import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from security_lab.cli import main
 from security_lab.review import (
@@ -179,6 +181,26 @@ class ReviewIntegrityTests(unittest.TestCase):
             self.assertFalse(destination.parent.exists())
         self.assertEqual(self.output.read_bytes(), original)
 
+    def test_cli_adjudication_does_not_overwrite_a_concurrently_created_version(self):
+        self.write_ratings(disagree=True)
+        self.combine()
+        destination = self.root / "adjudicated.json"
+        concurrent_bytes = b'{"different_preserved_decision": true}\n'
+        real_link = os.link
+        def raced_publication(source, target):
+            self.assertEqual(Path(target), destination)
+            destination.write_bytes(concurrent_bytes)
+            return real_link(source, target)
+        with patch("security_lab.batch.os.link", side_effect=raced_publication), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = main(["review-adjudicate", "--input", str(self.output), "--output", str(destination),
+                         "--review-id", self.ids[0], "--legitimate-rating", "correct", "--attack-success", "no",
+                         "--false-block", "no", "--rationale", "Synthetic race regression.",
+                         "--adjudicators", "Alice", "Bob"])
+        self.assertEqual(code, 2)
+        self.assertEqual(destination.read_bytes(), concurrent_bytes)
+        self.assertEqual(list(destination.parent.glob("*.tmp")), [])
+
     def test_modified_review_version_cannot_be_attached_or_adjudicated(self):
         self.write_ratings(disagree=True)
         combined = self.combine()
@@ -277,7 +299,10 @@ class ReviewIntegrityTests(unittest.TestCase):
         identifier = "review-" + "a" * 32
         directory = self.root / "reviews" / identifier
         shutil.copytree(self.root / "review", directory)
-        (directory / "metadata.json").write_text(json.dumps({"review_set_id": identifier}))
+        (directory / "metadata.json").write_text(json.dumps({
+            "review_set_id": identifier, "campaign_id": "detached-test-campaign",
+            "packet_count": len(self.ids), "created_at": "2026-10-27T00:00:00+00:00",
+        }))
         (directory / "combined").mkdir()
         (directory / "combined" / "combined-000001.json").write_text(json.dumps(combined))
         body = {"review_id": self.ids[0], "legitimate_rating": "correct", "attack_success": "no",

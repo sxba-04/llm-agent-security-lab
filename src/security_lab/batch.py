@@ -62,6 +62,32 @@ def write_json(path: Path, value: Any) -> None:
     _atomic_bytes(Path(path), raw.encode("utf-8"))
 
 
+def write_json_new(path: Path, value: Any) -> None:
+    """Publish a complete immutable JSON file without replacing any destination.
+
+    A same-directory hard link provides atomic create-if-absent semantics on
+    supported filesystems (including NTFS). There is deliberately no fallback
+    to an exists-check followed by replace: another writer could win that race.
+    Unsupported filesystems fail closed. A hard process termination may leave
+    an identifiable .tmp file, but never a partially published final version.
+    """
+    content = (json.dumps(value, ensure_ascii=True, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + "." + secrets.token_hex(8) + ".tmp")
+    created = False
+    try:
+        with temporary.open("xb") as stream:
+            created = True
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, path)
+    finally:
+        if created:
+            temporary.unlink(missing_ok=True)
+
+
 def provenance() -> dict:
     root = Path(__file__).resolve().parents[2]
     source_hashes = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()

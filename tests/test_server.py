@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import threading
 import time
@@ -20,6 +21,7 @@ except ImportError:
     TestClient = None
 
 from security_lab.batch import run_batch
+from security_lab.archives import import_campaign
 from security_lab.cases import load_cases
 from security_lab.models import ScriptedModel
 
@@ -132,6 +134,117 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(any("combined-000002.json" in name for name in archive.namelist()))
         self.assertEqual(list((self.workspace / "exports").glob("*.zip")), [])
 
+    def test_archived_reviews_follow_restored_campaign_without_changing_evidence(self):
+        campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
+        review_set, packets = self.review_set(campaign)
+        url = f"/api/reviews/{review_set}"
+        for slot, name in (("a", "Rater A"), ("b", "Rater B")):
+            response = self.client.put(url + f"/ratings/{slot}", headers=self.headers,
+                                       json=self.ratings(packets, name))
+            self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.post(url + "/combine", headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        original_combined = response.json()
+        source = self.workspace / "campaigns" / campaign / "reviews" / review_set
+        original_files = {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}
+        response = self.client.get(f"/api/campaigns/{campaign}/archive")
+        self.assertEqual(response.status_code, 200, response.text[:200])
+        archive = Path(self.temp.name) / "reviewed.zip"
+        archive.write_bytes(response.content)
+
+        # A separate healthy set must remain available beside restored copies.
+        other_campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"], "seed": 73})
+        other_set, _ = self.review_set(other_campaign)
+        for same_workspace in (False, True):
+            with self.subTest(same_workspace=same_workspace):
+                workspace = self.workspace if same_workspace else Path(self.temp.name) / "fresh-workspace"
+                restored = workspace / "restored-copy"
+                import_campaign(archive, restored)
+                with TestClient(create_app(workspace, CASES), base_url="http://127.0.0.1") as client:
+                    campaigns = client.get("/api/campaigns").json()["campaigns"]
+                    current = next(row["campaign_id"] for row in campaigns if row["campaign_id"].startswith("legacy-"))
+                    response = client.get("/api/reviews")
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertEqual(response.json()["damaged_review_sets"], [])
+                    sets = response.json()["review_sets"]
+                    copied = next(row for row in sets if row["campaign_id"] == current)
+                    self.assertNotEqual(copied["review_set_id"], review_set)
+                    self.assertRegex(copied["review_set_id"], r"^review-copy-[0-9a-f]{64}$")
+                    self.assertEqual(copied["original_review_set_id"], review_set)
+                    self.assertEqual(copied["original_campaign_id"], campaign)
+                    copied_url = f'/api/reviews/{copied["review_set_id"]}'
+                    self.assertEqual(client.get(copied_url + "/packets").json()["packets"], packets)
+                    self.assertEqual(client.get(copied_url + "/combined").json(), original_combined)
+                    response = client.get(f"/api/campaigns/{current}/summary",
+                                          params={"review_set_id": copied["review_set_id"]})
+                    self.assertEqual(response.status_code, 200, response.text)
+                    if same_workspace:
+                        self.assertEqual(len(sets), 3)
+                        self.assertEqual(len({row["review_set_id"] for row in sets}), 3)
+                        self.assertEqual(next(row for row in sets if row["campaign_id"] == campaign)["review_set_id"], review_set)
+                        self.assertEqual(client.get(f"/api/reviews/{other_set}/packets").status_code, 200)
+                        self.assertEqual(client.get(f"/api/campaigns/{campaign}/summary",
+                                                    params={"review_set_id": review_set}).status_code, 200)
+                        # Even identical archived run IDs/bytes do not allow a
+                        # review to attach to a different containing campaign.
+                        for foreign in (campaign, other_campaign):
+                            self.assertEqual(client.get(f"/api/campaigns/{foreign}/summary",
+                                                        params={"review_set_id": copied["review_set_id"]}).status_code, 400)
+                        self.assertEqual(client.get(f"/api/campaigns/{current}/summary",
+                                                    params={"review_set_id": review_set}).status_code, 400)
+                    for invalid in ("review-copy-" + "a" * 63, "review-copy-" + "g" * 64,
+                                    "..%2Freviews%2F" + review_set, review_set + "%5Cmetadata.json"):
+                        self.assertEqual(client.get(f"/api/reviews/{invalid}/packets").status_code, 404)
+                restored_source = restored / "reviews" / review_set
+                self.assertEqual({path.relative_to(restored_source): path.read_bytes()
+                                  for path in restored_source.rglob("*") if path.is_file()}, original_files)
+        self.assertEqual({path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}, original_files)
+
+    def test_review_discovery_isolates_failed_exports_and_corrupt_metadata(self):
+        campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
+        healthy_set, healthy_packets = self.review_set(campaign)
+        with patch("security_lab.batch.os.fsync", side_effect=OSError("synthetic disk failure")):
+            with self.assertRaises(OSError):
+                self.client.post(f"/api/campaigns/{campaign}/review-export", headers=self.headers)
+        root = self.workspace / "campaigns" / campaign / "reviews"
+        failed = next(path for path in root.iterdir() if path.name != healthy_set)
+        preserved_packets = (failed / "reviews.jsonl").read_bytes()
+        for metadata in (None, b"{", b"[]"):
+            with self.subTest(metadata=metadata):
+                if metadata is not None:
+                    (failed / "metadata.json").write_bytes(metadata)
+                response = self.client.get("/api/reviews")
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual([row["review_set_id"] for row in response.json()["review_sets"]], [healthy_set])
+                damaged = response.json()["damaged_review_sets"]
+                self.assertEqual(len(damaged), 1)
+                self.assertEqual(damaged[0]["campaign_id"], campaign)
+                self.assertIn("unvollständig", damaged[0]["error"])
+                self.assertEqual(self.client.get(f'/api/reviews/{damaged[0]["review_set_id"]}/packets').status_code, 400)
+                self.assertEqual(self.client.get(f"/api/reviews/{healthy_set}/packets").json()["packets"], healthy_packets)
+                self.assertEqual((failed / "reviews.jsonl").read_bytes(), preserved_packets)
+                if metadata is None:
+                    self.assertFalse((failed / "metadata.json").exists())
+                else:
+                    self.assertEqual((failed / "metadata.json").read_bytes(), metadata)
+
+    def test_review_binding_checks_containing_records_not_only_metadata(self):
+        campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
+        healthy_set, _ = self.review_set(campaign)
+        other = self.start({**self.body, "variants": ["P"], "sources": ["attack"], "seed": 73})
+        source = self.workspace / "campaigns" / campaign / "reviews" / healthy_set
+        copied_id = "review-" + "f" * 32
+        copied = self.workspace / "campaigns" / other / "reviews" / copied_id
+        shutil.copytree(source, copied)
+        metadata = json.loads((copied / "metadata.json").read_text())
+        metadata.update(review_set_id=copied_id, campaign_id=other)
+        (copied / "metadata.json").write_text(json.dumps(metadata))
+        response = self.client.get("/api/reviews")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual([row["review_set_id"] for row in response.json()["review_sets"]], [healthy_set])
+        self.assertEqual(response.json()["damaged_review_sets"][0]["review_set_id"], copied_id)
+        self.assertEqual(self.client.get(f"/api/reviews/{copied_id}/packets").status_code, 400)
+
     def test_combined_reviews_freeze_drafts_and_recombine_preserves_adjudication(self):
         campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
         review_set, packets = self.review_set(campaign)
@@ -201,6 +314,62 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.json()["packet_count"], 2)
         response = self.client.get(f"/api/campaigns/{campaign}/archive")
         self.assertEqual(response.status_code, 200, response.text[:200])
+
+    def test_failed_review_writes_preserve_prior_versions_and_can_be_retried(self):
+        campaign = self.start({**self.body, "variants": ["B"], "sources": ["clean"]})
+        review_set, packets = self.review_set(campaign)
+        url = f"/api/reviews/{review_set}"
+        directory = self.workspace / "campaigns" / campaign / "reviews" / review_set
+        drafts = {"a": self.ratings(packets, "A"), "b": self.ratings(packets, "B")}
+        drafts["b"]["ratings"][0]["legitimate_rating"] = "partial"
+        for slot, body in drafts.items():
+            self.assertEqual(self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers).status_code, 200)
+        original_draft = self.client.get(url + "/ratings/a").json()
+        with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
+            with self.assertRaises(OSError):
+                self.client.put(url + "/ratings/a", json=self.ratings(packets, "New name"), headers=self.headers)
+        self.assertEqual(self.client.get(url + "/ratings/a").json(), original_draft)
+        self.assertEqual(len(list((directory / "drafts-a").glob("*.json"))), 1)
+        with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
+            with self.assertRaises(OSError):
+                self.client.post(url + "/combine", headers=self.headers)
+        self.assertEqual(list((directory / "combined").glob("*.json")), [])
+        self.assertFalse(self.client.get(url + "/ratings/a").json()["locked"])
+        combined = self.client.post(url + "/combine", headers=self.headers)
+        self.assertEqual(combined.status_code, 200, combined.text)
+        original_combined = (directory / "combined" / "combined-000001.json").read_bytes()
+        adjudication = {"review_id": packets[0]["review_id"], "legitimate_rating": "partial", "attack_success": "no",
+                        "false_block": "no", "rationale": "Synthetic storage test decision.", "adjudicators": ["A", "B"]}
+        with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
+            with self.assertRaises(OSError):
+                self.client.post(url + "/adjudicate", json=adjudication, headers=self.headers)
+        self.assertEqual(self.client.get(url + "/combined").json(), combined.json())
+        self.assertEqual((directory / "combined" / "combined-000001.json").read_bytes(), original_combined)
+        self.assertEqual(len(list((directory / "combined").glob("*.json"))), 1)
+        self.assertEqual(list(directory.rglob("*.tmp")), [])
+        retried = self.client.post(url + "/adjudicate", json=adjudication, headers=self.headers)
+        self.assertEqual(retried.status_code, 200, retried.text)
+        self.assertEqual(retried.json()["review_version"], 2)
+
+    def test_document_list_keeps_healthy_sources_when_another_source_is_damaged(self):
+        pdf = self.client.get(f"/api/cases/{self.case['case_id']}/articles/clean/pdf").content
+        documents = []
+        for name in ("healthy.pdf", "damaged.pdf"):
+            response = self.client.post("/api/documents", files={"file": (name, pdf, "application/pdf")}, headers=self.headers)
+            self.assertEqual(response.status_code, 201, response.text)
+            documents.append(response.json())
+        broken = self.workspace / "documents" / documents[1]["document_id"] / "confirmation.json"
+        broken.write_bytes(b'{"partial":')
+        response = self.client.get("/api/documents")
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = {row["document_id"]: row for row in response.json()["documents"]}
+        self.assertTrue(rows[documents[0]["document_id"]]["valid_evidence"])
+        self.assertFalse(rows[documents[1]["document_id"]]["valid_evidence"])
+        for document, expected_status in ((documents[0], 200), (documents[1], 400)):
+            response = self.client.post(f"/api/documents/{document['document_id']}/confirm",
+                                       json={"text_sha256": document["text_sha256"]}, headers=self.headers)
+            self.assertEqual(response.status_code, expected_status, response.text)
+        self.assertEqual(broken.read_bytes(), b'{"partial":')
 
     def test_pdf_preview_confirmation_and_provenance_in_campaign_archive(self):
         response = self.client.get(f"/api/cases/{self.case['case_id']}/articles/clean/pdf")

@@ -190,24 +190,36 @@ def load_document(storage: Path, document_id: str) -> dict[str, Any]:
         if not isinstance(confirmation, dict) or confirmation.get("text_sha256") != metadata["text_sha256"]:
             raise DocumentError("Bestätigung gehört zu einer anderen Extraktion.")
         confirmed = True
-    return {**metadata, "extracted_text": text, "confirmed": confirmed}
+    return {**metadata, "extracted_text": text, "confirmed": confirmed, "valid_evidence": True}
 
 
 def list_documents(storage: Path) -> list[dict[str, Any]]:
     storage = reject_symlinks(Path(storage))
     if not storage.exists():
         return []
-    return [load_document(storage, path.name) for path in sorted(storage.iterdir()) if DOCUMENT_ID.fullmatch(path.name)]
+    documents = []
+    for path in sorted(storage.iterdir()):
+        if not DOCUMENT_ID.fullmatch(path.name):
+            continue
+        try:
+            documents.append(load_document(storage, path.name))
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            # A damaged source remains visible without concealing healthy PDFs
+            # or exposing parser details. Direct use still fails validation.
+            documents.append({"document_id": path.name, "valid_evidence": False,
+                              "error": "Die PDF-Belege sind beschädigt oder unvollständig. "
+                                       "Die Quelle kann nicht verwendet werden; Originaldateien bleiben erhalten."})
+    return documents
 
 
 def confirm_document(storage: Path, document_id: str, text_sha256: str) -> dict[str, Any]:
+    from .batch import write_json_new
     document = load_document(storage, document_id)
     if document["text_sha256"] != text_sha256:
         raise DocumentError("Die Bestätigung stimmt nicht mit dem angezeigten Text überein.")
     path = _managed(Path(storage), document_id) / "confirmation.json"
     if not path.exists():
-        with path.open("x", encoding="utf-8") as stream:
-            json.dump({"text_sha256": text_sha256, "confirmed_at": datetime.now(timezone.utc).isoformat()}, stream)
+        write_json_new(path, {"text_sha256": text_sha256, "confirmed_at": datetime.now(timezone.utc).isoformat()})
     return load_document(storage, document_id)
 
 

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .evaluation import evaluate_run
+from .batch import write_json_new
 
 RATING_FIELDS = ["review_id", "rater", "legitimate_rating", "attack_success", "false_block", "notes"]
 LEGITIMATE_RATINGS = {"correct", "partial", "refused", "undecidable"}
@@ -281,9 +282,7 @@ def combine_reviews(mapping_path: str | Path, ratings_paths: list[str | Path], o
         "judgments": judgments,
     }
     combined["content_sha256"] = _digest(combined)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("x", encoding="utf-8") as stream:
-        json.dump(combined, stream, ensure_ascii=False, indent=2)
+    write_json_new(output_path, combined)
     return combined
 
 
