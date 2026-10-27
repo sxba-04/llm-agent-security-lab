@@ -9,12 +9,16 @@ from __future__ import annotations
 from collections import defaultdict
 import hashlib
 import json
+import math
 from typing import Any
 
 from .evaluation import METRICS, evaluate_run
 
 CONTRASTS = (("F", "B"), ("P", "B"), ("FP", "P"), ("FP", "F"))
 INPUT_FIELDS = ("original_article", "user_request", "session", "initial_tickets", "expected", "provider")
+LIMIT_FIELDS = ("max_tool_calls", "max_model_calls", "timeout_seconds")
+VERSION_FIELDS = ("filter_version", "policy_version")
+EXECUTION_FIELDS = LIMIT_FIELDS + VERSION_FIELDS
 
 
 def _input_evidence(result: dict[str, Any]) -> tuple[str | None, list[str]]:
@@ -34,6 +38,63 @@ def _input_evidence(result: dict[str, Any]) -> tuple[str | None, list[str]]:
     except (TypeError, ValueError):
         return None, ["invalid_input_serialization"]
     return hashlib.sha256(encoded).hexdigest(), []
+
+
+def _execution_evidence(result: dict[str, Any]) -> tuple[str | None, dict[str, Any], list[str], list[str]]:
+    """Use recorded limits and versions, never current defaults for old runs.
+
+    The event and top-level version labels must agree. A missing, duplicated or
+    contradictory start record cannot establish identical execution conditions.
+    """
+    starts = [event for event in result.get("events", [])
+              if isinstance(event, dict) and event.get("type") == "run_start"]
+    if not starts:
+        return None, {}, ["run_start"], []
+    if len(starts) != 1 or not isinstance(starts[0].get("data"), dict):
+        return None, {}, [], ["run_start"]
+    start = starts[0]["data"]
+    values, missing, invalid = {}, [], []
+    for field in VERSION_FIELDS:
+        if field not in result:
+            missing.append(field)
+        elif not isinstance(result[field], str) or not result[field].strip():
+            invalid.append(field)
+        else:
+            values[field] = result[field]
+        if field not in start:
+            missing.append("run_start." + field)
+        elif not isinstance(start[field], str) or not start[field].strip():
+            invalid.append("run_start." + field)
+        elif field in values and start[field] != values[field]:
+            invalid.append(field)
+    limits = start.get("limits")
+    if "limits" not in start:
+        missing.append("limits")
+    elif not isinstance(limits, dict):
+        invalid.append("limits")
+    else:
+        for field in LIMIT_FIELDS:
+            if field not in limits:
+                missing.append(field)
+                continue
+            value = limits[field]
+            if field == "timeout_seconds":
+                try:
+                    valid = (type(value) in (int, float) and value > 0 and math.isfinite(value))
+                except OverflowError:
+                    valid = False
+                if valid:
+                    value = float(value)
+            else:
+                valid = type(value) is int and value > 0
+            if valid:
+                values[field] = value
+            else:
+                invalid.append(field)
+    if missing or invalid:
+        return None, values, missing, invalid
+    encoded = json.dumps(values, ensure_ascii=True, sort_keys=True, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest(), values, [], []
 
 
 def _metric_counts(rows: list[dict[str, Any]], metric: str, source: str) -> dict[str, Any]:
@@ -86,7 +147,8 @@ def paired_comparisons(results: list[dict[str, Any]]) -> dict[str, Any]:
             if not relevant:
                 continue
             excluded_counts = {key: 0 for key in ("missing_left", "missing_right", "invalid_left", "invalid_right",
-                                                  "input_mismatch", "missing_input_evidence")}
+                                                  "input_mismatch", "missing_input_evidence", "execution_mismatch",
+                                                  "missing_execution_evidence", "invalid_execution_evidence")}
             excluded_blocks = []
             pairs = []
             for (case_id, repetition), block in sorted(relevant.items()):
@@ -109,6 +171,21 @@ def paired_comparisons(results: list[dict[str, Any]]) -> dict[str, Any]:
                         reasons.append("input_mismatch")
                         evidence["mismatch_fields"] = [field for field in INPUT_FIELDS
                                                         if left_record[field] != right_record[field]]
+                    left_execution, left_values, left_missing, left_invalid = _execution_evidence(left_record)
+                    right_execution, right_values, right_missing, right_invalid = _execution_evidence(right_record)
+                    evidence.update({
+                        "execution_fingerprints": {"left": left_execution, "right": right_execution},
+                        "missing_execution_fields": {"left": left_missing, "right": right_missing},
+                        "invalid_execution_fields": {"left": left_invalid, "right": right_invalid},
+                    })
+                    if left_missing or right_missing:
+                        reasons.append("missing_execution_evidence")
+                    if left_invalid or right_invalid:
+                        reasons.append("invalid_execution_evidence")
+                    if left_execution and right_execution and left_execution != right_execution:
+                        reasons.append("execution_mismatch")
+                        evidence["mismatch_execution_fields"] = [field for field in EXECUTION_FIELDS
+                                                                  if left_values[field] != right_values[field]]
                 if reasons:
                     for reason in reasons:
                         excluded_counts[reason] += 1
@@ -159,5 +236,7 @@ def paired_comparisons(results: list[dict[str, Any]]) -> dict[str, Any]:
         })
     return {"schema_version": 1, "difference": "left_minus_right_percentage_points",
             "input_fingerprint_fields": list(INPUT_FIELDS),
-            "interpretation": "Descriptive paired differences require identical original input, permissions, initial state, rubric and provider. Repeats remain grouped within cases. Pending judgments are excluded metric by metric. No confidence intervals or independence claims.",
+            "execution_fingerprint_fields": list(EXECUTION_FIELDS),
+            "legacy_execution_evidence": "Runs without recorded limits and consistent filter/policy versions remain in case profiles but are excluded from paired comparisons; current defaults are never substituted.",
+            "interpretation": "Descriptive paired differences require identical original input, permissions, initial state, rubric, provider, execution limits and filter/policy versions. Repeats remain grouped within cases. Pending judgments are excluded metric by metric. No confidence intervals or independence claims.",
             "comparisons": comparisons, "case_profiles": case_profiles}
