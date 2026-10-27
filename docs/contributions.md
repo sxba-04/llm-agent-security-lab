@@ -11,6 +11,7 @@ Die Studienarbeit wird von Sebastian Herrmann und Jonah Häuser verantwortet. Ei
 | 23.10.2026 | Einrichtung auf dem LUBW-Laptop, Git/uv/Python und 104 erfolgreiche Tests | Rückmeldung und Screenshots von Sebastian; Einrichtung mit lokalem Codex | Vom Nutzer als erfolgreich gemeldet; keine Behauptung einer bereits geprüften äußeren Isolation |
 | 23.10.2026 | Auswahl FastAPI/React und PDF-Artikelimport, Zustimmung zur abgeschlossenen Review-Prüfung vor Merge | Ausdrückliche Entscheidung des Teams im Projektchat | In Implementierung und Projektregeln übernommen |
 | 23.10.2026 | Review-Korrekturen, Quellenzuordnung, Vergleichsauswertung, Weboberfläche, PDF-Verarbeitung und Archive | ChatGPT/Codex mit paralleler Implementierung und unabhängigen technischen Gegenprüfungen | Technischer Prüfstand siehe validation.md; fachliche Freigabe der Fälle und echte menschliche Bewertungen stehen aus |
+| 23.10.2026 | Korrektur vorübergehender Windows-Dateisperren beim atomaren Speichern von Laufbelegen und fünf Regressionstests | Lokaler Codex nach reproduziertem WinError 5 beim parallelen Lesen der Oberfläche | 230 Python-Tests und beide echten Browsertests lokal bestanden; unabhängige technische Gegenprüfung ohne Befund; menschliches Review steht aus |
 
 Diese Tabelle behauptet nicht, dass die Autoren den generierten Code bereits selbst geschrieben, vollständig geprüft oder empirisch validiert haben. Der tatsächliche Prüfstand wird nach dem Review ergänzt.
 
