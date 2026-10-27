@@ -4,7 +4,7 @@ Die Oberfläche verbindet FastAPI mit React und TypeScript. Diese Auswahl wurde 
 
 ## Start unter Windows
 
-Zusätzlich zu Git, uv und Python wird Node.js 24 für den Frontend-Build benötigt. Node.js über einen auf dem Rechner erlaubten Weg installieren; die offiziellen Downloads stehen unter https://nodejs.org/en/download. Danach ein neues Terminal öffnen und `node --version` sowie `npm --version` prüfen.
+Zusätzlich zu Git, uv und Python wird Node.js 24 ab Version 24.15.0 für den Frontend-Build benötigt. Node.js über einen auf dem Rechner erlaubten Weg installieren; die offiziellen Downloads stehen unter https://nodejs.org/en/download. Danach ein neues Terminal öffnen und `node --version` sowie `npm --version` prüfen.
 
 Im Repository-Verzeichnis:
 
@@ -35,15 +35,17 @@ Die Trennung der Bewertungsansichten unterstützt Verblindung. Sie ist keine Zug
 
 ## Daten und Serien
 
-Standardarbeitsverzeichnis ist `runs/`. Neue UI-Serien liegen unter `runs/campaigns/`; gespeicherte CLI-Serien direkt unter `runs/` können ebenfalls geöffnet werden. Über `--workspace` lässt sich ein anderes lokales Arbeitsverzeichnis verwenden. Dieses Verzeichnis wird nicht automatisch über Git synchronisiert.
+Standardarbeitsverzeichnis ist `runs/`. Neue UI-Serien liegen unter `runs/campaigns/`; gespeicherte CLI-Serien direkt unter `runs/` können ebenfalls geöffnet werden. Über `--workspace` lässt sich ein anderes lokales Arbeitsverzeichnis verwenden. Dieses Verzeichnis wird nicht automatisch über Git synchronisiert. Es muss atomare Hardlinks innerhalb eines Verzeichnisses unterstützen, beispielsweise auf lokalem NTFS unter Windows. FAT/exFAT und manche Netzwerk- oder synchronisierten Laufwerke sind dafür ungeeignet. Nicht unterstützte Dateisysteme führen zu einem Speicherfehler; vorhandene Bewertungen werden nicht durch eine unsichere Ersatzoperation überschrieben.
 
 ```powershell
 uv run --locked --extra web security-lab-web --workspace runs --port 8765
 ```
 
-Es läuft höchstens eine UI-Serie gleichzeitig. Browser-Neuladen startet keinen weiteren Versuch. Abbrechen beendet eine Serie an einer kontrollierten Grenze; bereits ausgeführte Wirkungen und gespeicherte Läufe werden erhalten. Abgebrochene Aufgaben erhalten keine gültigen Erfolgsraten. Die Fortschrittsanzeige arbeitet auf der Ebene abgeschlossener Aufgaben; die detaillierte Ereignisansicht zeigt gespeicherte Laufprotokolle, keinen erfundenen Live-Stream.
+Pro laufender Werkbankinstanz läuft höchstens eine UI-Serie gleichzeitig. Für dasselbe Arbeitsverzeichnis nur eine Werkbankinstanz betreiben; die Startsperre ist keine globale Sperre zwischen mehreren Serverprozessen. Browser-Neuladen startet keinen weiteren Versuch. Abbrechen beendet eine Serie an einer kontrollierten Grenze; bereits ausgeführte Wirkungen und gespeicherte Läufe werden erhalten. Abgebrochene Aufgaben erhalten keine gültigen Erfolgsraten. Die Fortschrittsanzeige arbeitet auf der Ebene abgeschlossener Aufgaben; die detaillierte Ereignisansicht zeigt gespeicherte Laufprotokolle, keinen erfundenen Live-Stream.
 
 Nach einem harten Prozessabbruch kann die Werkbank eine nachweislich verwaiste eigene Serie als unterbrochen abschließen. Dafür prüft sie gespeicherte Worker-Zuordnung und Betriebssystem-Dateisperre; ein noch lebender fremder Worker wird nicht übernommen. Originalmanifest und gegebenenfalls alte Zusammenfassung bleiben als Wiederherstellungsbelege unter `provenance/` erhalten. Alte oder über die CLI gestartete Serien ohne eindeutige Worker-Zuordnung werden nicht automatisch umgeschrieben. Beschädigte Kampagnen erscheinen mit Fehlermeldung und bleiben von Auswertung und Bewertung ausgeschlossen; gesunde Kampagnen bleiben erreichbar.
+
+Beschädigte PDF-Quellen werden einzeln mit einem Fehler angezeigt. Sie können weder bestätigt noch für neue Versuche gewählt werden; andere Quellen bleiben verfügbar und die Originaldateien erhalten. Die Bestätigung gilt ausschließlich für die angezeigte Dokument-ID und den konkreten extrahierten Texthash.
 
 ## Lokale Schnittstelle
 
