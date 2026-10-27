@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowDownToLine, CheckCheck, ChevronRight, ClipboardCheck, GitCompareArrows, Play, Plus, RefreshCw, Square, X } from 'lucide-react';
 import { message, navigate, post, useResource } from './api';
-import type { Campaign, Data, Document, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
+import type { Campaign, Data, Document, DocumentEntry, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
 import { DataFields, Disclosure, Empty, EngineeringNote, ErrorBox, formatDate, hasActiveWorker, isDamagedCampaign, JsonBlock, Loading, metricNames, PageHeader, Panel, Pill, sourceNames, Status, TextBlock, TicketDiff, variantNames } from './ui';
 
 const activeStates = ['queued', 'running', 'cancelling'];
@@ -22,8 +22,8 @@ export function LaunchForm({ cases, active, onChange }: { cases: LabCase[]; acti
   const [repeats, setRepeats] = useState(1), [seed, setSeed] = useState(20261022);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const documents = useResource<{ documents: Document[] }>('/api/documents');
-  const confirmed = documents.data?.documents.filter(d => d.confirmed) || [];
+  const documents = useResource<{ documents: DocumentEntry[] }>('/api/documents');
+  const confirmed = documents.data?.documents.filter((d): d is Document => d.valid_evidence !== false).filter(d => d.confirmed) || [];
   const planned = selected.length * variants.length * sources.length * repeats;
   const valid = planned > 0 && planned <= 480 && Number.isInteger(repeats) && repeats >= 1 && repeats <= 5 && Number.isSafeInteger(seed) && seed >= 0 && seed <= 4294967295;
   function toggle<T>(value: T, items: T[], setter: (items: T[]) => void) { setter(items.includes(value) ? items.filter(item => item !== value) : [...items, value]); }

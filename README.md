@@ -15,7 +15,7 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Grafische Oberfläche unter Windows
 
-Zusätzlich zu Git, uv und Python wird **Node.js 24** für den Frontend-Build benötigt. Im Repository-Verzeichnis:
+Zusätzlich zu Git, uv und Python wird **Node.js 24 ab Version 24.15.0** für den Frontend-Build benötigt. Im Repository-Verzeichnis:
 
 ```powershell
 uv sync --locked --extra web --group dev
@@ -53,7 +53,7 @@ uv run python -m security_lab summarize runs/pilot --output runs/pilot/summary.j
 
 Zwölf Fälle × zwei Artikelversionen × vier Varianten × eine Wiederholung ergeben **96 technische Aufgabenläufe**. Das Testmodell folgt vorgegebenen Skripten, um erlaubte Aktionen, blockierte Aktionen, Datenoffenlegung und inhaltliche Restfälle gezielt zu prüfen. Seine Ergebnisse sagen nichts über die Angreifbarkeit eines realen Modells aus.
 
-Für echte Modellaufrufe sind ein gesondert eingerichteter API-Zugang, geprüfte lokale Einstellungen und ein ausdrücklich gestarteter kostenpflichtiger Lauf erforderlich. Das gesamte Projektbudget beträgt höchstens **250 EUR**. Siehe [Modellzugang und Budget](docs/api.md).
+Für echte Modellaufrufe sind ein gesondert eingerichteter API-Zugang, geprüfte lokale Einstellungen und ein ausdrücklich gestarteter kostenpflichtiger Lauf erforderlich. Das Budget der Modell-API-Versuche beträgt höchstens **250 EUR**. Siehe [Modellzugang und Budget](docs/api.md).
 
 ## Ergebnisse lesen
 
@@ -93,8 +93,8 @@ Eine Python-Umgebung ist keine Sicherheitssandbox. Vor echten Angriffsversuchen 
 
 ## Zusammenarbeit
 
-Arbeiten erfolgen in kurzen Branches mit Pull Requests und nachvollziehbarer Gegenprüfung. [Arbeitsablauf](docs/workflow.md), [Entscheidungsstand](docs/decisions.md) und [Beiträge und KI-Unterstützung](docs/contributions.md) halten fest, wie technische Änderungen und wissenschaftliche Verantwortung zusammengehören.
+Arbeiten erfolgen in kurzen Branches mit Pull Requests und nachvollziehbarer Gegenprüfung. [Arbeitsablauf](docs/workflow.md), [Review-Einstellungen](docs/review-settings.md), [Repository-Prüfung vom 27.10.](docs/repository-audit-2026-10-27.md), [Sicherheitsgrenzen](SECURITY.md), [Entscheidungsstand](docs/decisions.md) und [Beiträge und KI-Unterstützung](docs/contributions.md) halten fest, wie technische Änderungen und wissenschaftliche Verantwortung zusammengehören.
 
-Vor dem Zusammenführen müssen die Tests und angeforderten Reviews für den aktuellen Commit abgeschlossen und sämtliche Befunde geprüft sein. Die vorhandenen Tests ersetzen keine abgeschlossene Gegenprüfung.
+Vor dem Zusammenführen müssen die Tests und angeforderten Reviews für den aktuellen Commit abgeschlossen und sämtliche Befunde geprüft sein; ausdrücklich genehmigte Ausnahmen werden gemäß Arbeitsablauf dokumentiert. Die vorhandenen Tests ersetzen keine abgeschlossene Gegenprüfung.
 
 Die aktuelle Implementierung wurde mit ChatGPT/Codex erstellt. Die Autoren prüfen, verstehen und überarbeiten die übernommenen Bestandteile vor der wissenschaftlichen Verwendung. Ein Commit ist kein Nachweis einer bereits erfolgten menschlichen Prüfung.

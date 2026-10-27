@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-from .batch import SOURCES, VARIANTS, digest, load_results, provenance, run_batch, write_json
+from .batch import SOURCES, VARIANTS, digest, load_results, provenance, run_batch, write_json, write_json_new
 from .cases import load_cases
 
 
@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
                                         attack_success=args.attack_success,
                                         false_block=args.false_block,
                                         rationale=args.rationale, adjudicators=args.adjudicators)
-            write_json(args.output, updated)
+            write_json_new(args.output, updated)
             print(f"Adjudication -> {args.output}")
         elif args.command == "freeze":
             if args.output.exists():

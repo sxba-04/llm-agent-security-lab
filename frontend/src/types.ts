@@ -29,9 +29,12 @@ export interface RunRecord {
 }
 export interface Document {
   document_id: string; filename: string; sha256: string; text_sha256: string; page_count: number;
-  extractor: string; extracted_text: string; confirmed: boolean;
+  extractor: string; extracted_text: string; confirmed: boolean; valid_evidence?: true;
 }
-export interface ReviewSet { review_set_id: string; campaign_id: string; packet_count: number; created_at: string }
+export interface DamagedDocument { document_id: string; valid_evidence: false; error: string }
+export type DocumentEntry = Document | DamagedDocument;
+export interface ReviewSet { review_set_id: string; campaign_id: string; packet_count: number; created_at: string; original_review_set_id?: string; original_campaign_id?: string }
+export interface DamagedReviewSet { review_set_id: string; campaign_id: string | null; error: string }
 export type LegitimateRating = 'correct' | 'partial' | 'refused' | 'undecidable' | '';
 export type BinaryRating = 'yes' | 'no' | 'undecidable' | '';
 export interface Rating {

@@ -306,3 +306,148 @@ describe('live comparison lifecycle', () => {
     }
   });
 });
+
+describe('unsaved review navigation', () => {
+  it('keeps ratings and the accepted history entry when Back or Forward is cancelled', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    try {
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await user.click(screen.getByRole('link', { name: 'Bewertung' }));
+      await screen.findByLabelText('Begründung / Beobachtung');
+      await user.click(screen.getByRole('link', { name: 'Fälle' }));
+      await screen.findByRole('heading', { name: 'Der Ausgangspunkt jedes Versuchs.' });
+      await act(async () => { window.history.back(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await user.type(await screen.findByLabelText('Begründung / Beobachtung'), 'Unsaved original judgment');
+
+      await act(async () => { window.history.forward(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await waitFor(() => expect(window.location.hash).toBe('#review'));
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Unsaved original judgment');
+      expect(confirm).toHaveBeenCalledTimes(1);
+
+      await act(async () => { window.history.back(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await waitFor(() => expect(window.location.hash).toBe('#review'));
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Unsaved original judgment');
+      expect(confirm).toHaveBeenCalledTimes(2);
+
+      confirm.mockReturnValue(true);
+      await act(async () => { window.history.back(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await act(async () => { window.history.forward(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      expect(await screen.findByLabelText('Begründung / Beobachtung')).toHaveValue('');
+      expect(confirm).toHaveBeenCalledTimes(3);
+    } finally { confirm.mockRestore(); }
+  });
+
+  it('protects links, slot changes and unmarked hash changes without duplicate prompts', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    try {
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await user.click(screen.getByRole('link', { name: 'Bewertung' }));
+      await user.type(await screen.findByLabelText('Begründung / Beobachtung'), 'Keep this draft');
+      await user.click(screen.getByRole('link', { name: 'Übersicht' }));
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Keep this draft');
+      await user.click(screen.getByRole('button', { name: 'Bewertung B' }));
+      expect(window.location.hash).toBe('#review');
+      expect(confirm).toHaveBeenCalledTimes(2);
+      await act(async () => { window.location.hash = 'overview'; await new Promise(resolve => setTimeout(resolve, 30)); });
+      expect(window.location.hash).toBe('#review');
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Keep this draft');
+      expect(confirm).toHaveBeenCalledTimes(3);
+      confirm.mockReturnValue(true);
+      await user.click(screen.getByRole('button', { name: 'Bewertung B' }));
+      await screen.findByLabelText('Dein Name · Formular B');
+      expect(confirm).toHaveBeenCalledTimes(4);
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('');
+    } finally { confirm.mockRestore(); }
+  });
+
+  it('preserves an unfinished adjudication on cancelled navigation or selection changes', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const original = { review_id: 'open-a', legitimate_rating: 'undecidable' as const, attack_success: 'undecidable' as const, false_block: 'undecidable' as const, notes: 'Synthetic reviewer evidence.' };
+    const combined: Combined = {
+      n_reviews: 2, n_disagreements: 2, raters: ['Synthetic A', 'Synthetic B'],
+      judgments: ['open-a', 'open-b'].map(review_id => ({ ...original, review_id, status: 'disagreement', original_ratings: [{ ...original, rater: 'Synthetic A' }, { ...original, rater: 'Synthetic B' }], adjudication: null })),
+    };
+    vi.stubGlobal('fetch', transport(request => request.url.endsWith('/combined') ? combined : undefined));
+    try {
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await user.click(screen.getByRole('link', { name: 'Bewertung' }));
+      await screen.findByLabelText('Dein Name · Formular A');
+      await user.click(screen.getByRole('button', { name: 'Koordination' }));
+      await user.type(await screen.findByLabelText('Begründung der gemeinsamen Entscheidung'), 'Unfinished evidence discussion');
+      const accepted = window.location.hash;
+      await user.click(screen.getAllByRole('button', { name: 'Einzelurteile' })[1]);
+      expect(screen.getByLabelText('Begründung der gemeinsamen Entscheidung')).toHaveValue('Unfinished evidence discussion');
+      await act(async () => { window.history.back(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await waitFor(() => expect(window.location.hash).toBe(accepted));
+      expect(screen.getByLabelText('Begründung der gemeinsamen Entscheidung')).toHaveValue('Unfinished evidence discussion');
+      expect(confirm).toHaveBeenCalledTimes(2);
+      confirm.mockReturnValue(true);
+      await user.click(screen.getAllByRole('button', { name: 'Einzelurteile' })[1]);
+      expect(screen.getByLabelText('Begründung der gemeinsamen Entscheidung')).toHaveValue('');
+      expect(confirm).toHaveBeenCalledTimes(3);
+      expect(calls.some(c => c.method !== 'GET')).toBe(false);
+    } finally { confirm.mockRestore(); }
+  });
+
+  it('keeps URL and form aligned after cancelling unmarked navigation and a multistep Back', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    try {
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await user.click(screen.getByRole('link', { name: 'Bewertung' }));
+      await user.type(await screen.findByLabelText('Begründung / Beobachtung'), 'Draft A');
+      await act(async () => { window.location.hash = 'overview'; await new Promise(resolve => setTimeout(resolve, 30)); });
+      expect(window.location.hash).toBe('#review');
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Draft A');
+
+      confirm.mockReturnValue(true);
+      await user.click(screen.getByRole('button', { name: 'Bewertung B' }));
+      await screen.findByLabelText('Dein Name · Formular B');
+      await user.type(screen.getByLabelText('Begründung / Beobachtung'), 'Draft B');
+      const accepted = window.location.hash;
+      confirm.mockReturnValue(false);
+      await act(async () => { window.history.go(-2); await new Promise(resolve => setTimeout(resolve, 60)); });
+      expect(window.location.hash).toBe(accepted);
+      expect(screen.getByLabelText('Dein Name · Formular B')).toBeInTheDocument();
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Draft B');
+
+      confirm.mockReturnValue(true);
+      await user.click(screen.getByRole('link', { name: 'Übersicht' }));
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      expect(window.location.hash).toBe('#overview');
+      expect(screen.queryByLabelText('Begründung / Beobachtung')).not.toBeInTheDocument();
+      expect(confirm).toHaveBeenCalledTimes(4);
+    } finally { confirm.mockRestore(); }
+  });
+
+  it('recovers when a cancelled history traversal cannot return to its original entry', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    let go: ReturnType<typeof vi.spyOn> | undefined;
+    try {
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      await user.click(screen.getByRole('link', { name: 'Bewertung' }));
+      await user.type(await screen.findByLabelText('Begründung / Beobachtung'), 'Keep this draft');
+      // Browsers silently ignore history.go when its destination is no longer
+      // reachable. The current form must survive without disabling routing.
+      go = vi.spyOn(window.history, 'go').mockImplementation(() => undefined);
+      await act(async () => { window.history.back(); await new Promise(resolve => setTimeout(resolve, 30)); });
+      await waitFor(() => expect(window.location.hash).toBe('#review'));
+      expect(screen.getByLabelText('Begründung / Beobachtung')).toHaveValue('Keep this draft');
+      expect(go).toHaveBeenCalledWith(1);
+      confirm.mockReturnValue(true);
+      await user.click(screen.getByRole('link', { name: 'Übersicht' }));
+      await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+      expect(window.location.hash).toBe('#overview');
+    } finally { go?.mockRestore(); confirm.mockRestore(); }
+  });
+});

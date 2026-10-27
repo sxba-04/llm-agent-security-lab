@@ -2,14 +2,20 @@ name: Offline tests
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: offline-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   test:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +49,12 @@ jobs:
           uv run --locked --extra web python -m security_lab verify-archive runs/ci.zip
           uv run --locked --extra web python -m security_lab restore-archive runs/ci.zip --output runs/restored
   frontend:
-    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: frontend
@@ -73,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: browser-evidence
+          name: browser-evidence-${{ runner.os }}
           path: |
             frontend/playwright-report/
             frontend/test-results/

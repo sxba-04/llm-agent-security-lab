@@ -64,9 +64,32 @@ export function useResource<T>(path: string | null, poll = 0) {
   }, [path, revision, poll]);
   return { data, error, loading, refresh };
 }
+const unsavedForms = new Set<symbol>();
+let approvedHash: string | null = null;
+const historyIndexKey = '__securityLabRouteIndex';
+const historyEpochKey = '__securityLabRouteEpoch';
+
+export function confirmDiscardChanges() {
+  return !unsavedForms.size || window.confirm('Ungespeicherte Bewertungen verwerfen und die Ansicht verlassen?');
+}
+export function useUnsavedChanges(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return;
+    const owner = Symbol('unsaved review');
+    unsavedForms.add(owner);
+    const before = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', before);
+    return () => { unsavedForms.delete(owner); window.removeEventListener('beforeunload', before); };
+  }, [dirty]);
+}
+function navigateHash(hash: string) {
+  if (hash === window.location.hash || !confirmDiscardChanges()) return;
+  approvedHash = hash;
+  window.location.hash = hash;
+}
 export function navigate(page: string, params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
-  window.location.hash = `${page}${query ? `?${query}` : ''}`;
+  navigateHash(`#${page}${query ? `?${query}` : ''}`);
 }
 export function useRoute() {
   const read = () => {
@@ -75,9 +98,79 @@ export function useRoute() {
   };
   const [route, setRoute] = useState(read);
   useEffect(() => {
-    const listener = () => setRoute(read());
+    let epoch = crypto.randomUUID();
+    const index = () => {
+      const state = window.history.state;
+      if (state?.[historyEpochKey] !== epoch) return null;
+      const value = state[historyIndexKey];
+      return Number.isSafeInteger(value) ? value as number : null;
+    };
+    const stamp = (value: number, hash = window.location.hash) => {
+      const state = window.history.state;
+      window.history.replaceState({ ...(state && typeof state === 'object' ? state : {}), [historyIndexKey]: value, [historyEpochKey]: epoch }, '', `${window.location.pathname}${window.location.search}${hash}`);
+    };
+    approvedHash = null;
+    let accepted = { hash: window.location.hash, index: 0 };
+    let restoring = false;
+    let restorationTimer: number | undefined;
+    const stopRestoring = () => { restoring = false; window.clearTimeout(restorationTimer); };
+    const restoreInPlace = () => {
+      stopRestoring();
+      // Its physical position is unknown. Start a fresh coordinate system so
+      // this entry can never share an index with an older history entry.
+      epoch = crypto.randomUUID();
+      accepted = { ...accepted, index: 0 };
+      stamp(accepted.index, accepted.hash);
+      approvedHash = null;
+    };
+    const finishRestoring = () => {
+      if (!restoring) return;
+      if (window.location.hash === accepted.hash && index() === accepted.index) stopRestoring();
+      else restoreInPlace();
+    };
+    stamp(accepted.index);
+    const listener = () => {
+      const hash = window.location.hash;
+      if (restoring) {
+        finishRestoring();
+        return;
+      }
+      const nextIndex = index();
+      const approved = approvedHash === hash;
+      approvedHash = null;
+      if (hash !== accepted.hash && !approved && !confirmDiscardChanges()) {
+        // Traverse back to the accepted history entry without unmounting the
+        // form. A pre-existing, unmarked entry has no known direction: restore
+        // its URL in place instead, still preserving the unsaved form.
+        if (nextIndex !== null && nextIndex !== accepted.index) {
+          restoring = true;
+          // A no-op traversal (or an externally changed history entry) must
+          // never leave subsequent navigation disabled indefinitely.
+          restorationTimer = window.setTimeout(restoreInPlace, 500);
+          window.history.go(accepted.index - nextIndex);
+        } else restoreInPlace();
+        return;
+      }
+      // Only an approved in-app hash assignment is known to append one entry.
+      // An unmarked Back/Forward target has an unknown physical position.
+      if (nextIndex === null && !approved) epoch = crypto.randomUUID();
+      const next = nextIndex ?? (approved ? accepted.index + 1 : 0);
+      stamp(next);
+      accepted = { hash, index: next };
+      setRoute(read());
+    };
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element).closest?.('a[href^="#"]') as HTMLAnchorElement | null;
+      const hash = anchor?.getAttribute('href');
+      if (!hash || hash === '#main-content' || anchor?.target === '_blank' || anchor?.hasAttribute('download')) return;
+      event.preventDefault();
+      navigateHash(hash);
+    };
     window.addEventListener('hashchange', listener);
-    return () => window.removeEventListener('hashchange', listener);
+    window.addEventListener('popstate', finishRestoring);
+    document.addEventListener('click', click, true);
+    return () => { stopRestoring(); window.removeEventListener('hashchange', listener); window.removeEventListener('popstate', finishRestoring); document.removeEventListener('click', click, true); approvedHash = null; };
   }, []);
   return route;
 }

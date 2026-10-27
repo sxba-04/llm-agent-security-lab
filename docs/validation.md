@@ -1,6 +1,21 @@
-# Technischer Prüfstand vom 23. Oktober 2026
+# Technischer Prüfstand
 
 Diese Prüfungen betreffen die Implementierung. Sie sind keine empirischen Ergebnisse über die Angreifbarkeit eines Sprachmodells.
+
+## Ergänzung vom 27. Oktober 2026
+
+PR #3 wurde auf Commit `186ca6d` mit erfolgreichen Codex-Code- und Security-Reviews sowie bestandener GitHub-CI geprüft und als `9a0dfebc` gemergt. Copilot konnte wegen seines Kontingents erneut nicht prüfen; die ausdrücklich genehmigte Ausnahme ist im PR dokumentiert.
+
+Die anschließende [Repository-Prüfung](repository-audit-2026-10-27.md) und ihre bestätigten Fehlerkorrekturen wurden lokal unter Linux mit Python 3.12.14 und Node.js 24.19.0 geprüft:
+
+- 254 Python-Tests erfolgreich; genau ein Test mit echtem Windows-Lesehandle wurde auf Linux übersprungen. Die portable Windows-Fehler-Injektion lief mit.
+- 22 React-Verhaltenstests, TypeScript-Prüfung und Produktionsbuild erfolgreich. Der Frontend-Lockfile wurde mit einem sauberen `npm ci` installiert; Node 24 ab 24.15.0 ist jetzt ausdrücklich erforderlich.
+- 96 tatsächliche Mock-Einzelläufe über alle zwölf Entwicklungsfälle, zwei Quellen und vier Varianten ergeben 24 Vergleichsgruppen mit je vier gemeinsamen gültigen Blöcken und keinen Ausschlüssen. Alle bleiben `engineering_only`.
+- Fehler bei Schreiben, Synchronisieren und atomarer Veröffentlichung neuer Bewertungen/PDF-Bestätigungen sowie konkurrierende Zieldateien werden gezielt geprüft. Gesunde PDF- und Bewertungssätze bleiben neben beschädigten Einträgen erreichbar.
+- Echte Archiv-Rundläufe prüfen Bewertungen nach Wiederherstellung in einen frischen Workspace sowie neben dem Original. Alle archivierten Review-Dateien bleiben unverändert; fremde Zuordnungen und nachträglich veränderte Laufhashes werden abgewiesen.
+- Unabhängige Quellcode-Gegenprüfungen betrafen Speichergrenzen, PDF-Textbestätigung, Wiederherstellung, Browsernavigation und CI. Ein zusätzlicher tatsächlicher React-Modultest reproduzierte zunächst einen Fehler bei mehrstufiger Browserhistorie und bestand nach der Korrektur.
+
+Der erneute lokale Chromium-Download scheiterte an ungültigen ZIP-Daten vom Playwright-CDN; deshalb wird auch für diese Runde kein lokal bestandener Browsertest behauptet. Die zwei E2E-Testdefinitionen ließen sich erfolgreich laden. Die CI ist um echte Chromium-/FastAPI-Browserprüfungen auf Windows und Linux erweitert. Ihr tatsächlicher Ergebnisnachweis steht am endgültigen Folge-PR-Commit; die Workflow-Konfiguration allein behauptet keinen Erfolg. Der frühere Prüfstand folgt unten unverändert als historische Einordnung.
 
 ## Bestätigte Einrichtung beim Team
 

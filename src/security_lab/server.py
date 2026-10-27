@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -22,7 +23,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
 
 from . import __version__, review
-from .batch import load_results
+from .batch import digest, load_results, write_json_new
 from .cases import load_cases
 from .documents import (MAX_PDF_BYTES, DocumentError, apply_document_override, confirm_document,
                         import_document, list_documents, load_document, reject_symlinks)
@@ -30,6 +31,8 @@ from .evaluation import summarize
 from .jobs import CampaignJobs, checked_tree
 
 REVIEW_ID = re.compile(r"review-[0-9a-f]{32}\Z")
+REVIEW_API_ID = re.compile(r"(?:review-[0-9a-f]{32}|review-copy-[0-9a-f]{64})\Z")
+REVIEW_ERROR = "Die Bewertungsbelege sind beschädigt oder unvollständig. Originaldateien bleiben erhalten."
 MAX_REQUEST_BYTES = MAX_PDF_BYTES + 65536
 
 
@@ -134,10 +137,7 @@ def _read_json(path: Path, root: Path) -> Any:
 
 def _write_new(path: Path, value: Any, root: Path) -> None:
     reject_symlinks(path, root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("x", encoding="utf-8", newline="\n") as stream:
-        json.dump(value, stream, indent=2, ensure_ascii=False, allow_nan=False)
-        stream.write("\n")
+    write_json_new(path, value)
 
 
 def _version_path(directory: Path, prefix: str) -> Path:
@@ -195,27 +195,92 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
                 raise HTTPException(409, "Bitte den laufenden Versuch zuerst abschließen oder abbrechen.")
         return directory
 
-    def review_locations() -> list[Path]:
-        locations = [review_root]
+    def review_locations() -> list[tuple[Path, str | None]]:
+        locations = [(review_root, None)]
         for campaign in jobs.list():
             # Keep damaged evidence visible in the campaign list, but do not
             # resolve its review sets or let it block unrelated healthy sets.
             if campaign.get("valid_evidence") is False or campaign.get("state") == "damaged":
                 continue
-            locations.append(campaign_directory(campaign["campaign_id"]) / "reviews")
+            locations.append((campaign_directory(campaign["campaign_id"]) / "reviews", campaign["campaign_id"]))
         return locations
 
-    def review_directory(identifier: str) -> Path:
-        if not REVIEW_ID.fullmatch(identifier):
+    def review_index() -> list[dict[str, Any]]:
+        """Resolve API identities from locations, without changing archived evidence.
+
+        A restored campaign may have a new local ID and can coexist with its
+        original. Bind its review to the containing canonical records, retaining
+        the archived IDs separately. Never interpret an API ID as a path.
+        """
+        entries = []
+        for root, campaign_id in review_locations():
+            if not root.exists():
+                continue
+            by_id = None
+            try:
+                reject_symlinks(root, workspace)
+                directories = list(root.iterdir())
+                if campaign_id is not None:
+                    by_id = {result["run_id"]: result for result in load_results(root.parent)}
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                # A damaged campaign is reported by /api/campaigns. Do not let
+                # its review container make other campaigns unavailable.
+                continue
+            for directory in directories:
+                if not REVIEW_ID.fullmatch(directory.name):
+                    continue
+                entry = {"directory": directory, "campaign_id": campaign_id, "metadata": {}, "error": None}
+                try:
+                    checked_tree(directory)
+                    metadata = _read_json(directory / "metadata.json", workspace)
+                    if (not isinstance(metadata, dict) or metadata.get("review_set_id") != directory.name
+                            or not isinstance(metadata.get("campaign_id"), str) or not metadata["campaign_id"]
+                            or not isinstance(metadata.get("created_at"), str) or not metadata["created_at"]
+                            or type(metadata.get("packet_count")) is not int or metadata["packet_count"] < 1):
+                        raise ValueError("Invalid review display metadata")
+                    entry["metadata"] = metadata
+                    verified = packets(directory)
+                    if len(verified) != metadata["packet_count"]:
+                        raise ValueError("Review packet count differs from metadata")
+                    if by_id is not None:
+                        mapping = _read_json(directory / "mapping.json", workspace)["private_review_mapping"]
+                        if {item["run_id"] for item in mapping.values()} != set(by_id):
+                            raise ValueError("Review mapping does not cover its containing campaign")
+                        for item in mapping.values():
+                            result = by_id[item["run_id"]]
+                            if item["result_sha256"] != digest(result) or item.get("case_id") != result.get("case_id"):
+                                raise ValueError("Review provenance differs from its containing campaign")
+                except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                    entry["error"] = REVIEW_ERROR
+                entries.append(entry)
+
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for entry in entries:
+            groups.setdefault(entry["directory"].name, []).append(entry)
+        for stored_id, copies in groups.items():
+            original = [entry for entry in copies if entry["campaign_id"] is not None
+                        and entry["campaign_id"] == entry["metadata"].get("campaign_id")]
+            preferred = original[0] if len(original) == 1 else None
+            if not original and len(copies) == 1 and copies[0]["campaign_id"] is None:
+                preferred = copies[0]  # Existing detached review directories.
+            for entry in copies:
+                relative = entry["directory"].relative_to(workspace).as_posix()
+                entry["identifier"] = (stored_id if entry is preferred else
+                                       "review-copy-" + hashlib.sha256(relative.encode("utf-8")).hexdigest())
+        return entries
+
+    def review_entry(identifier: str) -> dict[str, Any]:
+        if not REVIEW_API_ID.fullmatch(identifier):
             raise HTTPException(404, "Bewertungssatz nicht gefunden.")
-        matches = []
-        for root in review_locations():
-            directory = checked_tree(root / identifier)
-            if (directory / "metadata.json").is_file():
-                matches.append(directory)
+        matches = [entry for entry in review_index() if entry["identifier"] == identifier]
         if len(matches) != 1:
             raise HTTPException(404, "Bewertungssatz nicht gefunden oder mehrdeutig.")
+        if matches[0]["error"]:
+            raise HTTPException(400, matches[0]["error"])
         return matches[0]
+
+    def review_directory(identifier: str) -> Path:
+        return review_entry(identifier)["directory"]
 
     def packets(directory: Path) -> list[dict[str, Any]]:
         return review.verify_packets(directory / "mapping.json", directory / "reviews.jsonl")
@@ -379,14 +444,19 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
 
     @app.get("/api/reviews")
     def review_list():
-        result = []
-        for root in review_locations():
-            if root.exists():
-                for directory in root.iterdir():
-                    if REVIEW_ID.fullmatch(directory.name):
-                        directory = review_directory(directory.name)
-                        result.append(_read_json(directory / "metadata.json", workspace))
-        return {"review_sets": sorted(result, key=lambda item: item["created_at"], reverse=True)}
+        result, damaged = [], []
+        for entry in review_index():
+            metadata = entry["metadata"]
+            current_campaign = entry["campaign_id"] or metadata.get("campaign_id")
+            if entry["error"]:
+                damaged.append({"review_set_id": entry["identifier"], "campaign_id": current_campaign,
+                                "error": entry["error"]})
+            else:
+                result.append({**metadata, "review_set_id": entry["identifier"], "campaign_id": current_campaign,
+                               "original_review_set_id": metadata["review_set_id"],
+                               "original_campaign_id": metadata["campaign_id"]})
+        return {"review_sets": sorted(result, key=lambda item: item["created_at"], reverse=True),
+                "damaged_review_sets": damaged}
 
     @app.get("/api/reviews/{review_set_id}/packets")
     def review_packets(review_set_id: str):
@@ -457,9 +527,10 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
     def campaign_summary(campaign_id: str, review_set_id: str | None = None):
         results = load_results(campaign_directory(campaign_id))
         if review_set_id:
-            directory = review_directory(review_set_id)
-            metadata = _read_json(directory / "metadata.json", workspace)
-            if metadata["campaign_id"] != campaign_id:
+            entry = review_entry(review_set_id)
+            directory = entry["directory"]
+            bound_campaign = entry["campaign_id"] or entry["metadata"]["campaign_id"]
+            if bound_campaign != campaign_id:
                 raise HTTPException(400, "Bewertungssatz gehört zu einem anderen Versuch.")
             packets(directory)
             results = review.attach_reviews(results, latest_combined(directory))
