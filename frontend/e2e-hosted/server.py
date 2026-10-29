@@ -58,7 +58,8 @@ def main() -> None:
             from security_lab.server import create_app
 
             settings = HostedSettings(API_ORIGIN, FRONTEND_ORIGIN,
-                                      (hashlib.sha256(TEST_TOKEN.encode("ascii")).hexdigest(),))
+                                      (hashlib.sha256(TEST_TOKEN.encode("ascii")).hexdigest(),),
+                                      storage_mode="ephemeral")
             app = create_app(directory / "workspace", ROOT / "cases" / "dev",
                              hosted_settings=settings)
             uvicorn.run(app, host="127.0.0.1", port=8876, workers=1,

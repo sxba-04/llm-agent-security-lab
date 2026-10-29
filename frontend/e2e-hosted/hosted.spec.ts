@@ -9,6 +9,7 @@ async function login(page: Page) {
   await page.getByLabel('Zugangscode', { exact: true }).fill(TOKEN);
   await page.getByRole('button', { name: 'Werkbank öffnen', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
+  await expect(page.getByRole('note', { name: 'Flüchtiger Testbetrieb' })).toContainText('Daten werden nicht dauerhaft gespeichert');
 }
 
 test('hosted access requires a token and keeps it out of browser storage', async ({ page }) => {

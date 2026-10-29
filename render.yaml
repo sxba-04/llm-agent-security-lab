@@ -1,12 +1,13 @@
-# Deployment preparation only. Importing this Blueprint creates paid resources.
-# Review the current price and docs/hosting.md before approving it in Render.
+# Free, disposable mock test environment. No disk or database is provisioned.
+# Keep the Hobby workspace without a payment method to stop instead of billing
+# when free quotas are exhausted. See docs/hosting.md before deployment.
 services:
   - type: web
-    name: llm-agent-security-lab-api
+    name: llm-agent-security-lab-demo-api
     runtime: python
     branch: main
     region: frankfurt
-    plan: 1c-2g
+    plan: free
     numInstances: 1
     autoDeployTrigger: checksPass
     buildCommand: |
@@ -15,15 +16,13 @@ services:
       uv sync --locked --extra web --no-dev
     startCommand: uv run --locked --extra web --no-dev python -m security_lab.hosted_cli
     healthCheckPath: /healthz
-    disk:
-      name: lab-workspace
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: LAB_FRONTEND_ORIGIN
         value: https://sxba-04.github.io
       - key: LAB_WORKSPACE
-        value: /var/data/security-lab
+        value: /tmp/security-lab-demo
+      - key: LAB_STORAGE_MODE
+        value: ephemeral
       - key: LAB_ACCESS_TOKEN_HASHES
         sync: false
       - key: PYTHONUNBUFFERED

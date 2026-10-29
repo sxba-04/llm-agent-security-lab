@@ -7,6 +7,7 @@ vi.stubEnv('VITE_API_BASE_URL', 'https://lab.example');
 const { api, downloadFile, sessionIsAuthenticated, signIn, signOut } = await import('./api');
 const { AccessGate } = await import('./AccessGate');
 const { DownloadButton } = await import('./DownloadButton');
+const { default: App } = await import('./App');
 const code = 'test-only-access-code-with-at-least-32-characters';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -14,6 +15,31 @@ beforeEach(() => { signOut(); });
 afterEach(() => { cleanup(); signOut(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('protected online workbench', () => {
+  it.each(['ephemeral', 'persistent'])('shows the storage warning only for an ephemeral workspace (%s)', async storageMode => {
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/health')) return json({ csrf_token: 'csrf', storage_mode: storageMode, mode: 'mock', running: false });
+      if (url.endsWith('/api/cases')) return json({ cases: [] });
+      if (url.endsWith('/api/campaigns')) return json({ campaigns: [] });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    window.location.hash = '#overview';
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+    if (storageMode === 'ephemeral') {
+      const warning = await screen.findByRole('note', { name: 'Flüchtiger Testbetrieb' });
+      expect(warning).toHaveTextContent('Hochgeladene PDFs, Versuche und Bewertungen');
+      expect(warning).toHaveTextContent('Ruhezustand, Neustart oder Deployment');
+      expect(warning).toHaveTextContent('Kampagnenarchive vorher herunterladen');
+      await userEvent.setup().click(screen.getByRole('link', { name: 'Fälle' }));
+      await screen.findByRole('heading', { name: 'Der Ausgangspunkt jedes Versuchs.' });
+      expect(screen.getByRole('note', { name: 'Flüchtiger Testbetrieb' })).toBeVisible();
+    } else {
+      expect(screen.queryByRole('note', { name: 'Flüchtiger Testbetrieb' })).not.toBeInTheDocument();
+    }
+  });
+
   it('authenticates before mounting the workbench and never persists the code', async () => {
     const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
     vi.stubGlobal('fetch', fetch);
