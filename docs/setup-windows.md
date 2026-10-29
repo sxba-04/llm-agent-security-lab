@@ -4,18 +4,20 @@ Die Anwendung wird auf jedem Rechner aus demselben Git-Repository gestartet. Jed
 
 ## Einrichtung mit uv
 
-Installiere Git und uv über einen auf dem jeweiligen Rechner erlaubten Weg. Die [uv-Dokumentation](https://docs.astral.sh/uv/getting-started/installation/) beschreibt die verfügbaren Installationswege. Auf einem verwalteten Firmenrechner gelten dessen Installations- und Netzwerkvorgaben.
+Installiere Git und uv über einen auf dem jeweiligen Rechner erlaubten Weg. Die [uv-Dokumentation](https://docs.astral.sh/uv/getting-started/installation/) beschreibt die verfügbaren Installationswege. Für die Oberfläche wird zusätzlich Node.js 24 ab Version 24.15.0, kleiner als 25, einschließlich npm benötigt. Auf einem verwalteten Firmenrechner gelten dessen Installations- und Netzwerkvorgaben.
+
+Nach der Installation VS Code gegebenenfalls neu starten und in einem neuen Terminal `git --version`, `uv --version`, `node --version` und `npm.cmd --version` prüfen. Die Programme müssen über den `PATH` erreichbar sein. Node und npm sind für einen reinen CLI-Lauf nicht erforderlich. Die Befehle einzeln ausführen und bei einem Fehler anhalten:
 
 ```powershell
 git clone https://github.com/sxba-04/llm-agent-security-lab.git
 cd llm-agent-security-lab
-uv sync --locked
-uv run python -m security_lab --help
-uv run python -m security_lab demo --output runs/demo
-uv run python -m unittest discover -s tests -v
+uv sync --locked --extra web --group dev
+uv run --locked --extra web python -m security_lab --help
+uv run --locked --extra web python -m security_lab demo --output runs/demo
+uv run --locked --extra web --group dev python -m unittest discover -s tests -v
 ```
 
-`uv sync --locked` verwendet die versionierten Abhängigkeiten. Änderungen an der Lockdatei gehören in einen überprüften Commit. Wenn die benötigte Python-Version fehlt, kann uv einen Download benötigen; auch dieser muss durch die lokale Netzwerkkonfiguration zugelassen sein.
+`uv sync --locked --extra web --group dev` verwendet die versionierten Abhängigkeiten und installiert auch die Pakete für Oberfläche und vollständige Python-Tests. Änderungen an der Lockdatei gehören in einen überprüften Commit. Wenn die in `.python-version` festgelegte Python-Version fehlt, kann uv sie herunterladen; auch dieser Download muss durch die lokale Netzwerkkonfiguration zugelassen sein. `--extra web` bei späteren CLI-Aufrufen erhält die installierten Webpakete.
 
 Weder `Activate.ps1` noch das Abschalten von PowerShell-Schutzfunktionen sind für diesen Ablauf erforderlich.
 
@@ -28,21 +30,20 @@ cd llm-agent-security-lab
 py -3.12 -m venv .venv
 $env:PYTHONPATH = "$PWD\src"
 .\.venv\Scripts\python.exe -m security_lab demo --output runs/demo
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-`PYTHONPATH` gilt hier nur für das aktuelle Terminal. Verwende bei abweichender Installation den passenden Python-Interpreter. Diese Alternative installiert keine zusätzlichen Laufzeitpakete und benötigt ebenfalls kein Aktivierungsskript.
+`PYTHONPATH` gilt hier nur für das aktuelle Terminal. Verwende bei abweichender Installation den passenden Python-Interpreter. Diese Alternative installiert keine zusätzlichen Laufzeitpakete und benötigt ebenfalls kein Aktivierungsskript. Sie eignet sich für die CLI-Demo; Oberfläche und vollständige Tests benötigen zusätzliche Pakete wie im uv-Ablauf beschrieben.
 
 ## VS Code
 
-Die optionale FastAPI-/React-Oberfläche benötigt zusätzlich Node.js 24 ab Version 24.15.0. Installation, Build und Start stehen in [Laboroberfläche](workbench.md). Die bestehenden CLI-Befehle bleiben nutzbar; für den vollständigen Testumfang mit PDF- und HTTP-Prüfungen `uv sync --locked --extra web --group dev` ausführen.
-
 1. Den gesamten Repository-Ordner öffnen.
-2. Die Python-Erweiterung installieren, falls sie fehlt.
-3. Über **Python: Select Interpreter** den Interpreter `.venv\Scripts\python.exe` auswählen.
-4. Befehle aus dem Schnellstart im integrierten Terminal ausführen.
+2. Unter **Terminal → Aufgabe ausführen** die Aufgabe **Labor: Gesamtinstallation** starten. Sie synchronisiert die Python-Umgebung, installiert die Frontend-Pakete und baut das Frontend nacheinander.
+3. Nach erfolgreichem Abschluss **Labor: Oberflaeche starten** ausführen und `http://127.0.0.1:8765` öffnen.
+4. Für Python-Editorfunktionen bei Bedarf die Python-Erweiterung installieren und über **Python: Select Interpreter** `.venv\Scripts\python.exe` auswählen.
 
-Gemeinsame Startbefehle stehen in der README. Persönliche IDE-Einstellungen und maschinenabhängige Pfade werden nicht als Projektvorgaben eingecheckt.
+Die Aufgaben werden aus der versionierten `.vscode/tasks.json` geladen; ein Kollege muss diese Datei nicht kopieren. Git, uv und Node müssen zuvor installiert sein. [VS Code und gemeinsame Aufgaben](vscode.md) beschreibt alle Aufgaben sowie persönliche Terminal-Einstellungen; [Laboroberfläche](workbench.md) erklärt die Bedienung.
+
+Die Windows-Aufgaben verwenden `npm.cmd`, damit PowerShell kein `npm.ps1` laden muss. Dafür sind weder eine Änderung der Ausführungsrichtlinie noch ein Administrator-Terminal erforderlich.
 
 ## IntelliJ IDEA
 
@@ -59,10 +60,11 @@ Git, Paketdownloads und die spätere Modell-API sind getrennte Netzwerkverbindun
 
 - Proxywerte und gegebenenfalls erforderliche Zertifikate werden lokal nach den Vorgaben der Organisation konfiguriert.
 - Unternehmensspezifische Einstellungen und Zugangsdaten gehören nicht in die gemeinsame Konfiguration.
+- Persönliche Terminal-Umgebungsvariablen stehen bei direkt geöffnetem Projektordner in der ignorierten `.vscode/settings.json`. Bei einem gespeicherten Arbeitsbereich gehören sie in dessen persönliche `.code-workspace`-Datei außerhalb des Repositorys; siehe [VS-Code-Anleitung](vscode.md#persönliche-einstellungen).
 - TLS-Zertifikatsprüfung bleibt aktiv. Eine fehlgeschlagene Verbindung wird behoben, indem Proxy, Zertifikate oder Freigaben korrekt eingerichtet werden.
 - Die Offline-Demo funktioniert nach Bereitstellung von Code und Python ohne Modellzugang.
 
-Bei einem Rechnerwechsel Änderungen zuerst committen und pushen, auf dem anderen Rechner holen und anschließend `uv sync --locked` ausführen. `.venv` und lokale Schlüssel werden nicht zwischen Rechnern kopiert.
+Bei einem Rechnerwechsel Änderungen zuerst committen und pushen, auf dem anderen Rechner holen und anschließend **Labor: Gesamtinstallation** ausführen. Für die Python-Umgebung allein genügt `uv sync --locked --extra web --group dev`. `.venv`, `node_modules` und lokale Schlüssel werden nicht zwischen Rechnern kopiert.
 
 ## Prüfung der Ausführungsumgebung
 

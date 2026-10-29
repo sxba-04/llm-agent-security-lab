@@ -1,0 +1,242 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "tasks": [
+    {
+      "label": "Labor: Umgebung synchronisieren",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "sync",
+        "--locked",
+        "--extra",
+        "web",
+        "--group",
+        "dev"
+      ],
+      "problemMatcher": [],
+      "detail": "Installiert die festgelegten Python-Pakete inklusive Weboberfläche und Tests."
+    },
+    {
+      "label": "Labor: Demo (24 Mock-Laeufe)",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--extra",
+        "web",
+        "python",
+        "-m",
+        "security_lab",
+        "demo"
+      ],
+      "problemMatcher": [],
+      "detail": "Führt 24 kostenlose Mock-Läufe aus; Ergebnisse bleiben lokal unter runs/."
+    },
+    {
+      "label": "Labor: Alle Tests",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--extra",
+        "web",
+        "--group",
+        "dev",
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Führt alle Python-Tests aus, inklusive PDF- und HTTP-Prüfungen."
+    },
+    {
+      "label": "Labor: Fallkatalog validieren",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--extra",
+        "web",
+        "python",
+        "-m",
+        "security_lab",
+        "validate"
+      ],
+      "problemMatcher": [],
+      "detail": "Prüft die Struktur der Entwicklungsfälle."
+    },
+    {
+      "label": "Labor: Entwicklungskatalog (96 Mock-Laeufe)",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--extra",
+        "web",
+        "python",
+        "-m",
+        "security_lab",
+        "run",
+        "--provider",
+        "mock",
+        "--repeats",
+        "1"
+      ],
+      "problemMatcher": [],
+      "detail": "Führt alle Entwicklungsfälle einmal mit vier Varianten und zwei Quellen aus."
+    },
+    {
+      "label": "Labor: Frontend installieren",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "ci",
+        "--no-fund"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Installiert npm-Pakete aus der Lockdatei; benötigt Node.js 24 ab 24.15.0."
+    },
+    {
+      "label": "Labor: Frontend bauen",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Prüft TypeScript und baut die Browseroberfläche."
+    },
+    {
+      "label": "Labor: Frontend Tests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Führt die React-Tests aus."
+    },
+    {
+      "label": "Labor: Browser installieren",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "browsers:install"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Lädt den zur installierten Playwright-Version passenden Chromium-Testbrowser."
+    },
+    {
+      "label": "Labor: Browsertests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "test:e2e"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "dependsOn": "Labor: Frontend bauen",
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Baut das Frontend und testet in Chromium. Laborserver vorher beenden: Port 8765 muss frei sein."
+    },
+    {
+      "label": "Labor: Browserbericht oeffnen",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "test:e2e:report"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "npm.cmd"
+      },
+      "detail": "Zeigt den letzten Playwright-Bericht unter http://127.0.0.1:9323."
+    },
+    {
+      "label": "Labor: Oberflaeche starten",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "--extra",
+        "web",
+        "python",
+        "-m",
+        "security_lab.web_cli"
+      ],
+      "dependsOn": "Labor: Frontend bauen",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": [],
+      "detail": "Baut das Frontend und startet http://127.0.0.1:8765. Mit Strg+C beenden."
+    },
+    {
+      "label": "Labor: Gesamtinstallation",
+      "dependsOn": [
+        "Labor: Umgebung synchronisieren",
+        "Labor: Frontend installieren",
+        "Labor: Frontend bauen"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "detail": "Synchronisiert Python-Pakete, installiert npm-Pakete und baut das Frontend. Git, uv und Node.js müssen bereits verfügbar sein."
+    }
+  ]
+}

@@ -4,22 +4,24 @@ Die Oberfläche verbindet FastAPI mit React und TypeScript. Diese Auswahl wurde 
 
 ## Start unter Windows
 
-Zusätzlich zu Git, uv und Python wird Node.js 24 ab Version 24.15.0 für den Frontend-Build benötigt. Node.js über einen auf dem Rechner erlaubten Weg installieren; die offiziellen Downloads stehen unter https://nodejs.org/en/download. Danach ein neues Terminal öffnen und `node --version` sowie `npm --version` prüfen.
+Zusätzlich zu Git und uv wird Node.js 24 ab Version 24.15.0, kleiner als 25, für den Frontend-Build benötigt. Die benötigte Python-Version kann uv bereitstellen. Node.js über einen auf dem Rechner erlaubten Weg installieren; die offiziellen Downloads stehen unter https://nodejs.org/en/download. Danach ein neues Terminal öffnen und `node --version` sowie `npm.cmd --version` prüfen.
 
-Im Repository-Verzeichnis:
+In VS Code den Repository-Ordner öffnen und unter **Terminal → Aufgabe ausführen** zuerst **Labor: Gesamtinstallation**, dann **Labor: Oberflaeche starten** auswählen. Diese gemeinsamen Aufgaben werden mit dem Repository verteilt. Weitere Aufgaben und Voraussetzungen stehen in [VS Code und gemeinsame Aufgaben](vscode.md).
+
+Alternativ im Repository-Verzeichnis die folgenden Befehle einzeln ausführen. Bei einem Fehler anhalten und dessen Ursache beheben:
 
 ```powershell
 uv sync --locked --extra web --group dev
 cd frontend
-npm ci
-npm run build
+npm.cmd ci
+npm.cmd run build
 cd ..
 uv run --locked --extra web security-lab-web
 ```
 
 Anschließend im Browser `http://127.0.0.1:8765` öffnen. Mit Strg+C im Terminal wird der lokale Dienst beendet. Nach dem einmaligen Paketdownload und Build braucht der Mock-Betrieb keine Modellverbindung, keinen externen Server und keine GPU. Ein laufender Browser ist die Bedienoberfläche; der Python-Prozess muss geöffnet bleiben.
 
-Nach einem Update erst `git pull --ff-only`, dann die Installations- und Buildschritte wiederholen. `npm ci` und `uv sync --locked` verwenden die versionierten Lockdateien. Persönliche Proxy-/Zertifikatseinstellungen verbleiben auf dem jeweiligen Rechner. TLS-Prüfungen werden nicht abgeschaltet.
+Vor einem Update den laufenden Dienst mit Strg+C beenden. Bei sauberem Arbeitsstand `git pull --ff-only` ausführen, dann **Labor: Gesamtinstallation** oder die manuellen Installations- und Buildschritte wiederholen. `npm.cmd ci` und `uv sync --locked --extra web --group dev` verwenden die versionierten Lockdateien. Persönliche Proxy-/Zertifikatseinstellungen verbleiben auf dem jeweiligen Rechner. TLS-Prüfungen werden nicht abgeschaltet.
 
 ## Erster vollständiger Durchlauf
 
@@ -56,20 +58,25 @@ Die HTTP-Schnittstelle erlaubt ausschließlich Mock-Serien. Die gesonderte CLI-M
 ## Entwicklung und Prüfungen
 
 ```powershell
-uv run --locked --extra web python -m unittest discover -s tests -v
+uv run --locked --extra web --group dev python -m unittest discover -s tests -v
 cd frontend
-npm test
-npm run build
+npm.cmd test
+npm.cmd run build
 ```
 
 Das fertige Frontend wird vom selben FastAPI-Dienst ausgeliefert. So ist für den normalen Betrieb nur ein lokaler Prozess nötig. Sicherheitsentscheidungen und Messgrößen bleiben in Python; React stellt sie dar und sendet ausdrücklich ausgelöste Bedienaktionen.
 
-Der optionale Browser-Integrationstest startet den gebauten Dienst selbst und verwendet ausschließlich synthetische Testdaten unter `runs/browser-ci/`:
+Der optionale Browser-Integrationstest startet den gebauten Dienst selbst und verwendet ausschließlich synthetische Testdaten unter `runs/browser-ci/`. Nach der Gesamtinstallation einmal **Labor: Browser installieren** ausführen, anschließend **Labor: Browsertests**. Nach einem Playwright-Update kann der Browserdownload erneut erforderlich sein. Die Testaufgabe baut das Frontend vor dem Start.
+
+Manuell, nach Installation der Pakete und ausgehend vom Repository-Verzeichnis:
 
 ```powershell
 cd frontend
-npx playwright install chromium
-npm run test:e2e
+npm.cmd run browsers:install
+npm.cmd run build
+npm.cmd run test:e2e
 ```
 
 Dafür darf kein anderer Laborprozess auf Port 8765 laufen. Playwright verwendet einen eigenen Dienst und bricht bei belegtem Port ab, damit keine Testdaten in einem persönlichen Arbeitsverzeichnis entstehen. Der Browserdownload ist nur für Entwicklungstests erforderlich, nicht für die normale Bedienung mit eurem vorhandenen Browser.
+
+Den erzeugten Bericht mit **Labor: Browserbericht oeffnen** oder im Ordner `frontend` mit `npm.cmd run test:e2e:report` anzeigen. Der lokale Berichtsserver läuft auf `http://127.0.0.1:9323`; Strg+C beendet ihn.
