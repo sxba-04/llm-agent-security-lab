@@ -34,6 +34,8 @@ Im Browser **http://127.0.0.1:8765** öffnen. Die Oberfläche startet ausschlie�
 
 [Bedienung und Einrichtung](docs/workbench.md) · [PDF-Quellen](docs/pdf-sources.md) · [Sicherung und Wiederherstellung](docs/archives.md)
 
+Für eure gemeinsame erste Prüfung folgt der [genauen Klickanleitung mit Sollwerten](docs/manual-acceptance.md). Das [leere Prüfprotokoll](docs/manual-acceptance-record-template.md) hält eure tatsächlich beobachteten Ergebnisse und fachlichen Entscheidungen fest. [GitHub Actions](docs/github-actions.md) erklärt die automatischen Prüfungen und manuell startbaren Mock-Kampagnen.
+
 ## Schnellstart unter Windows
 
 Voraussetzungen: Git und [uv](https://docs.astral.sh/uv/getting-started/installation/). Die Befehle werden im Terminal ausgeführt; eine virtuelle Umgebung muss nicht manuell aktiviert werden.
@@ -88,6 +90,8 @@ In einem Ausgabeordner enthält `manifest.json` die Konfiguration und Reihenfolg
 | `docs/` | Architektur, Einrichtung, Methode, Entscheidungen und Beiträge |
 | `frontend/` | React-/TypeScript-Oberfläche mit Vite, Tests und Lockdatei |
 | `.vscode/tasks.json` | Gemeinsame VS-Code-Aufgaben für Installation, Start und Prüfungen |
+| `.github/workflows/` | Windows-/Linux-CI und manuell startbare Mock-Kampagnen |
+| `scripts/ci_mock_campaign.py` | Begrenzte Mock-Kampagne mit Archivprüfung und Wiederherstellung |
 | `runs/` | Lokale Laufdaten; nicht automatisch Teil der Git-Historie |
 
 ## Grenzen des Labors
@@ -101,5 +105,7 @@ Eine Python-Umgebung ist keine Sicherheitssandbox. Vor echten Angriffsversuchen 
 Arbeiten erfolgen in kurzen Branches mit Pull Requests und nachvollziehbarer Gegenprüfung. [Arbeitsablauf](docs/workflow.md), [Review-Einstellungen](docs/review-settings.md), [Repository-Prüfung vom 27.10.](docs/repository-audit-2026-10-27.md), [Sicherheitsgrenzen](SECURITY.md), [Entscheidungsstand](docs/decisions.md) und [Beiträge und KI-Unterstützung](docs/contributions.md) halten fest, wie technische Änderungen und wissenschaftliche Verantwortung zusammengehören.
 
 Vor dem Zusammenführen müssen die Tests und angeforderten Reviews für den aktuellen Commit abgeschlossen und sämtliche Befunde geprüft sein; ausdrücklich genehmigte Ausnahmen werden gemäß Arbeitsablauf dokumentiert. Die vorhandenen Tests ersetzen keine abgeschlossene Gegenprüfung.
+
+Der [Schutz von `main`](docs/branch-protection.md) verlangt Pull Requests, vier erfolgreiche CI-Jobs, einen aktuellen Basisstand und erledigte Review-Gespräche. Force-Push und Löschen sind gesperrt; es gibt keine Bypass-Liste.
 
 Die aktuelle Implementierung wurde mit ChatGPT/Codex erstellt. Die Autoren prüfen, verstehen und überarbeiten die übernommenen Bestandteile vor der wissenschaftlichen Verwendung. Ein Commit ist kein Nachweis einer bereits erfolgten menschlichen Prüfung.

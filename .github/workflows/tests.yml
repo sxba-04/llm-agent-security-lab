@@ -36,18 +36,53 @@ jobs:
           python -m pip install uv==0.12.23
           uv sync --locked --extra web --group dev
       - name: Behavioral tests without API keys
+        id: python_tests
         run: uv run --locked --extra web python -m unittest discover -s tests -v
-      - name: Complete development catalog with mock only
-        run: uv run --locked --extra web python -m security_lab run --output runs/ci --repeats 1
-      - name: Recompute summary from verified originals
-        run: uv run --locked --extra web python -m security_lab summarize runs/ci --output runs/ci/recomputed.json
-      - name: Export blinded review material
-        run: uv run --locked --extra web python -m security_lab review-export runs/ci --output runs/review
-      - name: Archive, verify and restore original campaign evidence
+      - name: Run and verify the complete synthetic development catalog
+        id: mock_campaign
+        run: uv run --locked --extra web python scripts/ci_mock_campaign.py --preset catalog96 --repeats 1 --output runs/ci
+      - name: Preserve synthetic campaign evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: mock-evidence-${{ runner.os }}
+          path: |
+            runs/ci/campaign.zip
+            runs/ci/summary.json
+            runs/ci/restored-summary.json
+            runs/ci/metrics.csv
+            runs/ci/verification.json
+            runs/ci/result.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve incomplete mock evidence for diagnosis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ always() && (steps.mock_campaign.outcome == 'failure' || steps.mock_campaign.outcome == 'cancelled') }}
+        with:
+          name: unverified-mock-diagnostics-${{ runner.os }}
+          path: |
+            runs/ci/campaign/manifest.json
+            runs/ci/campaign/cases.snapshot.json
+            runs/ci/campaign/records/
+            runs/ci/campaign/events/
+            runs/ci/campaign/reviews/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Summarize Python checks
+        if: always()
+        shell: python {0}
+        env:
+          LAB_TEST_OUTCOME: ${{ steps.python_tests.outcome }}
+          LAB_CAMPAIGN_OUTCOME: ${{ steps.mock_campaign.outcome }}
         run: |
-          uv run --locked --extra web python -m security_lab archive runs/ci --output runs/ci.zip
-          uv run --locked --extra web python -m security_lab verify-archive runs/ci.zip
-          uv run --locked --extra web python -m security_lab restore-archive runs/ci.zip --output runs/restored
+          import os
+          from pathlib import Path
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
+              stream.write("## Python checks on " + os.environ["RUNNER_OS"] + "\n\n")
+              stream.write("- Behavioral tests: **" + os.environ["LAB_TEST_OUTCOME"] + "**.\n")
+              stream.write("- Synthetic campaign and archive roundtrip: **" + os.environ["LAB_CAMPAIGN_OUTCOME"] + "**.\n")
+              stream.write("- Checked-out commit: `" + os.environ["GITHUB_SHA"] + "`.\n")
+              stream.write("- Artifacts expire after 14 days; download evidence you want to keep.\n")
   frontend:
     timeout-minutes: 15
     strategy:
@@ -69,7 +104,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm test
+        id: react_tests
       - run: npm run build
+        id: frontend_build
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
@@ -80,6 +117,7 @@ jobs:
       - name: Install browser
         run: npx playwright install --with-deps chromium
       - name: Test built React app with actual FastAPI backend
+        id: browser_tests
         run: npm run test:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -90,3 +128,26 @@ jobs:
             frontend/test-results/
           if-no-files-found: ignore
           retention-days: 14
+      - name: Preserve the frontend build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ success() && runner.os == 'Linux' }}
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Summarize browser checks
+        if: always()
+        shell: python {0}
+        env:
+          LAB_REACT_OUTCOME: ${{ steps.react_tests.outcome }}
+          LAB_BUILD_OUTCOME: ${{ steps.frontend_build.outcome }}
+          LAB_BROWSER_OUTCOME: ${{ steps.browser_tests.outcome }}
+        run: |
+          import os
+          from pathlib import Path
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
+              stream.write("## Browser checks on " + os.environ["RUNNER_OS"] + "\n\n")
+              for label, key in [("React tests", "LAB_REACT_OUTCOME"), ("Production build", "LAB_BUILD_OUTCOME"), ("Chromium with FastAPI", "LAB_BROWSER_OUTCOME")]:
+                  stream.write("- " + label + ": **" + os.environ[key] + "**.\n")
+              stream.write("\nThe server existed only inside this job. The frontend build requires the matching Python backend; it is not a deployed website.\n")

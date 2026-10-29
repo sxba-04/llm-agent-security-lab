@@ -25,6 +25,8 @@ Vor einem Update den laufenden Dienst mit Strg+C beenden. Bei sauberem Arbeitsst
 
 ## Erster vollständiger Durchlauf
 
+Die [gemeinsame Abnahme Schritt für Schritt](manual-acceptance.md) führt durch drei konkrete Fälle, sechs PDF-Importe, eine Kampagne mit 24 Läufen, unabhängige Bewertungen und einen Archiv-Rundlauf. Sie nennt die genauen Klicks und erwarteten Ergebnisse; die folgende Liste ist nur die Kurzorientierung. Beobachtungen werden im [Prüfprotokoll](manual-acceptance-record-template.md) festgehalten.
+
 1. Unter **Fälle** einen Entwicklungsfall auswählen und Auftrag, Sitzungsrechte und beide Artikelfassungen lesen.
 2. Unter **Versuche** einen Fall, B/F/P/FP und die gewünschten Quellfassungen auswählen. Die Oberfläche zeigt die geplante Anzahl; erst der Startknopf erzeugt eine Serie.
 3. Nach Abschluss einen Lauf öffnen. Vorschläge, Filter-/Policyentscheidungen, tatsächliche Wirkungen und Ticketzustände getrennt untersuchen.

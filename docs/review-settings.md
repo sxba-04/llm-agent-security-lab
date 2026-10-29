@@ -1,6 +1,6 @@
 # Review-Einstellungen und Übergaben
 
-Stand: 27. Oktober 2026. Empfehlungen für dieses Repository; Kontoeinstellungen wurden dadurch nicht verändert.
+Stand: 29. Oktober 2026. Empfehlungen für dieses Repository; Kontoeinstellungen wurden dadurch nicht verändert. Sebastian hat die Umsetzung der empfohlenen Kontoeinstellungen zurückgemeldet; der Branchschutz wurde gesondert eingerichtet und geprüft.
 
 ## Drei getrennte Nachweise
 
@@ -27,11 +27,13 @@ Die wichtigsten dauerhaften Review-Regeln stehen in `AGENTS.md` unter **Code Rev
 
 ## Repository-Regeln
 
-Die GitHub-Branchabfrage meldete `main` am 27.10.2026 als nicht geschützt (`protected: false`). Wenn der Tarif die benötigten Regeln für dieses private Repository erlaubt, sollten Pull Requests und erfolgreiche Windows-/Linux-Prüfungen vor dem Merge technisch verlangt und Force-Pushes verhindert werden. Kontingentabhängige Bot-Prüfungen müssen dabei zur ausdrücklich vereinbarten Ausnahme passen. Diese Runde hat keine administrativen Branch- oder Kontoeinstellungen geändert.
+Am 29.10.2026 wurde im inzwischen öffentlichen Repository das [Ruleset „Protect main“](branch-protection.md) aktiviert. GitHub bestätigt `protected: true`, vier erforderliche GitHub-Actions-Checks, Pull-Request-Pflicht, aktuellen Basisstand, erledigte Review-Gespräche und eine leere Bypass-Liste. Force-Push und Löschen sind gesperrt. Kontingentabhängige Bot-Kommentare sind keine harten CI-Checks; die vereinbarte inhaltliche Review-Pflicht gilt zusätzlich. Null zusätzliche formale Approvals vermeiden eine unbeabsichtigte Sperre von PRs aus demselben Konto; Details und Grenzen stehen in der Branchschutz-Dokumentation.
 
 ## Manueller Neustart
 
 In der PR-Diskussion kann `@codex review` einen neuen Code-Review und `@codex security review` einen neuen Sicherheitsreview anfordern. Wenn automatische Sicherheitsreviews bereits an Code-Reviews gekoppelt sind, zuerst prüfen, ob der Sicherheitsjob gestartet wurde; keinen zusätzlichen doppelten Lauf erzeugen. Copilot wird über die Reviewer-Auswahl erneut angefordert.
+
+Den jeweiligen Befehl als eigenen Kommentar ohne zusätzlichen Erläuterungstext senden und danach im **Codex Review Summary** prüfen, welcher Review tatsächlich für welchen Commit gestartet wurde. Bei PR #5 aktualisierten kommentierte Security-Anforderungen zunächst nur den Code-Review; erst der alleinstehende Security-Befehl startete nachweislich den Security-Review am aktuellen Head. Ein abgeschlossener Code-Review ist kein Ersatz für dessen Security-Status.
 
 Vor dem Merge die tatsächlich geprüfte Commit-ID vergleichen. Nach einer Korrektur gilt der vorherige Review nicht automatisch für den neuen Code. Kontingentausfälle und ausdrücklich genehmigte Ausnahmen werden im PR nachvollziehbar festgehalten; siehe [Arbeitsablauf](workflow.md).
 

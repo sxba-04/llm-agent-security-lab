@@ -34,9 +34,9 @@ Code-Review, Security-Review und CI sind getrennte Nachweise. Ein Kontingent- od
 
 Jeder Befund erhält eine nachvollziehbare Behandlung: behoben und nachgeprüft oder mit konkreten Belegen als nicht zutreffend beziehungsweise bewusst begrenzt eingeordnet. Ein Thread wird nicht allein deshalb geschlossen, weil der ursprüngliche PR bereits gemergt ist. PR #1 wurde am 22.10.2026 vor Ende der automatischen Reviews zusammengeführt; dieser Ablauf wird nicht wiederholt.
 
-Die Checkliste in der PR-Vorlage unterstützt diesen Prozess. Sie behauptet keine technisch eingerichtete Branch Protection; Repository-Regeln müssen getrennt geprüft und gegebenenfalls durch die Eigentümer eingerichtet werden. Fachliche Autorenprüfungen bleiben auch nach automatischen Code-Reviews erforderlich.
+Die Checkliste in der PR-Vorlage unterstützt diesen Prozess. Seit 29.10.2026 erzwingt das aktive [Ruleset für `main`](branch-protection.md) Pull Requests, vier aktuelle Windows-/Linux-Checks und erledigte Review-Gespräche; Force-Push und Löschen sind gesperrt. Es gibt keine Bypass-Liste. Die technisch geforderten CI-Checks ersetzen die inhaltlichen Codex-Reviews und fachlichen Autorenprüfungen nicht.
 
-Technisch erzwungene Branchregeln hängen vom GitHub-Tarif und den Repository-Einstellungen ab. Die gemeinsame Review-Regel gilt unabhängig davon.
+[GitHub Actions](github-actions.md) beschreibt die Tests, Ergebnisartefakte und manuell startbaren Mock-Kampagnen. Die [gemeinsame Abnahme](manual-acceptance.md) ergänzt diese technischen Nachweise durch eure tatsächlichen Beobachtungen und fachlichen Entscheidungen.
 
 ## Parallel arbeiten
 
