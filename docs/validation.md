@@ -2,6 +2,18 @@
 
 Diese Prüfungen betreffen die Implementierung. Sie sind keine empirischen Ergebnisse über die Angreifbarkeit eines Sprachmodells.
 
+## Gemeinsame VS-Code-Aufgaben vom 29. Oktober 2026
+
+Auf Basis von `main` bei `421dfa4` wurden die gemeinsamen Tasks und korrigierten Windows-Befehle lokal unter Windows mit Python 3.12.15, uv 0.13.5 und Node.js 24.22.1/npm 11.19.1 geprüft. Die PowerShell-Ausführungsrichtlinie blieb `Restricted`; die Tasks verwenden unter Windows `npm.cmd` statt `npm.ps1`.
+
+- Alle 13 Taskdefinitionen wurden als Shell-Befehle einschließlich ihrer Abhängigkeiten mit der persönlichen Workspace-Umgebung ausgeführt. Paketinstallation aus beiden Lockdateien, TypeScript-Prüfung und Produktionsbuild waren erfolgreich.
+- 254 Python-Tests und 22 React-Tests bestanden. Beide echten Playwright-/FastAPI-Browsertests bestanden, einschließlich PDF-Verarbeitung und mobiler Navigation. Die Browser liefen im eigenen Testarbeitsverzeichnis.
+- Eine frische Kopie der versionierbaren Dateien in einem Pfad mit Leerzeichen enthielt nur die gemeinsame `tasks.json`, keine persönlichen IDE-Einstellungen oder vorherige Projektumgebung. Mit extern bereitgestelltem Werkzeug-PATH und Netzwerkzugang bestanden Gesamtinstallation, Build, 24 Demo- und 96 Entwicklungsläufe.
+- Anwendung und Playwright-Berichtsserver antworteten nach dem Start jeweils mit HTTP 200. Alle 616 vorab erfassten vorhandenen Belegdateien außerhalb des Browser-Testarbeitsverzeichnisses blieben unverändert.
+- Die Git-Ausnahmen und die Vererbung persönlicher Terminal-Umgebungsvariablen wurden unabhängig am installierten VS-Code-Code geprüft. Das VS-Code-Auswahlmenü selbst wurde nicht automatisiert bedient. Ein Hinweis zu Linux-Systembibliotheken wurde nach der Gegenprüfung ergänzt; diese Runde behauptet keine lokale Ausführung unter Linux/macOS oder auf Jonahs Rechner.
+
+Die Änderung betrifft Entwicklungskomfort und Dokumentation. Versuchskern, Fallkatalog, Schutzvarianten, Auswertung und Laufgrenzen bleiben unverändert. Es wurden keine echten Modellanfragen ausgeführt. Der GitHub-CI- und Reviewstatus ist am zugehörigen PR-Head gesondert zu prüfen.
+
 ## Ergänzung vom 27. Oktober 2026
 
 PR #3 wurde auf Commit `186ca6d` mit erfolgreichen Codex-Code- und Security-Reviews sowie bestandener GitHub-CI geprüft und als `9a0dfebc` gemergt. Copilot konnte wegen seines Kontingents erneut nicht prüfen; die ausdrücklich genehmigte Ausnahme ist im PR dokumentiert.

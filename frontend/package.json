@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "browsers:install": "playwright install chromium",
+    "test:e2e:report": "playwright show-report --host 127.0.0.1 --port 9323"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

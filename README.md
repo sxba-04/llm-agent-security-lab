@@ -15,13 +15,17 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Grafische Oberfläche unter Windows
 
-Zusätzlich zu Git, uv und Python wird **Node.js 24 ab Version 24.15.0** für den Frontend-Build benötigt. Im Repository-Verzeichnis:
+Voraussetzungen sind Git, uv und **Node.js 24 ab Version 24.15.0, kleiner als 25**. Die benötigte Python-Version kann uv bereitstellen.
+
+In VS Code den Repository-Ordner öffnen und unter **Terminal → Aufgabe ausführen** zuerst **Labor: Gesamtinstallation**, danach **Labor: Oberflaeche starten** auswählen. Die gemeinsamen Aufgaben sind in [.vscode/tasks.json](.vscode/tasks.json) versioniert und nach dem Klonen direkt verfügbar. Sie setzen installierte Werkzeuge im `PATH` voraus. Details stehen in [VS Code und gemeinsame Aufgaben](docs/vscode.md).
+
+Alternativ die folgenden Befehle im Repository-Verzeichnis einzeln ausführen. Bei einem Fehler zuerst dessen Ursache beheben, bevor der nächste Schritt folgt:
 
 ```powershell
 uv sync --locked --extra web --group dev
 cd frontend
-npm ci
-npm run build
+npm.cmd ci
+npm.cmd run build
 cd ..
 uv run --locked --extra web security-lab-web
 ```
@@ -37,9 +41,9 @@ Voraussetzungen: Git und [uv](https://docs.astral.sh/uv/getting-started/installa
 ```powershell
 git clone https://github.com/sxba-04/llm-agent-security-lab.git
 cd llm-agent-security-lab
-uv sync --locked
-uv run python -m security_lab demo --output runs/demo
-uv run python -m unittest discover -s tests -v
+uv sync --locked --extra web --group dev
+uv run --locked --extra web python -m security_lab demo --output runs/demo
+uv run --locked --extra web --group dev python -m unittest discover -s tests -v
 ```
 
 Die Demo verwendet das lokale, deterministische Testmodell und benötigt weder einen API-Schlüssel noch eine GPU. Sie wählt ein Fallpaar je Angriffsziel aus und erzeugt **24 technische Läufe**. Eine erfolgreiche Ausführung meldet `completed: 24/24 runs` und weist ausdrücklich auf den Mock-Betrieb hin. Verwende für einen weiteren Lauf einen neuen Ausgabeordner. Die [Windows-Anleitung](docs/setup-windows.md) erklärt VS Code, IntelliJ und eine Alternative ohne uv.
@@ -47,8 +51,8 @@ Die Demo verwendet das lokale, deterministische Testmodell und benötigt weder e
 ## Entwicklungsfälle ausführen
 
 ```powershell
-uv run python -m security_lab run --cases cases/dev --variants B F P FP --sources clean attack --repeats 1 --seed 20261022 --output runs/pilot
-uv run python -m security_lab summarize runs/pilot --output runs/pilot/summary.json
+uv run --locked --extra web python -m security_lab run --cases cases/dev --variants B F P FP --sources clean attack --repeats 1 --seed 20261022 --output runs/pilot
+uv run --locked --extra web python -m security_lab summarize runs/pilot --output runs/pilot/summary.json
 ```
 
 Zwölf Fälle × zwei Artikelversionen × vier Varianten × eine Wiederholung ergeben **96 technische Aufgabenläufe**. Das Testmodell folgt vorgegebenen Skripten, um erlaubte Aktionen, blockierte Aktionen, Datenoffenlegung und inhaltliche Restfälle gezielt zu prüfen. Seine Ergebnisse sagen nichts über die Angreifbarkeit eines realen Modells aus.
@@ -83,6 +87,7 @@ In einem Ausgabeordner enthält `manifest.json` die Konfiguration und Reihenfolg
 | `configs/` | Überprüfbare Konfigurationen und lokale API-Vorlage |
 | `docs/` | Architektur, Einrichtung, Methode, Entscheidungen und Beiträge |
 | `frontend/` | React-/TypeScript-Oberfläche mit Vite, Tests und Lockdatei |
+| `.vscode/tasks.json` | Gemeinsame VS-Code-Aufgaben für Installation, Start und Prüfungen |
 | `runs/` | Lokale Laufdaten; nicht automatisch Teil der Git-Historie |
 
 ## Grenzen des Labors
