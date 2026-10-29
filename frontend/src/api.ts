@@ -1,31 +1,82 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Health } from './types';
 
+export const hosted = import.meta.env.VITE_HOSTED === 'true';
+const apiBase = hosted ? import.meta.env.VITE_API_BASE_URL : '';
 let csrfToken = '';
+let accessToken = '';
+let authenticated = false;
+const sessionListeners = new Set<() => void>();
+export const subscribeSession = (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; };
+export const sessionIsAuthenticated = () => authenticated;
+function notifySession() { for (const listener of sessionListeners) listener(); }
+export function signOut() {
+  accessToken = ''; csrfToken = ''; authenticated = false; notifySession();
+}
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); } }
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const method = options.method || 'GET';
+export async function signIn(value: string) {
+  const candidate = value.trim();
+  if (!/^[A-Za-z0-9_-]{43,128}$/.test(candidate)) throw new ApiError('Bitte den vollständigen Zugangscode eingeben.', 401);
+  accessToken = candidate; csrfToken = '';
+  try {
+    const health = await api<Health>('/api/health');
+    if (typeof health.csrf_token !== 'string' || !health.csrf_token) throw new ApiError('Der Server liefert keine gültige Werkbank-Sitzung.', 0);
+    if (accessToken !== candidate) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
+    authenticated = true; notifySession();
+  } catch (error) { if (accessToken === candidate) signOut(); throw error; }
+}
+function endpoint(path: string) {
+  // Only application paths may receive the private authorization header.
+  if (!path.startsWith('/api/') || new URL(path, 'https://local.invalid').pathname.indexOf('/api/') !== 0) {
+    throw new ApiError('Ungültiger API-Pfad.', 0);
+  }
+  return `${apiBase || ''}${path}`;
+}
+async function checkedResponse(path: string, options: RequestInit = {}) {
+  const method = (options.method || 'GET').toUpperCase();
   const mutating = !['GET', 'HEAD'].includes(method);
   if (mutating && !csrfToken) await api<Health>('/api/health');
   const headers = new Headers(options.headers);
+  const requestToken = accessToken;
+  if (hosted) {
+    if (!requestToken) throw new ApiError('Bitte zuerst anmelden.', 401);
+    headers.set('Authorization', `Bearer ${requestToken}`);
+  }
   if (mutating) headers.set('X-Lab-Token', csrfToken);
   if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   let response: Response;
-  try { response = await fetch(path, { ...options, headers, credentials: 'same-origin' }); }
+  try { response = await fetch(endpoint(path), { ...options, headers, credentials: hosted ? 'omit' : 'same-origin', redirect: 'error' }); }
   catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
-    throw new ApiError('Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
+    throw new ApiError(hosted ? 'Die Online-Werkbank ist nicht erreichbar. Bitte Verbindung und Serverstatus prüfen.' : 'Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
   }
-  const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (hosted && response.status === 401 && accessToken === requestToken) signOut();
+    const body = await response.json().catch(() => ({}));
     const detail = body.detail;
     const message = typeof detail === 'string' ? detail : Array.isArray(detail)
       ? detail.map((item: { loc?: string[]; msg?: string }) => `${item.loc?.slice(1).join('.') || 'Eingabe'}: ${item.msg || 'ungültig'}`).join(' · ')
       : `Die Anfrage konnte nicht verarbeitet werden (${response.status}).`;
     throw new ApiError(message, response.status);
   }
-  if (path === '/api/health' && body.csrf_token) csrfToken = body.csrf_token;
+  return { response, requestToken };
+}
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const { response, requestToken } = await checkedResponse(path, options);
+  const body = await response.json().catch(() => ({}));
+  if (path === '/api/health' && body.csrf_token && (!hosted || requestToken === accessToken)) csrfToken = body.csrf_token;
   return body as T;
+}
+export async function downloadFile(path: string, filename: string) {
+  const { response } = await checkedResponse(path);
+  const expectedType = filename.endsWith('.pdf') ? 'application/pdf' : filename.endsWith('.zip') ? 'application/zip' : null;
+  if (expectedType && response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== expectedType) {
+    throw new ApiError('Der Server hat keine gültige Download-Datei geliefert.', 0);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a'); link.href = url; link.download = filename;
+  document.body.appendChild(link);
+  try { link.click(); } finally { link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 10000); }
 }
 export function post<T>(path: string, body?: unknown) {
   return api<T>(path, { method: 'POST', ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });

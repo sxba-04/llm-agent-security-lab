@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "browsers:install": "playwright install chromium",
-    "test:e2e:report": "playwright show-report --host 127.0.0.1 --port 9323"
+    "test:e2e:report": "playwright show-report --host 127.0.0.1 --port 9323",
+    "test:e2e:hosted": "playwright test --config playwright.hosted.config.ts"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

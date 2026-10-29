@@ -1,10 +1,10 @@
-# Bedrohungsmodell des lokalen Labors
+# Bedrohungsmodell des Labors
 
-Stand: 27. Oktober 2026. Dieses Dokument beschreibt die vorhandene Architektur und ihre Prüfziele. Es bestätigt keine vollständige Absicherung. Die verbindlichen Sicherheitsinvarianten und der Bewertungsmaßstab für Befunde stehen in [SECURITY.md](../SECURITY.md).
+Stand: 29. Oktober 2026. Dieses Dokument beschreibt die vorhandene Architektur und ihre Prüfziele. Es bestätigt keine vollständige Absicherung. Die verbindlichen Sicherheitsinvarianten und der Bewertungsmaßstab für Befunde stehen in [SECURITY.md](../SECURITY.md).
 
 ## System und Schutzgüter
 
-Die Anwendung besteht aus einer lokalen React-Oberfläche, einem FastAPI-Dienst, dem gemeinsamen Python-Versuchskern und lokalen Belegdateien. Der reguläre Webstart verwendet einen Prozess auf `127.0.0.1`. Eine Anmeldung oder Trennung verschiedener Betriebssystemnutzer wird nicht angeboten. Die GUI führt ausschließlich Mock-Läufe aus; ein echter Modellzugang existiert nur als gesondert aktivierte CLI-Betriebsart.
+Die Anwendung besteht aus einer React-Oberfläche, einem FastAPI-Dienst, dem gemeinsamen Python-Versuchskern und Belegdateien. Der reguläre lokale Webstart verwendet einen Prozess auf `127.0.0.1`. Der am 29.10.2026 vom Team angeforderte zusätzliche Hosting-Modus verwendet eine öffentliche Pages-Oberfläche und eine durch Zugangstoken geschützte HTTPS-API mit dauerhaftem Workspace. Dieser Modus ist ausdrücklich auszuwählen; fehlende Konfiguration verhindert den Start. Die GUI führt in beiden Modi ausschließlich Mock-Läufe aus; ein echter Modellzugang existiert nur als gesondert aktivierte CLI-Betriebsart.
 
 | Schutzgut | Warum es geschützt werden muss |
 |---|---|
@@ -38,7 +38,15 @@ In B und F ist P absichtlich deaktiviert. Ein dort erlaubter Zugriff auf ein ges
 
 ## Annahmen und noch offene Nachweise
 
-- Die Anwendung wird durch die Autoren auf ihren lokalen Rechnern mit synthetischen Daten betrieben. Eine Netzwerkfreigabe, zusätzliche Agententools oder ein Mehrbenutzerbetrieb wären Änderungen dieses Modells.
+### Zusätzlich für den Hosting-Modus
+
+Die öffentliche Oberfläche enthält keine Zugangstoken oder Versuchsdaten. Der Browser sendet einen eingegebenen zufälligen Zugangstoken ausschließlich an die konfigurierte HTTPS-API; die Anmeldung bleibt im Arbeitsspeicher. Die API vergleicht SHA-256-Hashes, schützt auch PDF-/Archivdownloads und lässt Browseranfragen nur von ihren exakt konfigurierten Ursprüngen zu. CORS ist keine Authentifizierung. Der öffentliche `/healthz`-Endpunkt zeigt nur den Zustand `ok`, keine Belege oder Sitzungstoken.
+
+Ein externer HTTPS-Proxy, eine tatsächlich persistente Disk sowie genau eine Instanz und ein Prozess sind Voraussetzungen. Weiterleitungsheader dürfen die Hostprüfung nicht umgehen. Die beiden Autoren teilen sich Workspace und Rechte; personengebundene Bewertungsunabhängigkeit und gegenseitige Isolation werden nicht zugesichert. Ein Dienstneustart darf laufende Arbeit als unterbrochen ausweisen, aber nicht automatisch wiederholen. Ein erfolgreicher lokaler Integrationstest belegt noch keine tatsächlich eingerichtete externe Speicherung oder Veröffentlichung.
+
+### Weiterhin geltende Grenzen
+
+- Die Anwendung verwendet lokal wie gehostet ausschließlich synthetische Daten. Zusätzliche Agententools, öffentliche Registrierung oder voneinander isolierte Mandanten wären weitere Änderungen dieses Modells.
 - Betriebssystemkonto und Arbeitsverzeichnis bilden keine voneinander isolierten Mandanten. Hashes sind keine digitale Signatur gegen einen Angreifer, der Belege und Prüfwerte gemeinsam ersetzen kann.
 - Metadaten beschleunigen die Kampagnenliste. Sie ersetzen beim Öffnen nicht die vollständige Belegprüfung und verhindern keine beliebigen Dateisystem-Rennen.
 - Der PDF-Unterprozess ist keine allgemeine Sandbox. Unter Windows fehlt weiterhin eine harte Prozess-Speichergrenze; die äußere Isolation vor echten Modellversuchen ist noch gesondert nachzuweisen.

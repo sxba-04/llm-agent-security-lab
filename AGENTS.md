@@ -19,7 +19,7 @@
 
 ## Runtime and evidence
 
-- Serve the workbench on loopback only. UI runs remain mock-only until a separately authorized API-pilot change.
+- The ordinary workbench launcher remains loopback-only. The separately authorized hosted mode uses `hosted_cli` with explicit HTTPS origins, hashed high-entropy operator tokens and a persistent shared workspace. Never expose the local launcher by merely disabling its access checks. UI runs remain mock-only until a separately authorized API-pilot change.
 - CI and development tests must not make live model calls. A paid experiment requires explicitly authorized scope, configured credentials and the dedicated paid-run command. The study's API budget ceiling is EUR 250.
 - Never store credentials in Git, prompts, artifacts or logs. Do not disable TLS verification or organizational security controls.
 - Preserve original campaign records, event logs, source documents and review provenance. Write derived reports separately; report incomplete or damaged evidence honestly.

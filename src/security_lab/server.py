@@ -1,4 +1,4 @@
-"""Same-origin, loopback-only API for the offline research workbench."""
+"""Mock-only API; local by default, explicitly authenticated when hosted."""
 from __future__ import annotations
 
 import csv
@@ -29,6 +29,7 @@ from .documents import (MAX_PDF_BYTES, DocumentError, apply_document_override, c
                         import_document, list_documents, load_document, reject_symlinks)
 from .evaluation import summarize
 from .jobs import CampaignJobs, checked_tree
+from .hosted import HostedAccessMiddleware, HostedSettings
 
 REVIEW_ID = re.compile(r"review-[0-9a-f]{32}\Z")
 REVIEW_API_ID = re.compile(r"(?:review-[0-9a-f]{32}|review-copy-[0-9a-f]{64})\Z")
@@ -147,8 +148,9 @@ def _version_path(directory: Path, prefix: str) -> Path:
     return directory / f"{prefix}-{max(versions, default=0) + 1:06d}.json"
 
 
-def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = None) -> FastAPI:
-    """Create a local mock-only workbench; credentials are never read here."""
+def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = None,
+               *, hosted_settings: HostedSettings | None = None) -> FastAPI:
+    """Create a mock-only workbench; hosting must be configured explicitly."""
     workspace = reject_symlinks(Path(workspace))
     cases_dir = checked_tree(Path(cases_dir))
     jobs = CampaignJobs(workspace)
@@ -164,8 +166,13 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         jobs.shutdown()
 
     app = FastAPI(title="LLM Agent Security Lab", version=__version__, lifespan=lifespan,
-                  docs_url=None, redoc_url=None, openapi_url=None)
-    app.add_middleware(LocalAccessMiddleware, token=token)
+                  docs_url=None, redoc_url=None, openapi_url=None,
+                  redirect_slashes=hosted_settings is None)
+    if hosted_settings is None:
+        app.add_middleware(LocalAccessMiddleware, token=token)
+    else:
+        app.add_middleware(HostedAccessMiddleware, settings=hosted_settings,
+                           token=token, max_request_bytes=MAX_REQUEST_BYTES)
     app.state.jobs = jobs
     app.state.workspace = workspace
 

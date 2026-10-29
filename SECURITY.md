@@ -2,7 +2,7 @@
 
 ## System and scope
 
-This repository is a synthetic research laboratory for indirect prompt injection in tool-using LLM applications. The current workbench is a local, single-user FastAPI/React application. Its supported launcher binds to `127.0.0.1`; it is not a hosted service or a multi-user authentication system.
+This repository is a synthetic research laboratory for indirect prompt injection in tool-using LLM applications. The ordinary FastAPI/React launcher binds to `127.0.0.1`. An explicitly selected hosted mode supports the two trusted operators through a GitHub Pages frontend and a separate HTTPS Python service. It authenticates high-entropy operator tokens but does not provide tenant isolation, reviewer identity enforcement or a general public registration system. See [hosting requirements](docs/hosting.md).
 
 The execution core exposes only `read_ticket` and `append_note` against fresh in-memory synthetic tickets. The GUI starts mock campaigns only. A separate CLI adapter can contact a fixed model-provider endpoint after explicit paid-run configuration and operator acknowledgement.
 
@@ -21,7 +21,7 @@ Review the execution core, provider and budget handling, local HTTP service, PDF
 
 1. Model-controlled data must not enable host commands, arbitrary filesystem/network access or additional model tools.
 2. Every ticket effect passes through the shared gateway and syntax checks. In P/FP, authorization must use trusted session data before the effect occurs.
-3. The web API must remain mock-only, use the supported local launcher and managed workspace paths, and reject foreign-origin requests and unapproved mutations.
+3. The web API must remain mock-only and use managed workspace paths. Local mode must retain loopback Host/Origin and mutation-token checks. Hosted mode must authenticate every data endpoint including downloads, require the configured public Host and exact allowed Origins, preserve mutation/body checks, and reject missing or invalid configuration. Only the minimal `/healthz` GET is public.
 4. Untrusted article, model and evidence text must render as data, not executable HTML or script.
 5. PDF extraction and archive handling must enforce their documented bounds, reject unsafe paths and retain original source provenance. Confirmation must refer to the actual extracted text used.
 6. Model credentials must not enter persisted configuration, logs, PDF child-process environments or responses. Paid calls must retain explicit activation, reservation/accounting and request limits.
@@ -45,6 +45,10 @@ Report a concrete source-to-impact path, attacker-controlled input, prerequisite
 Known limitations do not authorize suppressing new findings. There are no blanket exclusions for local-only code, mock mode, dependencies, generated code, imported files or test fixtures. A control described here is an invariant to verify, not proof that the implementation satisfies it.
 
 ## Known limitations and outstanding validation
+
+- Hosted operation requires a real HTTPS reverse proxy and durable disk, one process and one service instance. Browser access tokens stay in memory, never frontend build variables, URLs or local storage. Server configuration stores only token hashes. Host/Origin checks do not replace authentication or TLS.
+- Hosted operators share the same workspace and privileges. Separate tokens allow revocation but do not prove who authored a scientific rating, enforce independent A/B review slots, or isolate operators from one another. They remain trusted collaborators.
+- A deployment can interrupt active mock jobs. Existing interruption/evidence handling must remain intact; no automatic replay of model or tool work is permitted. Provider snapshots do not replace downloaded, verified campaign archives.
 
 - The Python environment, CLI acknowledgement flag and PDF subprocess do not establish outer OS/container isolation. That setup remains to be independently verified before real-model experiments.
 - PDF extraction has input/page/text/time limits. POSIX additionally applies CPU/address-space limits; Windows currently has no equivalent hard process-memory limit. This is a limitation, not a general sandbox claim.

@@ -20,6 +20,8 @@ Diese Tabelle behauptet nicht, dass die Autoren den generierten Code bereits sel
 
 Am 29.10.2026 meldete das Team weiße Seiten beim Öffnen heruntergeladener Beispiel-PDFs. ChatGPT/Codex reproduzierte den Fehler mit einem unabhängigen PDF-Renderer, korrigierte die indirekte Einbindung der Inhaltsstreams und ergänzte Struktur-, Rendering- und HTTP-Downloadprüfungen. Eine separate technische Gegenprüfung kontrollierte den Fix. Die Artikeltexte und das Versuchsdesign bleiben unverändert; neu erzeugte PDF-Dateien erhalten andere Dateihashes. Menschliche Autorenabnahme wird damit nicht behauptet.
 
+Am selben Tag beauftragte das Team die vollständige Online-Nutzung ohne lokalen Server und entschied sich nach Klärung der GitHub-Pages-Grenzen für einen zusätzlichen Hostinganbieter. ChatGPT/Codex bereitete mit getrennten Implementierungs- und Prüfaufgaben einen optionalen authentifizierten Python-Betrieb, die Pages-Anmeldung, geschützte Downloads, Deploymentvorlagen und HTTPS-Integrationstests vor. GitHub Pages wurde auf GitHub Actions als Quelle gestellt. Eine abgeschlossene Anbieterbuchung, externe Persistenzprüfung, Veröffentlichung oder menschliche fachliche Abnahme wird durch diese Vorbereitung nicht behauptet.
+
 ## Einträge für eigene Arbeit
 
 Für relevante Beiträge werden Verantwortliche, konkrete Tätigkeit, Gegenprüfung und Bezug zu PR, Commit oder Kapitel festgehalten. Ein geeigneter Eintrag lautet beispielsweise:
