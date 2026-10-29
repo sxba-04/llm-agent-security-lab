@@ -12,8 +12,8 @@ dist/
 runs/
 .idea/
 # Shared tasks only; interpreter, proxy and debugger settings stay local.
-.vscode/*
-!.vscode/tasks.json
+**/.vscode/*
+!/.vscode/tasks.json
 node_modules/
 frontend/dist/
 frontend/coverage/
