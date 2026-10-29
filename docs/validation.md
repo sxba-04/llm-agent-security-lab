@@ -2,6 +2,18 @@
 
 Diese Prüfungen betreffen die Implementierung. Sie sind keine empirischen Ergebnisse über die Angreifbarkeit eines Sprachmodells.
 
+## Actions und Abnahmeanleitung vom 29. Oktober 2026
+
+Sebastian hat zurückgemeldet, dass der aktuelle `main`-Stand nach Synchronisation der Abhängigkeiten und erneutem Frontend-Build auf seinem LUBW-Windows-Laptop funktioniert. Das ist eine bestätigte Einrichtung, keine bereits erledigte gemeinsame fachliche Abnahme.
+
+- Der korrigierte PR-#5-Stand `f3d5d79` besteht alle vier [Windows-/Linux-CI-Jobs](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/40878109252). Die Git-Ausnahme für gemeinsame VS-Code-Tasks wurde mit tatsächlichen Git-Abfragen geprüft; persönliche IDE-Dateien bleiben auch in Unterordnern ignoriert.
+- Der neue Actions-Helfer wurde lokal unter Linux mit Python 3.12.14 geprüft: Testsuite mit 257 Tests, `OK (skipped=1)`; der echte Windows-Lesehandle-Test bleibt auf Linux übersprungen. Drei neue Tests prüfen ungültige Workflow-Eingaben, unveränderte vorhandene Belege und Fehlerweitergabe ohne falschen Erfolgsstatus.
+- Tatsächliche Helferläufe mit 24 und 288 Mock-Läufen durchliefen Auswertung, Export unbewerteter Review-Unterlagen, CSV, Archivprüfung, Wiederherstellung und identische Neuauswertung. Ein zusätzlich reproduzierter Auswertungsfehler nach 24 Läufen begründete die getrennten, ausdrücklich ungeprüften Diagnoseartefakte für Fehlerfälle.
+- Die [Klickanleitung](manual-acceptance.md) wurde anhand der React-Beschriftungen und unabhängig ausgeführter Mock-Läufe geprüft. Ein tatsächlicher FastAPI-TestClient-Durchlauf importierte und bestätigte sechs Beispiel-PDFs, führte die 24-Lauf-Kampagne aus und prüfte Quellenhashes, Vergleichswerte und Archiv-Rundlauf. Eine weitere unabhängige Gegenprüfung bestätigte die Solltabellen, 24 Vergleichsgruppen und Bewertungs-/Archivschritte. Ein vollständiger menschlicher Browser-Abnahmedurchlauf wird dadurch nicht behauptet.
+- Das [Ruleset für `main`](branch-protection.md) wurde tatsächlich aktiviert; GitHub bestätigt `protected: true`, aktive Regeln, die vier CI-Checks mit GitHub-Actions-Herkunft und keine Bypass-Berechtigung.
+
+Die neuen Workflow-Ausführungen unter GitHub und ihre Reviews werden am endgültigen Folge-PR dokumentiert. Die [Protokollvorlage](manual-acceptance-record-template.md) bleibt ausdrücklich unausgefüllt: Autorenentscheidungen, menschliche Bewertungen und Jonahs Einrichtung sind weiterhin offen. Es wurden keine echten Modellaufrufe ausgeführt.
+
 ## Gemeinsame VS-Code-Aufgaben vom 29. Oktober 2026
 
 Auf Basis von `main` bei `421dfa4` wurden die gemeinsamen Tasks und korrigierten Windows-Befehle lokal unter Windows mit Python 3.12.15, uv 0.13.5 und Node.js 24.22.1/npm 11.19.1 geprüft. Die PowerShell-Ausführungsrichtlinie blieb `Restricted`; die Tasks verwenden unter Windows `npm.cmd` statt `npm.ps1`.
