@@ -18,6 +18,8 @@ Die Studienarbeit wird von Sebastian Herrmann und Jonah Häuser verantwortet. Ei
 
 Diese Tabelle behauptet nicht, dass die Autoren den generierten Code bereits selbst geschrieben, vollständig geprüft oder empirisch validiert haben. Der tatsächliche Prüfstand wird nach dem Review ergänzt.
 
+Am 29.10.2026 meldete das Team weiße Seiten beim Öffnen heruntergeladener Beispiel-PDFs. ChatGPT/Codex reproduzierte den Fehler mit einem unabhängigen PDF-Renderer, korrigierte die indirekte Einbindung der Inhaltsstreams und ergänzte Struktur-, Rendering- und HTTP-Downloadprüfungen. Eine separate technische Gegenprüfung kontrollierte den Fix. Die Artikeltexte und das Versuchsdesign bleiben unverändert; neu erzeugte PDF-Dateien erhalten andere Dateihashes. Menschliche Autorenabnahme wird damit nicht behauptet.
+
 ## Einträge für eigene Arbeit
 
 Für relevante Beiträge werden Verantwortliche, konkrete Tätigkeit, Gegenprüfung und Bezug zu PR, Commit oder Kapitel festgehalten. Ein geeigneter Eintrag lautet beispielsweise:
