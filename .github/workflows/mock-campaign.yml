@@ -1,0 +1,90 @@
+name: Mock campaign
+run-name: Mock ${{ inputs.preset }} x ${{ inputs.repeats }} on ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: Synthetic cases per repetition
+        required: true
+        default: demo24
+        type: choice
+        options:
+          - demo24
+          - catalog96
+      repeats:
+        description: Repetitions (technical checks, not independent cases)
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+
+permissions:
+  contents: read
+
+jobs:
+  mock-campaign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+      LAB_MOCK_PRESET: ${{ inputs.preset }}
+      LAB_MOCK_REPEATS: ${{ inputs.repeats }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install the locked environment
+        run: |
+          python -m pip install uv==0.12.23
+          uv sync --locked --extra web --group dev
+      - name: Run the selected mock campaign and verify its archive
+        id: campaign
+        run: uv run --locked --extra web python scripts/ci_mock_campaign.py --output runs/manual-mock
+      - name: Preserve synthetic campaign evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: manual-mock-evidence
+          path: |
+            runs/manual-mock/campaign.zip
+            runs/manual-mock/summary.json
+            runs/manual-mock/restored-summary.json
+            runs/manual-mock/metrics.csv
+            runs/manual-mock/verification.json
+            runs/manual-mock/result.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve incomplete mock evidence for diagnosis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ always() && (steps.campaign.outcome == 'failure' || steps.campaign.outcome == 'cancelled') }}
+        with:
+          name: unverified-mock-diagnostics-manual
+          path: |
+            runs/manual-mock/campaign/manifest.json
+            runs/manual-mock/campaign/cases.snapshot.json
+            runs/manual-mock/campaign/records/
+            runs/manual-mock/campaign/events/
+            runs/manual-mock/campaign/reviews/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Summarize the job outcome
+        if: always()
+        shell: python {0}
+        env:
+          LAB_CAMPAIGN_OUTCOME: ${{ steps.campaign.outcome }}
+        run: |
+          import os
+          from pathlib import Path
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
+              stream.write("## Job outcome\n\n")
+              stream.write("- Campaign step: **" + os.environ["LAB_CAMPAIGN_OUTCOME"] + "**.\n")
+              stream.write("- Checked-out commit: `" + os.environ["GITHUB_SHA"] + "`.\n")
+              stream.write("- This workflow is mock-only and creates no public application endpoint.\n")
+              stream.write("- Download artifacts within 14 days; they are not a permanent backup.\n")
