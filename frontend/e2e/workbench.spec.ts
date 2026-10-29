@@ -47,7 +47,7 @@ test('explicit eight-run experiment, evidence, PDF provenance and independent re
   await test.step('A real generated PDF is imported and explicitly reviewed before confirmation', async () => {
     await page.getByRole('link', { name: 'PDF-Quellen', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('link', { name: 'Saubere Beispiel-PDF', exact: true }).click();
+    await page.getByRole('button', { name: 'Saubere Beispiel-PDF', exact: true }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).toBeTruthy();

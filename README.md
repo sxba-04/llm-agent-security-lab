@@ -15,6 +15,8 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Grafische Oberfläche unter Windows
 
+Für die zusätzlich vorbereitete Online-Nutzung siehe [GitHub Pages und geschütztes Python-Backend](docs/hosting.md). GitHub Pages allein kann den Python-Versuchskern nicht ausführen. Die vollständige Online-Werkbank benötigt daher einen getrennten Backend-Dienst mit dauerhafter Speicherung und Zugangscodes; sie bleibt ebenfalls im Mock-Betrieb. Die Hosting-Anleitung unterscheidet vorbereitete Konfiguration und tatsächlich abgeschlossene Veröffentlichung.
+
 Voraussetzungen sind Git, uv und **Node.js 24 ab Version 24.15.0, kleiner als 25**. Die benötigte Python-Version kann uv bereitstellen.
 
 In VS Code den Repository-Ordner öffnen und unter **Terminal → Aufgabe ausführen** zuerst **Labor: Gesamtinstallation**, danach **Labor: Oberflaeche starten** auswählen. Die gemeinsamen Aufgaben sind in [.vscode/tasks.json](.vscode/tasks.json) versioniert und nach dem Klonen direkt verfügbar. Sie setzen installierte Werkzeuge im `PATH` voraus. Details stehen in [VS Code und gemeinsame Aufgaben](docs/vscode.md).

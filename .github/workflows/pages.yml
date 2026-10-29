@@ -1,0 +1,120 @@
+name: Hosted workbench and Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      configured: ${{ steps.configuration.outputs.configured }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install locked test environments
+        run: |
+          python -m pip install uv==0.12.23
+          uv sync --locked --extra web --group dev
+          npm ci --prefix frontend
+      - name: Test React behavior
+        working-directory: frontend
+        run: npm test
+      - name: Build hosted app for an isolated HTTPS integration test
+        working-directory: frontend
+        env:
+          VITE_HOSTED: 'true'
+          VITE_API_BASE_URL: https://127.0.0.1:8876
+        run: npm run build -- --base /llm-agent-security-lab/ --outDir dist-hosted
+      - name: Install test browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Test Pages path with the authenticated backend over HTTPS
+        working-directory: frontend
+        run: npm run test:e2e:hosted
+      - name: Preserve hosted browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hosted-browser-evidence
+          path: |
+            frontend/playwright-report-hosted/
+            frontend/test-results-hosted/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Validate deployment configuration
+        id: configuration
+        env:
+          LAB_API_BASE_URL: ${{ vars.LAB_API_BASE_URL }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const raw = process.env.LAB_API_BASE_URL || '';
+          if (!raw) {
+            appendFileSync(process.env.GITHUB_OUTPUT, 'configured=false\n');
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              '## Pages deployment is not configured\n\n' +
+              'The hosted build and HTTPS browser checks ran, but no website will be published. ' +
+              'Provision the authenticated Python backend and persistent disk, then set the repository variable ' +
+              '`LAB_API_BASE_URL` to its HTTPS origin and select **Settings → Pages → GitHub Actions**. ' +
+              'See `docs/hosting.md`. Never put an access token in this variable.\n');
+            console.log('::warning::Pages deployment skipped: LAB_API_BASE_URL is not configured.');
+          } else {
+            const url = new URL(raw);
+            if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
+                url.pathname !== '/' || url.origin !== raw ||
+                ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
+              throw new Error('LAB_API_BASE_URL must be the public HTTPS API origin without a path, credentials, query or fragment.');
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT, 'configured=true\n');
+          }
+          JS
+      - name: Build publishable frontend from the configured backend origin
+        if: steps.configuration.outputs.configured == 'true'
+        working-directory: frontend
+        env:
+          VITE_HOSTED: 'true'
+          VITE_API_BASE_URL: ${{ vars.LAB_API_BASE_URL }}
+        run: npm run build -- --base /llm-agent-security-lab/
+      - name: Upload only the frontend build for Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.configuration.outputs.configured == 'true'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: frontend/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.build.outputs.configured == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Read existing Pages configuration
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Deploy current main frontend
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

@@ -1,6 +1,9 @@
 node_modules/
 dist/
+dist-hosted/
 *.tsbuildinfo
 coverage/
 test-results/
 playwright-report/
+playwright-report-hosted/
+test-results-hosted/

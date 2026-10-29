@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowDownToLine, CheckCheck, ChevronRight, ClipboardCheck, GitCompareArrows, Play, Plus, RefreshCw, Square, X } from 'lucide-react';
-import { message, navigate, post, useResource } from './api';
+import { downloadFile, message, navigate, post, useResource } from './api';
 import type { Campaign, Data, Document, DocumentEntry, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
 import { DataFields, Disclosure, Empty, EngineeringNote, ErrorBox, formatDate, hasActiveWorker, isDamagedCampaign, JsonBlock, Loading, metricNames, PageHeader, Panel, Pill, sourceNames, Status, TextBlock, TicketDiff, variantNames } from './ui';
 
@@ -70,11 +70,7 @@ function CampaignDetail({ id, brief, onChange }: { id: string; brief?: Campaign;
   async function download() {
     setBusy('download'); setError('');
     try {
-      const response = await fetch(`/api/campaigns/${encodeURIComponent(id)}/archive`, { credentials: 'same-origin' });
-      if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.detail || 'Das Archiv konnte nicht erstellt werden.'); }
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement('a'); link.href = url; link.download = `${id}.zip`; link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+      await downloadFile(`/api/campaigns/${encodeURIComponent(id)}/archive`, `${id}.zip`);
     } catch (err) { setError(message(err)); } finally { setBusy(''); }
   }
   return <div className="stack"><Panel title={<span className="title-with-pill"><span className="mono">{id}</span><Status value={state} /><Pill>{brief?.engineering_only === false ? 'CLI-Import · Laufmodus im Protokoll' : 'Mock'}</Pill></span>} subtitle={brief?.created_at ? formatDate(brief.created_at) : 'Versuch wird vorbereitet'} action={<button className="button quiet small" onClick={() => { detail.refresh(); records.refresh(); onChange(); }}><RefreshCw size={14} />Aktualisieren</button>}><div className="campaign-progress"><span><strong>{count}</strong> / {planned} Läufe protokolliert</span><span>{activeStates.includes(state) ? 'Status wird automatisch aktualisiert' : 'Versuch beendet'}</span></div><progress value={count} max={Math.max(1, planned)} aria-label="Versuchsfortschritt" /><div className="button-row detail-actions"><button className="button secondary small" onClick={() => navigate('compare', { id })}><GitCompareArrows size={16} />Vergleichen</button><button className="button secondary small" disabled={Boolean(busy) || activeStates.includes(state) || !rows.length} onClick={exportReview}><ClipboardCheck size={16} />{busy === 'review' ? 'Wird erstellt …' : 'Bewertungssatz erstellen'}</button><button className="button quiet small" disabled={Boolean(busy) || activeStates.includes(state)} onClick={download}><ArrowDownToLine size={16} />{busy === 'download' ? 'Archiv wird geprüft …' : 'Archiv herunterladen'}</button>{activeStates.includes(state) && brief?.can_cancel !== false && <button className="button danger small" disabled={Boolean(busy) || state === 'cancelling'} onClick={cancel}><Square size={14} />{busy === 'cancel' || state === 'cancelling' ? 'Abbruch angefordert …' : 'Versuch abbrechen'}</button>}</div><ErrorBox error={error || detail.error || records.error} /><Disclosure title="Konfiguration und Herkunft (Manifest)">{manifest ? <JsonBlock value={manifest} /> : <Loading />}</Disclosure></Panel>

@@ -81,6 +81,18 @@ Ausgangsstand: `f64b2a05a79fc2169751eb934460294fc5b68bd4`. Der vorhandene Genera
 
 Die Falltexte, Prompts, Varianten und Bewertungsregeln ändern sich nicht. Neu erzeugte PDF-Bytes und deren Hashes ändern sich; vorhandene Originale und Laufbelege bleiben erhalten.
 
+## Vorbereitung des Hosting-Modus vom 29.10.2026
+
+Zusätzlich zum PDF-Fix wurde ein expliziter Hosting-Modus mit denselben Python-Ausführungs- und Auswertungsmodulen vorbereitet. Der lokale Launcher bleibt unverändert.
+
+- Unter Linux mit den gesperrten Abhängigkeiten: 270 Python-Tests erfolgreich mit einer nur unter Windows ausführbaren Auslassung; darunter elf neue Hosting-Tests für Authentifizierung, Origins, Hosts, CORS, Uploadgrenzen, geschützte Downloads, Neustart/Persistenz und Tokenrotation.
+- 29 React-Tests sowie TypeScript-/Vite-Build für den lokalen und den Hosted-Modus erfolgreich. Ungültige HTTP-Konfiguration wurde erwartungsgemäß abgelehnt.
+- Zwei tatsächliche HTTPS-Testserver mit verschiedenen Origins: zertifikatsgeprüfter HTTPx-Rundlauf für Projektpfad, Anmeldung, Preflight, PDF-Download/-Import/-Bestätigung, acht Mock-Läufe und Archiv erfolgreich. Dies ist kein Browsernachweis.
+- Der lokale Playwright-Browserdownload scheiterte an einer unvollständigen ZIP-Datei. Deshalb werden die vorbereiteten zwei Hosted-Browsertests ausschließlich nach tatsächlich erfolgreicher GitHub-CI als bestanden bezeichnet. Der Pages-Workflow prüft Login, Downloads und Arbeitsablauf über getrennte HTTPS-Origins.
+- Eine unabhängige technische Gegenprüfung wiederholte die elf Hosting- und 29 React-Tests. Externe HTTPS-Terminierung, Anbieter-Disk, produktive URL und Auto-Deployment bleiben nach der tatsächlichen Bereitstellung gesondert zu prüfen.
+
+Keine echten Modellaufrufe, keine erfundenen Autorenbewertungen. Codeprüfung, Tests, Anbieterbereitstellung und fachliche Freigabe bleiben getrennte Nachweise.
+
 ## Noch ausstehend
 
 - Neue Oberfläche auf den weiteren Rechnern des Teams prüfen und die drei repräsentativen Fälle gemeinsam fachlich durchgehen.

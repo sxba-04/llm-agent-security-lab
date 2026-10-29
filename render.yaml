@@ -1,0 +1,32 @@
+# Deployment preparation only. Importing this Blueprint creates paid resources.
+# Review the current price and docs/hosting.md before approving it in Render.
+services:
+  - type: web
+    name: llm-agent-security-lab-api
+    runtime: python
+    branch: main
+    region: frankfurt
+    plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    buildCommand: |
+      set -eu
+      python -m pip install uv==0.12.23
+      uv sync --locked --extra web --no-dev
+    startCommand: uv run --locked --extra web --no-dev python -m security_lab.hosted_cli
+    healthCheckPath: /healthz
+    disk:
+      name: lab-workspace
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: LAB_FRONTEND_ORIGIN
+        value: https://sxba-04.github.io
+      - key: LAB_WORKSPACE
+        value: /var/data/security-lab
+      - key: LAB_ACCESS_TOKEN_HASHES
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: '1'
+      - key: PYTHONUTF8
+        value: '1'
