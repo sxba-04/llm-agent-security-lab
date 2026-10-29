@@ -69,6 +69,18 @@ Unabhängige technische Gegenprüfungen betrafen Adapter-/Antwortfehler, Proveni
 
 Der lokale Browserdownload war in dieser Arbeitsumgebung nicht erreichbar. Beide echten Chromium-Browsertests bestanden anschließend auf GitHub und erneut zusammen mit 206 Python-Tests unter Windows/Linux und elf React-Tests am Commit `efc6abb`: [CI-Durchlauf](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/39927902245). Geprüft wurden expliziter Start, acht Läufe, Neuladen ohne Doppelstart, Ereignis-/Ticketansicht, Vergleiche, PDF-Download/Import/Bestätigung, getrennte Bewertungsentwürfe und mobile Navigation. Die Desktop- und Mobile-Screenshots wurden visuell geprüft. Deshalb wird kein lokal bestandener Chromium-Test behauptet. GitHub Actions führt die Python-Prüfungen unter Windows und Linux sowie React-Tests, Build und einen echten Browserdurchlauf mit FastAPI aus. Der jeweilige Status ist am aktuellen PR-Commit zu prüfen; vorbereitete CI allein ist kein Erfolgsnachweis. Browserberichte und Screenshots werden als CI-Artefakte gespeichert.
 
+## PDF-Rendering-Korrektur vom 29.10.2026
+
+Ausgangsstand: `f64b2a05a79fc2169751eb934460294fc5b68bd4`. Der vorhandene Generator bettete einen Inhaltsstream direkt in das Seitendictionary ein. pypdf konnte Text daraus lesen; Poppler meldete dagegen einen ungültigen Seitentyp und zeigte keinen Inhalt. Die Korrektur registriert Inhalt und Schrift als indirekte PDF-Objekte.
+
+- Unter Linux mit Python 3.12.14 und gesperrtem pypdf 6.21.2: 259 Python-Tests ausgeführt, erfolgreich mit einer betriebssystembedingten Windows-Auslassung.
+- Alle 24 Beispiel-PDFs unabhängig mit Poppler gerendert: keine Rendererfehler, jede Seite mit sichtbarem Inhalt. Eine Beispielseite zusätzlich visuell geprüft.
+- Mehrseitige Texte, Umlaute, Klammern und Backslashes sowie HTTP-Download, PDF-Import, Bestätigung und Archiv-Rundlauf geprüft.
+- Die neuen Struktur-/Renderingprüfungen gegen den ursprünglichen Generator erzeugten erwartungsgemäß 48 Subtest-Fehler; damit erkennen sie den gemeldeten Defekt tatsächlich.
+- Eine unabhängige technische Gegenprüfung wiederholte die PDF-Tests. GitHub-CI und angeforderte Reviews sind gesondert am jeweiligen PR-Head zu prüfen.
+
+Die Falltexte, Prompts, Varianten und Bewertungsregeln ändern sich nicht. Neu erzeugte PDF-Bytes und deren Hashes ändern sich; vorhandene Originale und Laufbelege bleiben erhalten.
+
 ## Noch ausstehend
 
 - Neue Oberfläche auf den weiteren Rechnern des Teams prüfen und die drei repräsentativen Fälle gemeinsam fachlich durchgehen.

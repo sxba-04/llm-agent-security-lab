@@ -374,7 +374,13 @@ class ServerTests(unittest.TestCase):
     def test_pdf_preview_confirmation_and_provenance_in_campaign_archive(self):
         response = self.client.get(f"/api/cases/{self.case['case_id']}/articles/clean/pdf")
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/pdf")
+        self.assertIn(f'{self.case["case_id"]}-clean.pdf', response.headers["content-disposition"])
         content = response.content
+        downloaded = pypdf.PdfReader(BytesIO(content))
+        for page in downloaded.pages:
+            self.assertIsInstance(page.raw_get("/Contents"), pypdf.generic.IndirectObject)
+            self.assertTrue(page.extract_text().strip())
         response = self.client.post("/api/documents", files={"file": ("article.pdf", content, "application/pdf")}, headers=self.headers)
         self.assertEqual(response.status_code, 201, response.text)
         document = response.json()

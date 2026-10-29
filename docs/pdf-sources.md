@@ -14,6 +14,8 @@ Eine importierte PDF ist kein automatisch fachlich freigegebener Testfall. Eine 
 
 ## Herkunft und Grenzen
 
+Die Beispiel-PDFs werden als reguläre PDF-Dateien mit indirekt referenzierten Inhaltsstreams erzeugt. Seit der Korrektur vom 29. Oktober 2026 prüft zusätzlich zu Textextraktion und Dateistruktur ein unabhängiger Poppler-Renderer alle 24 Beispieldateien auf tatsächlich sichtbaren Seiteninhalt. Der bisherige reine Texttest hatte einen Strukturfehler toleriert, durch den PDF-Reader weiße Seiten anzeigen konnten. Bereits heruntergeladene fehlerhafte Beispiele bitte neu herunterladen; archivierte Originaldateien werden nicht nachträglich verändert.
+
 Gespeichert werden die Originaldatei, ihr SHA-256-Hash, die Extraktionsbibliothek mit Version, Seitenzahl, extrahierter Text und dessen Hash sowie die Bestätigung des geprüften Textstands. Zugeordnete Quellen werden als Belege der Kampagne mitgesichert. Die Textbestätigung ändert keine Ticketrechte und keine Modellanweisung.
 
 Der Import verwendet pypdf in einem getrennten Prozess. Zulässig sind bis zu 5 MiB, 50 Seiten und 200.000 Textzeichen. Der Worker wird nach 15 Sekunden beendet. Unter POSIX begrenzt der Worker zusätzlich CPU und Adressraum; unter Windows wird damit keine gleichwertige Betriebssystem-Sandbox oder harte Speichergrenze zugesichert. Die äußere Versuchsisolation bleibt eine eigene, noch zu prüfende Voraussetzung für spätere reale Modellmessungen.
