@@ -19,7 +19,8 @@
 
 ## Runtime and evidence
 
-- The ordinary workbench launcher remains loopback-only. The separately authorized hosted mode uses `hosted_cli` with explicit HTTPS origins, hashed high-entropy operator tokens and a persistent shared workspace. Never expose the local launcher by merely disabling its access checks. UI runs remain mock-only until a separately authorized API-pilot change.
+- The ordinary workbench launcher remains loopback-only. The separately authorized hosted mode uses `hosted_cli` with explicit HTTPS origins and hashed high-entropy operator tokens. The owner explicitly chose a free, ephemeral shared test workspace: use `LAB_STORAGE_MODE=ephemeral`, display its data-loss warning, and preserve important evidence outside that environment. Persistent hosting requires separately authorized resources. Never expose the local launcher by merely disabling its access checks. UI runs remain mock-only until a separately authorized API-pilot change.
+- Hosting authorization currently excludes all charges, paid plans, disks and bookings. Verify the target workspace and absence of a payment method before free-service creation; stop if zero-cost operation cannot be established. Do not upgrade when a free quota is exhausted. A remote model API does not require local model weights or a GPU, but model calls incur separately authorized provider costs.
 - CI and development tests must not make live model calls. A paid experiment requires explicitly authorized scope, configured credentials and the dedicated paid-run command. The study's API budget ceiling is EUR 250.
 - Never store credentials in Git, prompts, artifacts or logs. Do not disable TLS verification or organizational security controls.
 - Preserve original campaign records, event logs, source documents and review provenance. Write derived reports separately; report incomplete or damaged evidence honestly.

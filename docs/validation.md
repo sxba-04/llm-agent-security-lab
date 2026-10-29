@@ -93,6 +93,19 @@ Zusätzlich zum PDF-Fix wurde ein expliziter Hosting-Modus mit denselben Python-
 
 Keine echten Modellaufrufe, keine erfundenen Autorenbewertungen. Codeprüfung, Tests, Anbieterbereitstellung und fachliche Freigabe bleiben getrennte Nachweise.
 
+## Kostenloser flüchtiger Testbetrieb vom 29.10.2026
+
+Ausgangsstand: `c590dd45a96cc0ba687c794c55cf5d5e7eff623b`. Das Team wählte ausdrücklich einen kostenlosen Render-Webservice ohne dauerhafte Disk. Die Änderungen kennzeichnen diesen Speicherlebenszyklus; sie verändern weder Authentifizierung noch B/F/P/FP oder wissenschaftliche Urteile.
+
+- Unter Linux die vollständige Python-Suite mit 271 Tests erfolgreich und einer ausschließlich unter Windows ausführbaren Auslassung. Die zwölf Hosting-Tests wurden zusätzlich gezielt ausgeführt. Hinzugekommen sind die geschützte Statusauskunft für lokale, persistente und flüchtige Arbeitsbereiche sowie die Ablehnung ungültiger `LAB_STORAGE_MODE`-Werte. Der öffentliche `/healthz`-Endpunkt bleibt minimal, die GUI bleibt mock-only.
+- Nach `npm ci` alle 31 React-Tests erfolgreich. Der Hinweis zum Verlust von PDFs, Versuchen und Bewertungen erscheint im flüchtigen Modus und bleibt beim Seitenwechsel sichtbar. Im lokalen und persistenten Modus erscheint er nicht.
+- TypeScript-/Vite-Builds für den lokalen Betrieb und den Hosted-Modus mit Pages-Unterpfad erfolgreich; `git diff --check` ohne Befund.
+- Der lokale Hosted-Playwright-Aufruf startete die beiden HTTPS-Testserver, konnte aber beide Browserfälle wegen der fehlenden Chromium-Programmdatei nicht ausführen. Dies ist kein bestandener Browsertest. Die angepasste Browserfixture verwendet ausdrücklich flüchtigen Speicher und prüft den Warnhinweis bei jeder Anmeldung; ihr tatsächlicher CI-Status ist am endgültigen PR-Head zu prüfen.
+
+Der Nutzer bestätigte den Ziel-Workspace `My Workspace`. Im angemeldeten Render-Dashboard wurden der Hobby-Plan, `No card on file` und keine ausstehenden Kosten tatsächlich geprüft. Das ist der Abrechnungsstand dieser Einrichtungsrunde, keine Zusage für spätere Kontoänderungen.
+
+Eine laufende kostenlose Render-Ressource, die öffentliche Pages-Verbindung und das Verhalten unter der realen 512-MB-Grenze sind noch nicht nachgewiesen. Diese Live-Prüfungen bleiben vor einer Erfolgsmeldung erforderlich. Insbesondere ist weder ein Bedarf von 2 GB RAM noch die Eignung von 512 MB für beliebig große oder parallele PDF-Importe belegt. Es wurden keine Modellanfragen oder kostenpflichtigen Buchungen durchgeführt.
+
 ## Noch ausstehend
 
 - Neue Oberfläche auf den weiteren Rechnern des Teams prüfen und die drei repräsentativen Fälle gemeinsam fachlich durchgehen.

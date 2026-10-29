@@ -74,7 +74,7 @@ jobs:
             appendFileSync(process.env.GITHUB_STEP_SUMMARY,
               '## Pages deployment is not configured\n\n' +
               'The hosted build and HTTPS browser checks ran, but no website will be published. ' +
-              'Provision the authenticated Python backend and persistent disk, then set the repository variable ' +
+              'Provision the authenticated Python backend (free disposable demo or separately approved persistent service), then set the repository variable ' +
               '`LAB_API_BASE_URL` to its HTTPS origin and select **Settings → Pages → GitHub Actions**. ' +
               'See `docs/hosting.md`. Never put an access token in this variable.\n');
             console.log('::warning::Pages deployment skipped: LAB_API_BASE_URL is not configured.');

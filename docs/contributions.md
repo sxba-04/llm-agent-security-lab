@@ -22,6 +22,8 @@ Am 29.10.2026 meldete das Team weiße Seiten beim Öffnen heruntergeladener Beis
 
 Am selben Tag beauftragte das Team die vollständige Online-Nutzung ohne lokalen Server und entschied sich nach Klärung der GitHub-Pages-Grenzen für einen zusätzlichen Hostinganbieter. ChatGPT/Codex bereitete mit getrennten Implementierungs- und Prüfaufgaben einen optionalen authentifizierten Python-Betrieb, die Pages-Anmeldung, geschützte Downloads, Deploymentvorlagen und HTTPS-Integrationstests vor. GitHub Pages wurde auf GitHub Actions als Quelle gestellt. Eine abgeschlossene Anbieterbuchung, externe Persistenzprüfung, Veröffentlichung oder menschliche fachliche Abnahme wird durch diese Vorbereitung nicht behauptet.
 
+Anschließend wählte Sebastian ausdrücklich die kostenlose Render-Testumgebung ohne Kosten oder Buchungen und akzeptierte den zuvor erläuterten flüchtigen Speicher. ChatGPT/Codex passte die Vorlage auf den Free-Plan ohne Disk an und ergänzte eine validierte Speichermodus-Konfiguration, authentifizierte Statusinformationen und einen dauerhaft sichtbaren Hinweis zum Verlust von PDFs, Versuchen und Bewertungen. Die bisherige Auswahl von 2 GB RAM war eine Reserve, kein nachgewiesener Mindestbedarf. Die Dokumentation erläutert getrennt die externe Modell-API und den eigenen Anwendungskern; echte Modellaufrufe bleiben gesondert freizugeben. Der konkrete technische Prüfstand steht in validation.md. Die Vorbereitung behauptet keine bereits erstellte Render-Ressource oder abgeschlossene Live-Abnahme.
+
 ## Einträge für eigene Arbeit
 
 Für relevante Beiträge werden Verantwortliche, konkrete Tätigkeit, Gegenprüfung und Bezug zu PR, Commit oder Kapitel festgehalten. Ein geeigneter Eintrag lautet beispielsweise:

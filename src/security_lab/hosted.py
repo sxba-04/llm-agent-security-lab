@@ -1,7 +1,7 @@
 """Explicit access boundary for a shared, mock-only hosted workbench.
 
 This is operator authentication, not tenant isolation or reviewer identity.
-The HTTPS reverse proxy and persistent workspace are deployment requirements.
+The HTTPS reverse proxy is required. Ephemeral workspaces are explicit demos.
 """
 from __future__ import annotations
 
@@ -41,10 +41,13 @@ class HostedSettings:
     public_origin: str
     frontend_origin: str
     token_hashes: tuple[str, ...]
+    storage_mode: str = "persistent"
 
     def __post_init__(self):
         object.__setattr__(self, "public_origin", _https_origin(self.public_origin))
         object.__setattr__(self, "frontend_origin", _https_origin(self.frontend_origin))
+        if self.storage_mode not in ("persistent", "ephemeral"):
+            raise ValueError("LAB_STORAGE_MODE muss persistent oder ephemeral sein.")
         if (not isinstance(self.token_hashes, tuple) or not 1 <= len(self.token_hashes) <= 8
                 or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
                        for value in self.token_hashes)

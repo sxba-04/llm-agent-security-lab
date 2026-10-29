@@ -29,6 +29,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
         <button className="button primary" type="submit" disabled={!code.trim() || busy}>{busy ? 'Verbindung wird geprüft …' : 'Werkbank öffnen'}<ArrowRight size={17} /></button>
       </form>
       <div className="access-note"><ShieldCheck size={18} /><span>Der Zugangscode bleibt nur für diese Sitzung im Arbeitsspeicher. Nach dem Neuladen meldest du dich erneut an.</span></div>
+      <p className="muted small-text">Ein kostenloses Backend kann nach einer Pause schlafen. Die erste Verbindung dauert dann ungefähr eine Minute; bei einem Verbindungsfehler anschließend erneut anmelden.</p>
       <footer>Synthetische Daten · Kontrollierte Mock-Versuche</footer>
     </section>
   </main>;

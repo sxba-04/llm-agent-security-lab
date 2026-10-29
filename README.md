@@ -15,7 +15,9 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Grafische Oberfläche unter Windows
 
-Für die zusätzlich vorbereitete Online-Nutzung siehe [GitHub Pages und geschütztes Python-Backend](docs/hosting.md). GitHub Pages allein kann den Python-Versuchskern nicht ausführen. Die vollständige Online-Werkbank benötigt daher einen getrennten Backend-Dienst mit dauerhafter Speicherung und Zugangscodes; sie bleibt ebenfalls im Mock-Betrieb. Die Hosting-Anleitung unterscheidet vorbereitete Konfiguration und tatsächlich abgeschlossene Veröffentlichung.
+Für die zusätzlich vorbereitete Online-Nutzung siehe [GitHub Pages und geschütztes Python-Backend](docs/hosting.md). GitHub Pages liefert die Oberfläche; ein getrennter Python-Dienst führt die Anwendung aus. Die Render-Vorlage verwendet jetzt ausdrücklich den kostenlosen Plan ohne dauerhafte Disk. **Dieser Testbetrieb verliert hochgeladene PDFs, Versuche und Bewertungen bei Ruhezustand, Neustart oder Deployment.** Benötigte Archive vorher herunterladen; wichtige Studienbelege lokal sichern. Die Oberfläche bleibt im Mock-Betrieb. Die Hosting-Anleitung trennt vorbereitete Konfiguration und tatsächlich abgeschlossene Veröffentlichung und beschreibt die Voraussetzungen für einen Betrieb ohne Kosten.
+
+Für spätere echte Modellversuche kann das Sprachmodell beim API-Anbieter laufen. Das eigene Backend steuert die Versuche, prüft Toolvorschläge und wertet Belege aus; es benötigt dafür keine lokalen Modellgewichte oder GPU. Echte API-Aufrufe und ihre Kosten bleiben dem separat freizugebenden Pilotbetrieb vorbehalten.
 
 Voraussetzungen sind Git, uv und **Node.js 24 ab Version 24.15.0, kleiner als 25**. Die benötigte Python-Version kann uv bereitstellen.
 

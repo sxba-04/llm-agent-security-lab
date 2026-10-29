@@ -317,7 +317,8 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
 
     @app.get("/api/health")
     def health():
-        return {"version": __version__, "mode": "mock", "csrf_token": token, "running": jobs.running}
+        return {"version": __version__, "mode": "mock", "csrf_token": token, "running": jobs.running,
+                "storage_mode": hosted_settings.storage_mode if hosted_settings else "local"}
 
     @app.get("/api/cases")
     def cases():

@@ -56,6 +56,7 @@ describe('explicit local experiment lifecycle', () => {
   it('loading and refreshing the app never starts an experiment', async () => {
     const first = render(<App />);
     await screen.findByRole('heading', { name: 'Sicherheit sichtbar machen.' });
+    expect(screen.queryByRole('note', { name: 'Flüchtiger Testbetrieb' })).not.toBeInTheDocument();
     expect(calls.filter(c => c.method !== 'GET')).toHaveLength(0);
     first.unmount();
     render(<App />);

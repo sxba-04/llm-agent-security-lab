@@ -62,6 +62,19 @@ class HostedTests(unittest.TestCase):
                 self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertEqual(self.client.post("/healthz").status_code, 401)
 
+    def test_authenticated_health_reports_configured_storage_mode(self):
+        self.assertEqual(self.client.get("/api/health", headers=self.headers).json()["storage_mode"], "persistent")
+        ephemeral = HostedSettings(PUBLIC, FRONTEND, (fingerprint(ACCESS_A),), storage_mode="ephemeral")
+        with TestClient(create_app(self.workspace, CASES, hosted_settings=ephemeral), base_url=PUBLIC) as client:
+            response = client.get("/api/health", headers=self.headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["storage_mode"], "ephemeral")
+            self.assertEqual(response.json()["mode"], "mock")
+            self.assertEqual(client.get("/healthz").json(), {"status": "ok"})
+            self.assertEqual(client.get("/api/health").status_code, 401)
+        with TestClient(create_app(self.workspace, CASES), base_url="http://127.0.0.1") as client:
+            self.assertEqual(client.get("/api/health").json()["storage_mode"], "local")
+
     def test_two_operator_tokens_and_invalid_credentials(self):
         for token in (ACCESS_A, ACCESS_B):
             response = self.client.get("/api/cases", headers={"Authorization": "Bearer " + token})
@@ -204,7 +217,7 @@ class HostedConfigurationTests(unittest.TestCase):
             with self.subTest(hashes=hashes), self.assertRaises(ValueError):
                 HostedSettings(PUBLIC, FRONTEND, hashes)
 
-    def test_launcher_requires_explicit_persistent_workspace_and_safe_port(self):
+    def test_launcher_requires_explicit_workspace_and_safe_port(self):
         with tempfile.TemporaryDirectory() as temporary:
             env = {"RENDER_EXTERNAL_URL": PUBLIC, "LAB_FRONTEND_ORIGIN": FRONTEND,
                    "LAB_ACCESS_TOKEN_HASHES": fingerprint(ACCESS_A), "LAB_WORKSPACE": temporary}
@@ -212,6 +225,12 @@ class HostedConfigurationTests(unittest.TestCase):
             self.assertEqual(configured.public_origin, PUBLIC)
             self.assertEqual(workspace, Path(temporary))
             self.assertEqual(port, 10000)
+            self.assertEqual(configured.storage_mode, "persistent")
+            configured, _, _ = configuration({**env, "LAB_STORAGE_MODE": "ephemeral"})
+            self.assertEqual(configured.storage_mode, "ephemeral")
+            for mode in ("", "temporary", "EPHEMERAL", " ephemeral"):
+                with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "LAB_STORAGE_MODE"):
+                    configuration({**env, "LAB_STORAGE_MODE": mode})
             for key in ("RENDER_EXTERNAL_URL", "LAB_FRONTEND_ORIGIN", "LAB_ACCESS_TOKEN_HASHES", "LAB_WORKSPACE"):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     configuration({name: value for name, value in env.items() if name != key})
