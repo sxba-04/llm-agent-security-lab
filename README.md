@@ -13,11 +13,15 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 **Projektstand 0.2:** Lokale FastAPI-/React-Laboroberfläche, zwölf überarbeitete Fallpaare, kontrolliertes Testmodell, PDF-Wissensartikel, prüfbare Laufarchive und unabhängige Bewertung mit gepaarten Vergleichen. Der endgültige Testkatalog und empirische Ergebnisse mit einem echten LLM liegen noch nicht vor. Ausgaben des Testmodells sind **keine Forschungsergebnisse zur Wirksamkeit der Schutzmaßnahmen**.
 
-## Grafische Oberfläche unter Windows
+## Online-Werkbank
 
-Für die zusätzlich vorbereitete Online-Nutzung siehe [GitHub Pages und geschütztes Python-Backend](docs/hosting.md). GitHub Pages liefert die Oberfläche; ein getrennter Python-Dienst führt die Anwendung aus. Die Render-Vorlage verwendet jetzt ausdrücklich den kostenlosen Plan ohne dauerhafte Disk. **Dieser Testbetrieb verliert hochgeladene PDFs, Versuche und Bewertungen bei Ruhezustand, Neustart oder Deployment.** Benötigte Archive vorher herunterladen; wichtige Studienbelege lokal sichern. Die Oberfläche bleibt im Mock-Betrieb. Die Hosting-Anleitung trennt vorbereitete Konfiguration und tatsächlich abgeschlossene Veröffentlichung und beschreibt die Voraussetzungen für einen Betrieb ohne Kosten.
+Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und mit dem persönlichen Labor-Zugangscode anmelden. Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Die Erreichbarkeit, der Zugriffsschutz und der Free-Plan wurden am 30. Oktober 2026 erneut geprüft. Einrichtung, Prüfgrenzen und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
+
+**Dieser kostenlose Testbetrieb verliert hochgeladene PDFs, Versuche und Bewertungen bei Ruhezustand, Neustart oder Deployment.** Benötigte Archive vorher herunterladen; wichtige Studienbelege lokal sichern. Die Oberfläche bleibt im Mock-Betrieb. Nach einer Ruhephase kann die erste Verbindung ungefähr eine Minute dauern.
 
 Für spätere echte Modellversuche kann das Sprachmodell beim API-Anbieter laufen. Das eigene Backend steuert die Versuche, prüft Toolvorschläge und wertet Belege aus; es benötigt dafür keine lokalen Modellgewichte oder GPU. Echte API-Aufrufe und ihre Kosten bleiben dem separat freizugebenden Pilotbetrieb vorbehalten.
+
+## Grafische Oberfläche unter Windows
 
 Voraussetzungen sind Git, uv und **Node.js 24 ab Version 24.15.0, kleiner als 25**. Die benötigte Python-Version kann uv bereitstellen.
 
@@ -39,6 +43,8 @@ Im Browser **http://127.0.0.1:8765** öffnen. Die Oberfläche startet ausschlie�
 [Bedienung und Einrichtung](docs/workbench.md) · [PDF-Quellen](docs/pdf-sources.md) · [Sicherung und Wiederherstellung](docs/archives.md)
 
 Für eure gemeinsame erste Prüfung folgt der [genauen Klickanleitung mit Sollwerten](docs/manual-acceptance.md). Das [leere Prüfprotokoll](docs/manual-acceptance-record-template.md) hält eure tatsächlich beobachteten Ergebnisse und fachlichen Entscheidungen fest. [GitHub Actions](docs/github-actions.md) erklärt die automatischen Prüfungen und manuell startbaren Mock-Kampagnen.
+
+[Zusammenarbeit und Beiträge](CONTRIBUTING.md) · [Coverage, Sonar und Sicherheitswerkzeuge](docs/quality-tooling.md)
 
 ## Schnellstart unter Windows
 

@@ -1,0 +1,55 @@
+name: Fehler melden
+description: Einen Fehler in Werkbank, PDF-Verarbeitung oder Versuchsausführung nachvollziehbar melden.
+title: "[Fehler]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dieses Issue ist öffentlich. Verwende ausschließlich synthetische Beispieldaten.
+        Entferne Zugangscodes, API-Schlüssel und personenbezogene Daten aus Texten, Logs und Screenshots.
+        Vermutete Sicherheitslücken bitte [privat melden](https://github.com/sxba-04/llm-agent-security-lab/security/advisories/new).
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Betriebsart
+      options:
+        - "Lokale Werkbank"
+        - "GitHub Pages mit Render"
+        - "CLI oder GitHub Actions"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Version und Umgebung
+      description: Commit oder Version, Betriebssystem und Browser; bei unbekannter Online-Version Datum und Uhrzeit angeben.
+      placeholder: "Commit abc1234, Windows 11, Firefox 145"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zum Nachstellen
+      description: Falls relevant auch Fall-ID, Artikelversion und Variante B/F/P/FP nennen.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Erwartetes und tatsächliches Ergebnis
+      placeholder: |
+        Erwartet:
+
+        Tatsächlich:
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Bereinigte Fehlermeldung oder Screenshots
+      description: Optional. Nur den relevanten Ausschnitt mit synthetischen Daten einfügen; keine Zugangsdaten oder vollständigen vertraulichen Archive hochladen.
+    validations:
+      required: false

@@ -1,0 +1,30 @@
+name: Verbesserung vorschlagen
+description: Eine konkrete Verbesserung für das Sicherheitslabor oder die Zusammenarbeit beschreiben.
+title: "[Idee]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Beschreibe den Nutzen für Bedienung, Entwicklung oder Studienauswertung.
+        Verwende nur synthetische Beispiele und keine Zugangscodes, API-Schlüssel oder personenbezogenen Daten.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem soll gelöst werden?
+      description: Beschreibe eine konkrete Situation und wer davon betroffen ist.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Gewünschtes Ergebnis
+      description: Wie soll es künftig funktionieren, und woran erkennen wir, dass die Verbesserung fertig ist?
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Lösungsidee oder Alternativen
+      description: Optional. Falls Versuchskonfiguration, Bewertung, Hosting oder Kosten betroffen sind, den Einfluss kurz nennen.
+    validations:
+      required: false

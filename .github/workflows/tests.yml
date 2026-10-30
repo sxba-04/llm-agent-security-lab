@@ -14,6 +14,13 @@ permissions:
   contents: read
 
 jobs:
+  sonar:
+    name: SonarQube Cloud
+    needs: [test, frontend]
+    uses: ./.github/workflows/sonar.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   test:
     timeout-minutes: 15
     strategy:
@@ -43,7 +50,29 @@ jobs:
           command -v pdftoppm
       - name: Behavioral tests without API keys
         id: python_tests
-        run: uv run --locked --extra web python -m unittest discover -s tests -v
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            uv run --locked --extra web coverage run -m unittest discover -s tests -v
+          else
+            uv run --locked --extra web python -m unittest discover -s tests -v
+          fi
+      - name: Report Python line and branch coverage
+        id: python_coverage
+        if: runner.os == 'Linux'
+        run: |
+          uv run --locked --extra web coverage xml
+          uv run --locked --extra web coverage json
+          uv run --locked --extra web coverage html
+          uv run --locked --extra web coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve Python coverage for Sonar and review
+        if: ${{ always() && runner.os == 'Linux' && steps.python_coverage.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python-coverage
+          path: coverage/python/
+          if-no-files-found: error
+          retention-days: 14
       - name: Run and verify the complete synthetic development catalog
         id: mock_campaign
         run: uv run --locked --extra web python scripts/ci_mock_campaign.py --preset catalog96 --repeats 1 --output runs/ci
@@ -109,8 +138,23 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm test
+      - name: React tests with coverage on Linux
         id: react_tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            npm run test:coverage
+          else
+            npm test
+          fi
+      - name: Preserve frontend coverage for Sonar and review
+        if: ${{ always() && runner.os == 'Linux' && steps.react_tests.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: error
+          retention-days: 14
       - run: npm run build
         id: frontend_build
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -150,10 +194,15 @@ jobs:
           LAB_BUILD_OUTCOME: ${{ steps.frontend_build.outcome }}
           LAB_BROWSER_OUTCOME: ${{ steps.browser_tests.outcome }}
         run: |
+          import json
           import os
           from pathlib import Path
           with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
               stream.write("## Browser checks on " + os.environ["RUNNER_OS"] + "\n\n")
               for label, key in [("React tests", "LAB_REACT_OUTCOME"), ("Production build", "LAB_BUILD_OUTCOME"), ("Chromium with FastAPI", "LAB_BROWSER_OUTCOME")]:
                   stream.write("- " + label + ": **" + os.environ[key] + "**.\n")
+              coverage = Path("coverage/coverage-summary.json")
+              if os.environ["RUNNER_OS"] == "Linux" and os.environ["LAB_REACT_OUTCOME"] == "success" and coverage.is_file():
+                  totals = json.loads(coverage.read_text(encoding="utf-8"))["total"]
+                  stream.write("- Unit-test coverage: **" + str(totals["lines"]["pct"]) + "% lines**, **" + str(totals["branches"]["pct"]) + "% branches**. Browser integration tests are separate.\n")
               stream.write("\nThe server existed only inside this job. The frontend build requires the matching Python backend; it is not a deployed website.\n")

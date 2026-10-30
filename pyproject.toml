@@ -27,5 +27,25 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
+    "coverage>=7.17,<8",
     "httpx>=0.28.1",
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["src/security_lab"]
+relative_files = true
+data_file = "coverage/python/.coverage"
+
+[tool.coverage.report]
+show_missing = true
+precision = 2
+
+[tool.coverage.xml]
+output = "coverage/python/coverage.xml"
+
+[tool.coverage.json]
+output = "coverage/python/coverage.json"
+
+[tool.coverage.html]
+directory = "coverage/python/html"
