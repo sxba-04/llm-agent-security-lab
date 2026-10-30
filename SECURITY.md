@@ -1,5 +1,12 @@
 # Security policy and review context
 
+## Reporting a vulnerability
+
+Use [GitHub private vulnerability reporting](https://github.com/sxba-04/llm-agent-security-lab/security/advisories/new)
+for suspected vulnerabilities or credential exposure. Describe the affected
+revision, controlled input, boundary and reproduction with synthetic data. Do
+not post credentials or sensitive evidence in a public issue.
+
 ## System and scope
 
 This repository is a synthetic research laboratory for indirect prompt injection in tool-using LLM applications. The ordinary FastAPI/React launcher binds to `127.0.0.1`. An explicitly selected hosted mode supports the two trusted operators through a GitHub Pages frontend and a separate HTTPS Python service. It authenticates high-entropy operator tokens but does not provide tenant isolation, reviewer identity enforcement or a general public registration system. See [hosting requirements](docs/hosting.md).

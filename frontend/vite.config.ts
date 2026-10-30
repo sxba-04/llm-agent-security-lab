@@ -19,6 +19,19 @@ export default defineConfig(({ mode }) => {
     proxy: { '/api': { target: 'http://127.0.0.1:8765', changeOrigin: false } },
   },
   preview: { host: '127.0.0.1' },
-  test: { include: ['src/**/*.test.{ts,tsx}'], environment: 'jsdom', setupFiles: ['./src/test-setup.ts'], clearMocks: true },
+  test: {
+    include: ['src/**/*.test.{ts,tsx}'],
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    clearMocks: true,
+    coverage: {
+      provider: 'v8',
+      // Include untouched production modules so coverage cannot hide untested code.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test-setup.ts', 'src/**/*.d.ts'],
+      reportsDirectory: './coverage',
+      reporter: ['text', 'json-summary', ['lcov', { projectRoot: '..' }], 'html'],
+    },
+  },
   };
 });

@@ -1,0 +1,85 @@
+name: SonarQube Cloud with coverage
+
+on:
+  workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  availability:
+    name: Sonar integration status
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      enabled: ${{ steps.status.outputs.enabled }}
+    steps:
+      - name: Explain whether CI analysis is available
+        id: status
+        env:
+          SONAR_CI_ENABLED: ${{ vars.SONAR_CI_ENABLED }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          UNTRUSTED_PR: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
+        run: |
+          echo '## SonarQube Cloud integration' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$UNTRUSTED_PR" = 'true' ]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'CI analysis skipped for a fork or Dependabot PR: no Sonar secret is exposed. Tests and coverage artifacts remain available; main is analyzed after merge when configured. This is not a passed quality gate.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$SONAR_CI_ENABLED" != 'true' ]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'CI analysis is not activated. Keep the existing automatic Sonar analysis until SONAR_TOKEN and SONAR_ORGANIZATION are configured, then disable Automatic Analysis in Sonar and set SONAR_CI_ENABLED=true. See docs/quality-tooling.md. This job does not assert a passed quality gate or uploaded coverage.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$SONAR_ORGANIZATION" ]; then
+            echo '::error::SONAR_ORGANIZATION is required when SONAR_CI_ENABLED=true.'
+            exit 1
+          else
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+            echo 'CI analysis is activated. The separate Sonar analysis job determines the quality gate result.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  analyze:
+    name: Sonar analysis and quality gate
+    needs: availability
+    if: needs.availability.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require the analysis credential
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo '::error::SONAR_TOKEN is missing. Store it as a repository Actions secret; never put it in a variable or source file.'
+            exit 1
+          fi
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Retrieve Python coverage from this workflow run
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: python-coverage
+          path: coverage/python
+      - name: Retrieve frontend coverage from this workflow run
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+      - name: Require both coverage reports
+        run: |
+          test -s coverage/python/coverage.xml
+          test -s frontend/coverage/lcov.info
+      - name: Scan the tested revision and wait for its quality gate
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >-
+            -Dproject.settings=.github/sonar-project.properties
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300

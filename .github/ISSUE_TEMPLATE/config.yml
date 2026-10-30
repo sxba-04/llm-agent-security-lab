@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Sicherheitslücke privat melden
+    url: https://github.com/sxba-04/llm-agent-security-lab/security/advisories/new
+    about: Sicherheitslücken und mögliche Zugangsdatenlecks vertraulich an die Repository-Verantwortlichen melden.

@@ -1,10 +1,20 @@
 # Kostenlose Testwerkbank im Browser
 
-Stand: 29. Oktober 2026. Das Team hat ausdrücklich die kostenlose Umgebung ohne Kosten oder Buchungen gewählt. Die Hosting-Konfiguration ist dafür vorbereitet. Eine Datei im Repository ist kein Nachweis eines bereits bereitgestellten Backends oder einer erfolgreich veröffentlichten Website.
+Stand: 30. Oktober 2026. Die kostenlose Testumgebung ist auf GitHub Pages und Render veröffentlicht. Das Team hat ausdrücklich einen Betrieb ohne Kosten oder Buchungen gewählt. Die folgende Bestandsprüfung beschreibt den tatsächlich beobachteten Stand; sie ist keine Zusage dauerhafter Verfügbarkeit oder ein Ersatz für weitere Funktionstests nach Änderungen.
+
+| Geprüfter Bestandteil | Beobachtung am 30. Oktober 2026 |
+|---|---|
+| [Online-Werkbank](https://sxba-04.github.io/llm-agent-security-lab/) | Öffentliches Frontend mit HTTP 200 erreichbar. |
+| [Backend-Betriebsprüfung](https://llm-agent-security-lab-demo-api.onrender.com/healthz) | HTTP 200 mit ausschließlich `{"status":"ok"}`; die erste Anfrage benötigte beim Aufwecken rund 42 Sekunden. |
+| Geschützte Backend-API | `/api/health` antwortete ohne Zugangscode mit HTTP 401 und Bearer-Anforderung. CORS erlaubte die konfigurierte Origin `https://sxba-04.github.io`. |
+| Render-Konfiguration | Free-Plan, Frankfurt, eine Instanz, Vorschauinstanzen aus, Health Check `/healthz`, Branch `main`, Auto-Deploy `checksPass`. |
+| Bereitgestellter Backend-Stand | Commit `5a8652901f51ee8aa4d7780ec7e8e5d422201241`, Deployment `dep-dbhme0i9lscs739uu920` mit Status `live`. |
+
+Diese erneute Prüfung war lesend und ohne Zugangscode. Sie bestätigt keinen neuen authentifizierten Kampagnenlauf; der vollständige Live-Test vom 29. Oktober umfasste PDF-Download und -Import, acht Mock-Läufe sowie Archivprüfung. Der dafür verwendete temporäre Zugang wurde anschließend entfernt und seine Sperrung geprüft.
 
 ## Aufbau und Funktionsumfang
 
-Nach abgeschlossener Bereitstellung liefert GitHub Pages die gebaute React-Oberfläche unter `https://sxba-04.github.io/llm-agent-security-lab/`. Die Oberfläche spricht nach Eingabe eines Zugangscodes mit einem eigenen Python-Dienst über HTTPS. Dort laufen derselbe Versuchskern, die PDF-Extraktion, die Archivierung und die Bewertung wie in der lokalen Werkbank. Es wird keine zweite Versuchsauswertung in JavaScript implementiert.
+GitHub Pages liefert die gebaute React-Oberfläche unter `https://sxba-04.github.io/llm-agent-security-lab/`. Die Oberfläche spricht nach Eingabe eines Zugangscodes mit dem Python-Dienst unter `https://llm-agent-security-lab-demo-api.onrender.com` über HTTPS. Dort laufen derselbe Versuchskern, die PDF-Extraktion, die Archivierung und die Bewertung wie in der lokalen Werkbank. Es wird keine zweite Versuchsauswertung in JavaScript implementiert.
 
 GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokalen Prozess braucht es deshalb **zusätzlich den laufenden Backend-Dienst**. Die gewählte kostenlose Testumgebung verwendet einen flüchtigen Workspace: **Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment verloren.** Benötigte Archive vorher herunterladen und wichtige Studienbelege außerhalb dieser Umgebung sichern. Die Oberfläche bleibt im Mock-Modus; diese Veröffentlichung aktiviert weder echte Modellaufrufe noch ein API-Budget.
 
@@ -17,7 +27,7 @@ GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokal
 
 ## 1. Backend bereitstellen
 
-`render.yaml` beschreibt einen einzelnen Python-Webservice `llm-agent-security-lab-demo-api` in Frankfurt mit `plan: free`, ohne Disk, Datenbank oder zusätzlichen Worker. Der Workspace liegt unter `/tmp/security-lab-demo`; `LAB_STORAGE_MODE=ephemeral` aktiviert den Speicherhinweis. Ein Git-Commit allein legt keine Ressource an. Alternativ kann derselbe einzelne Dienst mit diesen Einstellungen direkt über die Render-Verwaltung angelegt werden; dann ist die Dienstkonfiguration dort die Quelle der tatsächlichen Einstellungen, bis bewusst eine Blueprint-Verwaltung eingerichtet wird.
+`render.yaml` beschreibt einen einzelnen Python-Webservice `llm-agent-security-lab-demo-api` in Frankfurt mit `plan: free`, ohne Disk, Datenbank oder zusätzlichen Worker. Der Workspace liegt unter `/tmp/security-lab-demo`; `LAB_STORAGE_MODE=ephemeral` aktiviert den Speicherhinweis. Der bestehende Dienst wurde direkt über die Render-Verwaltung eingerichtet; seine dortige Konfiguration ist die Quelle der tatsächlichen Einstellungen. Änderungen an `render.yaml` werden dadurch nicht automatisch als Infrastrukturänderungen übernommen. Eine spätere Blueprint-Verwaltung muss bewusst eingerichtet werden; keinen zweiten Dienst für dieselbe Werkbank anlegen.
 
 **Kostenfreiheit vor Erstellung prüfen:** Den vom Nutzer bestätigten Render-Workspace verwenden, den Hobby-Workspace und den Free-Compute-Plan kontrollieren und sicherstellen, dass kein Zahlungsmittel hinterlegt ist. Der Hobby-Workspace allein macht kostenpflichtige Serverressourcen nicht kostenlos. Bei einer Zahlungsaufforderung, kostenpflichtigen Ressource oder unklarer Abrechnung anhalten; nichts buchen oder automatisch hochstufen. Ohne Zahlungsmittel pausiert Render beim Überschreiten der kostenlosen Transfergrenze den Dienst und beim Ausschöpfen der Build-Minuten weitere Builds. Die Freikontingente sind kein Auftrag, anschließend Ressourcen zuzukaufen.
 
@@ -60,7 +70,7 @@ Die Origin-/Hostprüfung bleibt aktiv. CORS erlaubt ausschließlich die konfigur
 
 ## 2. GitHub Pages mit dem Backend verbinden
 
-1. Im Repository unter **Settings → Secrets and variables → Actions → Variables** die Repository-Variable `LAB_API_BASE_URL` auf die öffentliche Backend-Origin setzen, beispielsweise `https://DEIN-DIENST.onrender.com`. **Keinen Zugangscode hinzufügen.** Die URL darf keinen API-Pfad, Benutzerinformationen, Query oder Fragment enthalten.
+1. Im Repository unter **Settings → Secrets and variables → Actions → Variables** die Repository-Variable `LAB_API_BASE_URL` auf die öffentliche Backend-Origin setzen. Der bestehende Wert ist `https://llm-agent-security-lab-demo-api.onrender.com`. **Keinen Zugangscode hinzufügen.** Die URL darf keinen API-Pfad, Benutzerinformationen, Query oder Fragment enthalten.
 2. Unter **Settings → Pages → Build and deployment → Source** **GitHub Actions** auswählen. HTTPS aktiviert lassen.
 3. Unter **Actions → Hosted workbench and Pages → Run workflow** den Branch `main` starten.
 4. Den erfolgreichen Build und das `github-pages`-Deployment prüfen; anschließend die veröffentlichte URL öffnen und mit dem eigenen Code anmelden.
@@ -71,7 +81,9 @@ Nur `frontend/dist` wird zu Pages übertragen. Der Workflow veröffentlicht wede
 
 ## 3. Automatische Updates und Betrieb
 
-Nach der oben beschriebenen Einrichtung lösen neue Änderungen auf `main` den Frontend-Workflow aus. Das über GitHub angebundene Backend aktualisiert sich nach erfolgreichen CI-Prüfungen. Beide Dienste veröffentlichen getrennt; sie wechseln nicht atomar im selben Moment. API-Änderungen müssen deshalb während der Übergangsphase mit der jeweils anderen Version kompatibel bleiben. Diese Beschreibung des Zielbetriebs ersetzt nicht die Prüfung der tatsächlich eingerichteten Anbindung.
+Neue Änderungen auf `main` lösen den Frontend-Workflow aus. GitHub Pages veröffentlicht nach dem erfolgreichen Build und den HTTPS-Integrationstests dieses eigenen Workflows. Das über GitHub angebundene Backend verwendet **After CI Checks Pass**: Render wartet auf alle erkannten Prüfungen des Commits, auch externe Checks wie SonarQube. GitHub-Schlusszustände `success`, `neutral` und `skipped` gelten dabei als bestanden; ein fehlgeschlagener Check verhindert das automatische Backend-Deployment. Ein grüner Pages-Build allein belegt deshalb noch kein aktualisiertes Backend. Neue Qualitätsprüfungen zuerst tatsächlich ausführen und fehlgeschlagene Befunde beheben, statt den Deployment-Schutz auszuschalten.
+
+Beide Dienste veröffentlichen getrennt; sie wechseln nicht atomar im selben Moment. API-Änderungen müssen deshalb während der Übergangsphase mit der jeweils anderen Version kompatibel bleiben. Nach Änderungen an CI oder API den veröffentlichten Pages-Stand und das Render-Deployment desselben `main`-Commits kontrollieren. Die obige Bestandsprüfung hält einen Zeitpunkt fest und aktualisiert sich nicht automatisch.
 
 Der kostenlose Dienst schläft nach 15 Minuten ohne eingehenden Verkehr ein; die nächste Verbindung kann etwa eine Minute zum Aufwecken benötigen. Ein offen benutzter Browser erzeugt reguläre Anfragen. Es wird kein zusätzlicher Keep-alive-Dienst eingerichtet, um die Free-Grenzen zu umgehen.
 
@@ -118,6 +130,7 @@ Der Testbuild liegt separat in `frontend/dist-hosted`; ein vorhandener lokaler B
 - [GitHub Pages: statisches Hosting](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 - [GitHub Pages mit eigenen Workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 - [Render-Webservices und Git-Anbindung](https://render.com/docs/web-services)
+- [Render-Deployments und erfolgreiche CI-Prüfungen](https://render.com/docs/deploys)
 - [Render Free: Ruhezustand, Datenverlust und Kontingente](https://render.com/docs/free)
 - [Render-Preise: Workspace und Compute getrennt](https://render.com/pricing)
 - [Persistente Disks und Deploymentgrenzen](https://render.com/docs/disks)
