@@ -98,7 +98,7 @@ def component(value) -> str:
 
 def location(value: dict) -> dict:
     source = object_value(value)
-    result = select_text(source, ("msg",))
+    result = {}
     if "component" in source:
         result["component"] = component(source["component"])
     if "textRange" in source:
@@ -112,7 +112,9 @@ def issue(value) -> dict:
     source = object_value(value)
     if source.get("project") != PROJECT:
         raise InventoryError("Sonar returned an issue outside the configured project.")
-    result = {name: text_value(source.get(name)) for name in ("key", "rule", "message")}
+    # Diagnostic messages can quote source literals, secrets or personal data.
+    # Export stable identifiers and positions, never upstream free-text messages.
+    result = {name: text_value(source.get(name)) for name in ("key", "rule")}
     result["component"] = component(source.get("component"))
     result.update(select_text(source, ("type", "severity", "status", "issueStatus")))
     if not ("status" in result or "issueStatus" in result):

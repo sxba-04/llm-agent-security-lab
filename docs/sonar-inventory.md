@@ -11,12 +11,16 @@ Das Artefakt `sonar-main-inventory` bleibt 14 Tage verfügbar und enthält
 `sonar-main.json` für `sxba-04_llm-agent-security-lab`, Branch `main`:
 
 - alle vom API-Filter `resolved=false` erfassten Befunde, vollständig paginiert;
-- Regel, Datei, Zeile, Diagnose, Typ/Schweregrad/Status und verfügbare Datenflüsse;
+- Regelkennung, Datei, Zeile, Typ/Schweregrad/Status und verfügbare Datenflusspositionen;
 - Analysekennung, Analysedatum und vollständigen Git-Commit;
 - Coverage-/Duplikationsmesswerte und Quality-Gate-Bedingungen.
 
 Autoren, Bearbeiter, E-Mail-Felder, Kommentare und Quelltexte werden nicht
-exportiert. Fehlende Messwerte erscheinen als `missing_metrics`, nicht als null
+exportiert. Auch Freitextdiagnosen (`message`) und Meldungen an Datenflusspositionen
+(`msg`) werden vollständig ausgelassen: Sie können vertrauliche Quelltextliterale
+oder personenbezogene Angaben zitieren. Regelkennungen und Fundstellen erlauben
+die Prüfung am angegebenen Quellcode-Commit; zusätzliche Diagnoseinformationen
+bleiben in Sonar. Fehlende Messwerte erscheinen als `missing_metrics`, nicht als null
 Prozent. Das Ergebnis ist eine Momentaufnahme für die anschließende Bewertung
 gegen [SECURITY.md](../SECURITY.md), kein Nachweis bestätigter Schwachstellen.
 Ein bestandenes Quality Gate bedeutet nicht, dass keine Altbefunde bestehen.

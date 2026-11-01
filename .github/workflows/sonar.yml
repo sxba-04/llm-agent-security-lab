@@ -79,6 +79,7 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >-
+            -Dsonar.scanner.autoconfig.enabled=false
             -Dproject.settings=.github/sonar-project.properties
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.qualitygate.wait=true

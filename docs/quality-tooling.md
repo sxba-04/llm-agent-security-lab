@@ -100,8 +100,12 @@ Für eine erneute Einrichtung oder einen späteren Tokenwechsel gilt:
    Quality Gate abgeschlossen ist. Anschließend einen aktuellen PR prüfen.
 
 Die Konfiguration liegt in `.github/sonar-project.properties` und wird dem
-Scanner explizit übergeben; sie liegt während der Umstellung nicht als
-automatisch erkannte Konfigurationsdatei im Repository-Root. Der Job
+Scanner explizit übergeben. Der Scanner setzt
+`sonar.scanner.autoconfig.enabled=false`, damit die separat angebotene
+**Automatic configuration (Beta)** unsere ausdrückliche Quell-/Testzuordnung
+nicht ignoriert. Dieser Schalter ist unabhängig von **Automatic Analysis** und
+ändert keine Coverage-Berichtspfade. Die Konfigurationsdatei liegt weiterhin
+außerhalb des Repository-Roots und wird ausdrücklich ausgewählt. Der Job
 `Sonar integration status` erklärt bei deaktivierter CI-Analyse den Grund.
 `Sonar analysis and quality gate` wird dann übersprungen. Ein solcher Skip ist
 kein bestandenes Quality Gate. Ist CI-Analyse aktiviert, führen fehlende
@@ -139,8 +143,10 @@ GitHubs Code-Scanning-Übersicht zeigte bei dieser Kontrolle zusätzlich 23 offe
 CodeQL-Meldungen auf `main`: 22 zu Pfadausdrücken und eine zur TLS-Konfiguration
 des HTTPS-Testservers. Alle waren als High eingestuft. Das ist eine
 Scanner-Inventur, keine Bestätigung von 23 ausnutzbaren Schwachstellen. Die
-Meldungen bleiben für eine nachvollziehbare Prüfung offen; die Tool-Einrichtung
-unterdrückt sie nicht.
+22 Pfadmeldungen wurden am 01.11.2026 einzeln anhand ihrer Datenflüsse geprüft
+und mit konkreter Begründung als False Positive abgeschlossen. Die TLS-Meldung
+bleibt bis zur verifizierten ausdrücklichen Mindestversion im Testserver offen.
+Die Analyseregeln bleiben aktiv; es gibt keine pauschale Unterdrückung.
 
 Sinnvolle nächste Schritte sind die priorisierte Befundprüfung, gezielte Tests
 für bislang ungetestete Fehlerpfade und die gemeinsame fachliche Abnahme von

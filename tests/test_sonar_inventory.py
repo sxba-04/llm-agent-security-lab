@@ -76,6 +76,34 @@ class SonarInventoryTests(unittest.TestCase):
             with self.assertRaises(inventory.InventoryError):
                 inventory.collect(client)
 
+    def test_free_text_diagnostics_never_enter_inventory_or_artifact(self):
+        private_values = ("person@example.test", "Synthetic Person Name",
+                          "synthetic-api-key-unrelated-to-sonar-token",
+                          "password = 'synthetic-source-literal'", "Private diagnostic note")
+        client = FakeSonar()
+        client.rows = []
+        for index, private in enumerate(private_values):
+            row = sample_issue(str(index))
+            row["message"] = private
+            row["flows"][0]["locations"][0]["msg"] = private
+            client.rows.append(row)
+        report = inventory.collect(client)
+        for private in private_values:
+            self.assertNotIn(private, json.dumps(report))
+        for row in report["issues"]:
+            self.assertNotIn("message", row)
+            self.assertEqual(row["rule"], "python:S0000")
+            self.assertEqual(row["component"], inventory.PROJECT + ":src/example.py")
+            self.assertEqual(row["line"], 4)
+            self.assertEqual(row["flows"][0]["locations"], [{
+                "component": inventory.PROJECT + ":src/example.py",
+                "textRange": {"startLine": 4, "endLine": 5}}])
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "inventory.json"
+            inventory.publish(report, "different-synthetic-sonar-token", output)
+            for private in private_values:
+                self.assertNotIn(private, output.read_text())
+
     def test_partial_duplicate_changed_and_oversized_pages_are_rejected(self):
         mutations = (
             lambda response: response["issues"].pop(),
@@ -118,7 +146,7 @@ class SonarInventoryTests(unittest.TestCase):
             with self.assertRaisesRegex(inventory.InventoryError, "changed during collection"):
                 inventory.collect(client)
 
-    def test_mqr_fields_and_optional_locations_preserve_diagnostic_context(self):
+    def test_mqr_fields_and_optional_locations_preserve_positions(self):
         row = sample_issue("one")
         for key in ("status", "type", "severity", "line"):
             row.pop(key)
@@ -128,7 +156,7 @@ class SonarInventoryTests(unittest.TestCase):
         result = inventory.issue(row)
         self.assertEqual(result["impacts"], [{"softwareQuality": "SECURITY", "severity": "HIGH"}])
         self.assertEqual(result["textRange"], {"startLine": 4, "endLine": 5})
-        self.assertEqual(result["flows"][0]["locations"], [{"msg": "Project-level diagnostic"}])
+        self.assertEqual(result["flows"][0]["locations"], [{}])
         row.pop("issueStatus")
         with self.assertRaises(inventory.InventoryError):
             inventory.issue(row)
