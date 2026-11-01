@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -56,7 +56,7 @@ class SonarClient:
             value = json.loads(payload)
         except HTTPError as error:
             raise InventoryError(f"Sonar request failed (HTTP {error.code}); no inventory published.") from None
-        except (URLError, OSError, ValueError):
+        except (OSError, ValueError):
             raise InventoryError("Sonar transport or JSON response failed; no inventory published.") from None
         return object_value(value)
 

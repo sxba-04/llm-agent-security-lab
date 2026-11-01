@@ -188,8 +188,9 @@ class SonarInventoryTests(unittest.TestCase):
                     client.get("issues/search", {})
                 self.assertNotIn("synthetic-token", str(caught.exception))
                 self.assertNotIn("private response", str(caught.exception))
+        redirects = inventory.NoRedirects()
         with self.assertRaises(inventory.InventoryError):
-            inventory.NoRedirects().redirect_request(None, None, 302, "", {}, "https://other.example/")
+            redirects.redirect_request(None, None, 302, "", {}, "https://other.example/")
 
     def test_bad_or_oversized_http_json_is_rejected(self):
         client = inventory.SonarClient("synthetic-token")
