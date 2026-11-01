@@ -42,6 +42,21 @@ class CampaignJobsTests(unittest.TestCase):
         self.assertFalse(jobs.running)
         return jobs, result["campaign_id"], jobs.directory(result["campaign_id"])
 
+    def test_unrecognized_campaign_ids_cannot_select_worker_files(self):
+        jobs, campaign_id, directory = self.managed_campaign()
+        original_workers = {path.name: path.read_bytes() for path in jobs.workers.iterdir()}
+        original_manifest = (directory / "manifest.json").read_bytes()
+        identifiers = ("../outside", "..\\outside", "/tmp/outside", "C:\\outside",
+                       campaign_id + "/../outside", campaign_id + "\n", "campaign-" + "a" * 31)
+        for identifier in identifiers:
+            with self.subTest(identifier=identifier):
+                self.assertIsNone(jobs._owner(identifier))
+                for operation in (jobs.manifest, jobs.cancel):
+                    with self.assertRaises(KeyError):
+                        operation(identifier)
+        self.assertEqual({path.name: path.read_bytes() for path in jobs.workers.iterdir()}, original_workers)
+        self.assertEqual((directory / "manifest.json").read_bytes(), original_manifest)
+
     def test_unchanged_list_uses_metadata_cache_but_direct_brief_revalidates(self):
         self.cli_campaign("stable")
         jobs = CampaignJobs(self.workspace)

@@ -391,11 +391,12 @@ def export_campaign(directory: str | Path, output_path: str | Path) -> dict[str,
             if path.is_symlink() or (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat:
                 raise ValueError("Campaign changed during export")
         report = verify_archive(temp_path)
-        # Exclusive destination creation prevents an unnoticed overwrite.
-        with output_path.open("xb") as destination, temp_path.open("rb") as source:
-            shutil.copyfileobj(source, destination)
-            destination.flush()
-            os.fsync(destination.fileno())
+        # Publish only complete, synced bytes. Like write_json_new, a
+        # same-directory hard link is atomic and never replaces a rival output.
+        # Unsupported filesystems fail closed instead of exposing a partial ZIP.
+        with temp_path.open("rb+") as source:
+            os.fsync(source.fileno())
+        os.link(temp_path, output_path)
         return {**report, "archive_path": str(output_path)}
     finally:
         temp_path.unlink(missing_ok=True)

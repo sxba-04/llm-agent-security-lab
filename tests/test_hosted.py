@@ -209,10 +209,11 @@ class HostedTests(unittest.TestCase):
 @unittest.skipUnless(TestClient, "Install the web and dev extras for hosted tests")
 class HostedConfigurationTests(unittest.TestCase):
     def test_invalid_origins_and_token_hashes_fail_closed(self):
+        valid_hashes = (fingerprint(ACCESS_A),)
         for origin in ("", "http://example.test", "https://example.test/path", "https://user@example.test",
                        "https://example.test?x=1", "https://*.example.test", " https://example.test", "https://example.test:99999"):
             with self.subTest(origin=origin), self.assertRaises(ValueError):
-                HostedSettings(origin, FRONTEND, (fingerprint(ACCESS_A),))
+                HostedSettings(origin, FRONTEND, valid_hashes)
         for hashes in ((), ("short",), ("A" * 64,), (fingerprint(ACCESS_A), fingerprint(ACCESS_A)), [fingerprint(ACCESS_A)]):
             with self.subTest(hashes=hashes), self.assertRaises(ValueError):
                 HostedSettings(PUBLIC, FRONTEND, hashes)
@@ -232,8 +233,9 @@ class HostedConfigurationTests(unittest.TestCase):
                 with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "LAB_STORAGE_MODE"):
                     configuration({**env, "LAB_STORAGE_MODE": mode})
             for key in ("RENDER_EXTERNAL_URL", "LAB_FRONTEND_ORIGIN", "LAB_ACCESS_TOKEN_HASHES", "LAB_WORKSPACE"):
+                missing_required_setting = {name: value for name, value in env.items() if name != key}
                 with self.subTest(key=key), self.assertRaises(ValueError):
-                    configuration({name: value for name, value in env.items() if name != key})
+                    configuration(missing_required_setting)
             for value in ("", "runs", str(Path(temporary) / ".." / "escape"), str(Path(temporary).anchor)):
                 with self.subTest(workspace=value), self.assertRaises(ValueError):
                     configuration({**env, "LAB_WORKSPACE": value})

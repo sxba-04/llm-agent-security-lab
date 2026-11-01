@@ -45,8 +45,9 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(packet["article_text"], "An external article")
 
     def test_export_never_overwrites(self):
+        results = [result_fixture()]
         with self.assertRaises(FileExistsError):
-            export_review([result_fixture()], self.path / "review")
+            export_review(results, self.path / "review")
 
     def test_agreement_keeps_originals(self):
         a = self.ratings("a.csv", "Sebastian")
@@ -112,8 +113,9 @@ class ReviewTests(unittest.TestCase):
         a = self.ratings("a.csv", "A")
         b = self.ratings("b.csv", "B")
         combined = combine_reviews(self.paths["mapping"], [a, b], self.path / "combined.json", packets_path=self.paths["reviews"])
+        incomplete = [result_fixture()]
         with self.assertRaises(ValueError):
-            attach_reviews([result_fixture()], combined)
+            attach_reviews(incomplete, combined)
 
     def test_false_block_disagreement_requires_adjudication(self):
         a = self.ratings("a.csv", "A", false_block="yes")

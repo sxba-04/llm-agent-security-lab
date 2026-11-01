@@ -56,7 +56,7 @@ class CoreTests(unittest.TestCase):
         secret = policy["initial_tickets"]["B08"]["secret"]
         self.assertNotIn(secret, policy["final_text"])
         self.assertIn("not observed", policy["final_text"])
-        self.assertEqual(events(policy, "policy_decision")[0]["allowed"], False)
+        self.assertFalse(events(policy, "policy_decision")[0]["allowed"])
 
     def test_allowed_read_works_in_all_four_conditions(self):
         for variant in ("B", "F", "P", "FP"):

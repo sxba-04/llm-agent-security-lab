@@ -133,8 +133,12 @@ Der erste Sonar-Screenshot zeigt 39 Security-, 5 Reliability- und 189
 Maintainability-Befunde im Gesamtbestand. Diese Zahlen wurden nicht als
 validierte Schwachstellen übernommen. Ein bestandener PR-Check bei reinen
 Issue-Vorlagen sagt lediglich etwas über dessen neue Änderungen aus. Die
-Altbefunde müssen anhand Regel, Datei, erreichbarem Datenfluss und tatsächlicher
-Auswirkung gegen [SECURITY.md](../SECURITY.md) geprüft werden. Kein pauschales
+Altbefunde wurden am 1. November anhand Regel, Datei, erreichbarem Datenfluss und
+tatsächlicher Auswirkung gegen [SECURITY.md](../SECURITY.md) geprüft. Die
+[vollständige Einzelbewertung von 230 Kennungen](sonar-triage/README.md) trennt
+Korrekturen, kontextuelle Fehlalarme, begründete Verwendungen und verbleibende
+Wartbarkeitshinweise. Diese Bestandsbewertung ist keine Behauptung, dass Sonars
+Gesamtbestand leer ist. Kein pauschales
 `NOSONAR`, keine Blanket-Exclusions und kein Schließen als False Positive ohne
 Begründung. Absichtlich fehlende synthetische B/F-Policy ist von einem Fehler der
 äußeren Isolation zu unterscheiden.
@@ -148,11 +152,11 @@ und mit konkreter Begründung als False Positive abgeschlossen. Die TLS-Meldung
 bleibt bis zur verifizierten ausdrücklichen Mindestversion im Testserver offen.
 Die Analyseregeln bleiben aktiv; es gibt keine pauschale Unterdrückung.
 
-Sinnvolle nächste Schritte sind die priorisierte Befundprüfung, gezielte Tests
-für bislang ungetestete Fehlerpfade und die gemeinsame fachliche Abnahme von
+Sinnvolle nächste Schritte sind gezielte verhaltensbewahrende Refactorings der
+dokumentierten Wartbarkeitshinweise und die gemeinsame fachliche Abnahme von
 Fällen und Bewertungsrubrik. Erst vor echten Modellversuchen folgen Nachweis der
-äußeren Isolation und gesonderter API-Pilot. Langlebige Studienbelege benötigen
-weiterhin eine gesonderte Speicherentscheidung; kostenlose Hosting-Dienste werden
+äußeren Isolation und gesonderter API-Pilot. Für Studienbelege wurde die
+[Routine lokaler Archivdownloads](archives.md) gewählt; kostenlose Hosting-Dienste werden
 nicht durch Keep-alive-Pings künstlich wachgehalten.
 
 ## Offizielle Referenzen

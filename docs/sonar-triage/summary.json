@@ -1,0 +1,1632 @@
+{
+  "schema_version": 1,
+  "inventory_revision": "12db393771b70f05f12f947fe213c43084a0fce5",
+  "inventory_analysis": {
+    "key": "fe3a8369-1c06-4c9d-a069-f08c8c1b0575",
+    "date": "2026-11-01T00:18:43+0000",
+    "revision": "12db393771b70f05f12f947fe213c43084a0fce5"
+  },
+  "inventory_collected_at": "2026-11-01T00:32:06.977104+00:00",
+  "artifact_sha256": "cad9e9c8aa159dd78bb7bf0b2eb389a37286a26420ea0da944af739dca773711",
+  "inventory_count": 230,
+  "unique_reviewed_count": 230,
+  "outcome_counts": {
+    "open_maintenance_debt": 153,
+    "false_positive": 26,
+    "reviewed_intended_use": 2,
+    "addressed": 49
+  },
+  "remote_sonar_dispositions_changed": false,
+  "issues": [
+    {
+      "key": "AaGMS_8t7rRJBvbBA1nN",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8t7rRJBvbBA1nO",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o2",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o-",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o4",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o3",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o5",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o6",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o7",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o8",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o1",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o_",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o9",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oi",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oc",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oX",
+      "report": "backend.json",
+      "classification": "reviewed_intended_use",
+      "action": "",
+      "outcome": "reviewed_intended_use"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oY",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oh",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oW",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1og",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oZ",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1of",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1od",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oa",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1ob",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oe",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9H7rRJBvbBA1oM",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9H7rRJBvbBA1oL",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9H7rRJBvbBA1oO",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9H7rRJBvbBA1oP",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9H7rRJBvbBA1oN",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9F7rRJBvbBA1oJ",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9F7rRJBvbBA1oK",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9F7rRJBvbBA1oH",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9F7rRJBvbBA1oI",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_857rRJBvbBA1n8",
+      "report": "backend.json",
+      "classification": "reviewed_intended_use",
+      "action": "",
+      "outcome": "reviewed_intended_use"
+    },
+    {
+      "key": "AaGMS_9b7rRJBvbBA1ol",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9b7rRJBvbBA1ok",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9b7rRJBvbBA1om",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9b7rRJBvbBA1on",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nj",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nk",
+      "report": "backend.json",
+      "classification": "false_positive",
+      "action": "",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nl",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nt",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nu",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1ni",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1ny",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nz",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n0",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n3",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n2",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nm",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nn",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1no",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1np",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nq",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nr",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1ns",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nv",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nw",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1nx",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n1",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n4",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n5",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n6",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_837rRJBvbBA1n7",
+      "report": "backend.json",
+      "classification": "valid_maintainability_debt",
+      "action": "",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8s7rRJBvbBA1nK",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8s7rRJBvbBA1nL",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8s7rRJBvbBA1nM",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8i7rRJBvbBA1mh",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mq",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mr",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1ms",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mt",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mu",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mv",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mw",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8l7rRJBvbBA1mx",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1my",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1mz",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m0",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m1",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m2",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m3",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m4",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m5",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m6",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m7",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m8",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m9",
+      "report": "frontend.json",
+      "classification": "FP",
+      "action": "retain_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m-",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1m_",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nA",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nB",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nC",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nD",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nE",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nF",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nG",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nH",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nI",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8o7rRJBvbBA1nJ",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mi",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mj",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mk",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1ml",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mm",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mn",
+      "report": "frontend.json",
+      "classification": "confirmedbehaviorbug",
+      "action": "fixed_locally_pending_ci",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mo",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8k7rRJBvbBA1mp",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8b7rRJBvbBA1l4",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8b7rRJBvbBA1l5",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8b7rRJBvbBA1l6",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8b7rRJBvbBA1l7",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8c7rRJBvbBA1l8",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mS",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mT",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mU",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mV",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mW",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mX",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mY",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mZ",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1ma",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mb",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mc",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1md",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1me",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mf",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8h7rRJBvbBA1mg",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1lx",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1ly",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1lz",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1l0",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1l1",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1l2",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_7E7rRJBvbBA1l3",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1l9",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1l-",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1l_",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mA",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mB",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mC",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mD",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mE",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mF",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mG",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mH",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mI",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mJ",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mK",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mL",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mM",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mN",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mO",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mP",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mQ",
+      "report": "frontend.json",
+      "classification": "validmaintainabilitydebt",
+      "action": "open_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8d7rRJBvbBA1mR",
+      "report": "frontend.json",
+      "classification": "FP",
+      "action": "retain_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9r7rRJBvbBA1pM",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9r7rRJBvbBA1pN",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9w7rRJBvbBA1pO",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n9",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n-",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n_",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9K7rRJBvbBA1oQ",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9D7rRJBvbBA1oG",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oA",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9Y7rRJBvbBA1oj",
+      "report": "python-other.json",
+      "classification": "confirmed_performance_defect",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9m7rRJBvbBA1pA",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_937rRJBvbBA1pU",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9Q7rRJBvbBA1oU",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9N7rRJBvbBA1oT",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oo",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oq",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1or",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ou",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ov",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ow",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ox",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oy",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oz",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1o0",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oD",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oE",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oC",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pC",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pD",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pE",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pF",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pG",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pH",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_957rRJBvbBA1pY",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_957rRJBvbBA1pX",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9Q7rRJBvbBA1oV",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9D7rRJBvbBA1oF",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9K7rRJBvbBA1oR",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "deferred_refactor",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_9L7rRJBvbBA1oS",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "interface_intent_documented",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1op",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "regression_test_added_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1os",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ot",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oB",
+      "report": "python-other.json",
+      "classification": "false_positive",
+      "action": "documented_no_remote_disposition",
+      "outcome": "false_positive"
+    },
+    {
+      "key": "AaGMS_907rRJBvbBA1pR",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_907rRJBvbBA1pS",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_927rRJBvbBA1pT",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9o7rRJBvbBA1pB",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pI",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pJ",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pK",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pL",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9y7rRJBvbBA1pP",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_9y7rRJBvbBA1pQ",
+      "report": "python-other.json",
+      "classification": "valid_maintainability_debt",
+      "action": "fixed",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nZ",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1na",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nb",
+      "report": "ci.json",
+      "classification": "confirmed_install_hook_exposure",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nc",
+      "report": "ci.json",
+      "classification": "conditional_risk_hardened",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nd",
+      "report": "ci.json",
+      "classification": "conditional_risk_hardened",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1ne",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1nf",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1ng",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1nh",
+      "report": "ci.json",
+      "classification": "context_clarification",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nT",
+      "report": "ci.json",
+      "classification": "context_clarification",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_947rRJBvbBA1pV",
+      "report": "ci.json",
+      "classification": "maintenance_debt",
+      "action": "deferred_maintenance_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_947rRJBvbBA1pW",
+      "report": "ci.json",
+      "classification": "maintenance_debt",
+      "action": "deferred_maintenance_debt",
+      "outcome": "open_maintenance_debt"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nP",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nQ",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nU",
+      "report": "ci.json",
+      "classification": "confirmed_install_hook_exposure",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nV",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nW",
+      "report": "ci.json",
+      "classification": "valid_hardening",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nX",
+      "report": "ci.json",
+      "classification": "conditional_risk_hardened",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nY",
+      "report": "ci.json",
+      "classification": "conditional_risk_hardened",
+      "action": "patch_prepared_pending_ci_and_rescan",
+      "outcome": "addressed"
+    }
+  ]
+}
