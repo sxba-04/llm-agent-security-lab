@@ -1,7 +1,9 @@
 import hashlib
 import copy
 import csv
+import errno
 import json
+import os
 from pathlib import Path
 import stat
 import tempfile
@@ -111,6 +113,66 @@ class ArchiveTests(unittest.TestCase):
                 import_campaign(archive,root/'restored')
             with self.assertRaises(FileExistsError):
                 export_campaign(campaign,archive)
+
+    def test_failed_export_publication_leaves_no_partial_archive_and_can_retry(self):
+        for operation in ('fsync', 'link'):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                original = {path.relative_to(campaign): path.read_bytes()
+                            for path in campaign.rglob('*') if path.is_file()}
+                archive = root / 'campaign.zip'
+                with patch('security_lab.archives.os.' + operation,
+                           side_effect=OSError(errno.ENOSPC, 'Synthetic storage failure')):
+                    with self.assertRaises(OSError):
+                        export_campaign(campaign, archive)
+                self.assertFalse(archive.exists())
+                self.assertEqual(list(root.glob('.campaign-*.zip')), [])
+                self.assertEqual({path.relative_to(campaign): path.read_bytes()
+                                  for path in campaign.rglob('*') if path.is_file()}, original)
+                self.assertTrue(export_campaign(campaign, archive)['verified_integrity'])
+                self.assertTrue(verify_archive(archive)['evidence_complete'])
+
+    def test_export_verification_failure_never_publishes_and_can_retry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            archive = root / 'campaign.zip'
+            with patch('security_lab.archives.verify_archive',
+                       side_effect=ValueError('Synthetic integrity failure')):
+                with self.assertRaisesRegex(ValueError, 'Synthetic integrity failure'):
+                    export_campaign(campaign, archive)
+            self.assertFalse(archive.exists())
+            self.assertEqual(list(root.glob('.campaign-*.zip')), [])
+            self.assertTrue(export_campaign(campaign, archive)['verified_integrity'])
+
+    def test_export_publishes_only_complete_synced_archive_without_overwriting_rival(self):
+        for rival in (False, True):
+            with self.subTest(rival=rival), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                campaign = self.campaign(root)
+                archive = root / 'campaign.zip'
+                real_link = os.link
+                with patch('security_lab.archives.os.fsync', wraps=os.fsync) as synced:
+                    def publish(source, target):
+                        self.assertEqual(synced.call_count, 1)
+                        self.assertFalse(archive.exists())
+                        self.assertTrue(verify_archive(source)['verified_integrity'])
+                        if rival:
+                            archive.write_bytes(b'Existing evidence from a competing export')
+                        return real_link(source, target)
+                    with patch('security_lab.archives.os.link', side_effect=publish) as linked:
+                        if rival:
+                            with self.assertRaises(FileExistsError):
+                                export_campaign(campaign, archive)
+                        else:
+                            self.assertTrue(export_campaign(campaign, archive)['verified_integrity'])
+                    linked.assert_called_once()
+                if rival:
+                    self.assertEqual(archive.read_bytes(), b'Existing evidence from a competing export')
+                else:
+                    self.assertTrue(verify_archive(archive)['evidence_complete'])
+                self.assertEqual(list(root.glob('.campaign-*.zip')), [])
 
     def test_hash_tamper_rejected_and_import_destination_not_created(self):
         with tempfile.TemporaryDirectory() as temp:

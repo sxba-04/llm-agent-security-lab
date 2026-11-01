@@ -45,3 +45,29 @@ Anzahl der Commits und Codezeilen sind kein Ersatz für die fachliche Beschreibu
 Der spätere KI-Nachweis der Arbeit beschreibt die tatsächlich erfolgte Nutzung. Diese Projektdokumentation unterstützt ihn, ersetzt aber nicht die nach den Hochschulvorgaben erforderliche Erklärung.
 
 Am 01.11.2026 überarbeitete ChatGPT/Codex auf Wunsch des Teams PR #17: ein gemeinsamer Sonar-CI-Lauf mit Coverage statt zusätzlichem Beispiel-Workflow, dokumentierte Repository-Variablen und eine ausschließlich lesende Befundinventur. Die Inventur exportiert keine Bearbeiter-, Kommentar- oder Zugangsdaten. Mock-Tests prüfen Pagination, Fremdprojekte, Fehlerbehandlung und Credential-Schutz; eine unabhängige technische sowie getrennte Code-/Sicherheitsprüfung wurde durchgeführt. Aktuelle CI-Ergebnisse stehen am jeweiligen PR-Commit. Fachliche Autorenabnahme und empirische Modellversuche werden dadurch nicht ersetzt.
+
+## Ergänzung vom 1. November 2026: Belegexport und Sicherheitsprüfung
+
+ChatGPT/Codex prüfte die 23 bestehenden CodeQL-Meldungen einzeln anhand der
+erreichbaren Datenflüsse und vorhandenen Grenzen. Die Pfadinjektionsmeldungen
+#1–#22 wurden mit jeweils konkreter False-positive-Begründung geschlossen;
+für #23 wurde die bereits wirksame Mindestversion TLS 1.2 in der HTTPS-Test-Fixture
+explizit gesetzt. Dessen Abschluss durch Merge und erneute Analyse steht noch aus.
+Die Einzelbelege und Grenzen stehen in [der Triage](codeql-triage-2026-11-01.md).
+
+Eine zusätzliche Fehlerpfadprüfung fand eine unvollständige endgültige ZIP nach
+fehlgeschlagener Exportkopie. Codex korrigierte die Veröffentlichung verifizierter
+Archive, ergänzte insgesamt zehn Regressionstests für Export, Dokumentpfade,
+Kampagnenkennungen und Frontend-Dateien sowie eine manuelle Exportroutine für die
+flüchtige Render-Testumgebung. Das Team wählte dafür ausdrücklich lokale,
+versionierte Archivdownloads mit Prüfung und probeweiser Wiederherstellung;
+die technische Verifikation nutzte synthetische Mock-Belege und behauptet keine
+bereits heruntergeladenen Nutzerkampagnen. Eine unabhängige technische Code- und
+Sicherheitsprüfung einschließlich Prozessabbruchproben fand keine blockierenden
+Befunde. Unter Linux liefen 281 Python-Tests: 280 bestanden, ein ausschließlich
+auf Windows ausführbarer Test wurde übersprungen. Die CI am aktuellen PR-Commit
+und menschliche Autorenabnahme sind damit nicht vorweggenommen.
+
+Es wurden keine Modell-API-Aufrufe durchgeführt, keine kostenpflichtigen Ressourcen
+gebucht und keine empirischen LLM-Ergebnisse erzeugt. Versuchsbedingungen,
+Bewertungslogik und Originalbelege bleiben unverändert.
