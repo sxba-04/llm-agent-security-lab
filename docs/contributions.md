@@ -43,3 +43,5 @@ Anzahl der Commits und Codezeilen sind kein Ersatz für die fachliche Beschreibu
 - Weitere KI-Nutzung mit Werkzeug, Zweck und betroffenen Teilen ergänzen.
 
 Der spätere KI-Nachweis der Arbeit beschreibt die tatsächlich erfolgte Nutzung. Diese Projektdokumentation unterstützt ihn, ersetzt aber nicht die nach den Hochschulvorgaben erforderliche Erklärung.
+
+Am 01.11.2026 überarbeitete ChatGPT/Codex auf Wunsch des Teams PR #17: ein gemeinsamer Sonar-CI-Lauf mit Coverage statt zusätzlichem Beispiel-Workflow, dokumentierte Repository-Variablen und eine ausschließlich lesende Befundinventur. Die Inventur exportiert keine Bearbeiter-, Kommentar- oder Zugangsdaten. Mock-Tests prüfen Pagination, Fremdprojekte, Fehlerbehandlung und Credential-Schutz; eine unabhängige technische sowie getrennte Code-/Sicherheitsprüfung wurde durchgeführt. Aktuelle CI-Ergebnisse stehen am jeweiligen PR-Commit. Fachliche Autorenabnahme und empirische Modellversuche werden dadurch nicht ersetzt.
