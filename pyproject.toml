@@ -33,7 +33,7 @@ dev = [
 
 [tool.coverage.run]
 branch = true
-source = ["src/security_lab"]
+source = ["src/security_lab", "scripts"]
 relative_files = true
 data_file = "coverage/python/.coverage"
 
