@@ -1,6 +1,6 @@
 # Qualitäts- und Sicherheitswerkzeuge
 
-Stand der Einrichtung: 30. Oktober 2026. Diese Werkzeuge prüfen Implementierung
+Stand der Einrichtung: 1. November 2026. Diese Werkzeuge prüfen Implementierung
 und Zusammenarbeit. Sie sind keine empirische Bewertung der LLM-Abwehrmaßnahmen.
 
 ## Zuständigkeiten
@@ -28,7 +28,9 @@ angelegt.
 `Offline tests` erzeugt auf Linux zwei Artefakte für denselben getesteten Stand:
 
 - `python-coverage`: `coverage/python/coverage.xml`, JSON und HTML. Alle Module in
-  `src/security_lab` werden erfasst, auch unimportierte. XML verwendet relative
+  `src/security_lab` und die Python-Hilfsskripte in `scripts` werden erfasst, auch
+  unimportierte. Die Aufnahme von `scripts` ab November verändert den Nenner;
+  frühere Quoten nur für Anwendungsmodule sind damit nicht direkt vergleichbar. XML verwendet relative
   Quellpfade; die Messung umfasst Zeilen und Zweige.
 - `frontend-coverage`: `frontend/coverage/lcov.info`, Zusammenfassung und HTML.
   Alle produktiven TS/TSX-Dateien werden berücksichtigt; Testdateien,
@@ -43,9 +45,10 @@ zusätzliche Mindestquote; konkrete Lücken und relevante Fehlerpfade sind die
 Grundlage weiterer Tests. Sonars eigenes Quality Gate bleibt wirksam, sobald die
 CI-Analyse aktiviert ist.
 
-Sonar analysiert zusätzlich unter anderem das CI-Hilfsskript in `scripts/`.
-Seine spätere Gesamtquote kann daher von der hier ausgewiesenen Coverage der
-Python-Anwendungsmodule abweichen; diese Messgrößen nicht gleichsetzen.
+Sonar fasst Python- und Frontend-Messungen nach seiner eigenen Metrik zusammen.
+Diese Gesamtquote nicht mit einzelnen Python-Zeilen- oder Zweigquoten gleichsetzen.
+Für die Einzelprüfung der bestehenden Befunde gibt es eine
+[lesende, versionierte Inventur](sonar-inventory.md) mit eigenem manuellen Workflow.
 
 Lokale Ausgangsmessung am 30.10.2026: Python 271 Tests, davon ein Windows-Test unter
 Linux übersprungen; Zeilen 3080/3466 (88,86 %), Zweige 1084/1344 (80,65 %).
@@ -55,17 +58,29 @@ Einrichtungsstands; verbindlich für einen PR sind dessen aktuelle CI-Artefakte.
 
 ## Sonar sicher auf CI-Analyse umstellen
 
-Das Projekt `sxba-04_llm-agent-security-lab` ist mit GitHub verbunden; PR #10 wurde
-am 30.10.2026 durch `SonarCloud Code Analysis` erfolgreich geprüft und kommentiert.
-Die bisherige automatische Analyse importiert keine Coverage. Bei der Einrichtung
-waren weder Actions-Secrets noch eine bestätigte Sonar-Organisation verfügbar;
-die Sonar-Weboberfläche blockierte den verwendeten Cloud-Browser mit HTTP 403.
-Deshalb ist die CI-Anbindung vorbereitet, aber bis zu den folgenden Kontoschritten
-ausdrücklich nicht aktiv. Es wurden keine Befunde geschlossen und kein Upload
-von Coverage behauptet.
+Das Projekt `sxba-04_llm-agent-security-lab` gehört zur Organisation `sxba-04`.
+GitHub enthält das Repository-Secret `SONAR_TOKEN` und die Repository-Variablen
+`SONAR_ORGANIZATION=sxba-04` sowie `SONAR_CI_ENABLED=true`. Die Werte stehen unter
+**Settings → Secrets and variables → Actions → Variables**; der Token gehört
+stattdessen auf den Reiter **Secrets**. GitHub zeigt gespeicherte Secret-Werte
+nicht wieder an. Die GitHub-Verbindung gibt einem Werkzeug Berechtigungen, aber
+keinen Zugriff auf das Passwort oder den Inhalt bereits gespeicherter Secrets.
+
+Die Analyse bleibt automatisch: `Offline tests` startet bei Änderungen an `main`
+und bei Pull Requests und ruft nach den Tests den gemeinsamen Sonar-Workflow auf.
+Sonars separat benannte **Automatic Analysis** läuft ohne unsere Tests und kann
+keine Coverage importieren. Deshalb wird sie durch die automatische CI-Analyse
+ersetzt. Beide Analysearten dürfen nicht parallel für dieses Projekt laufen.
+
+Es wird kein zusätzlicher Beispiel-Workflow `build.yml` aus dem Onboarding
+benötigt. Er würde erneut ohne unsere Coverage, Quell-/Testzuordnung und
+PR-Schutzbedingungen scannen. Die verbindliche Konfiguration bleibt in
+`tests.yml`, `sonar.yml` und `.github/sonar-project.properties`.
+
+Für eine erneute Einrichtung oder einen späteren Tokenwechsel gilt:
 
 1. In Sonar unter Projekt → Administration → Analysis Method den GitHub-Actions-
-   Einrichtungsdialog öffnen und den tatsächlichen **Organization Key** ablesen.
+   Einrichtungsdialog öffnen und den **Organization Key `sxba-04`** prüfen.
    Als GitHub-Repository-Variable `SONAR_ORGANIZATION` speichern. Nicht den
    Anzeigenamen oder den Projektschlüssel einsetzen.
 2. Einen Sonar-Token mit Analyserecht und sinnvoller Ablaufzeit erstellen und
@@ -85,8 +100,12 @@ von Coverage behauptet.
    Quality Gate abgeschlossen ist. Anschließend einen aktuellen PR prüfen.
 
 Die Konfiguration liegt in `.github/sonar-project.properties` und wird dem
-Scanner explizit übergeben; sie liegt während der Umstellung nicht als
-automatisch erkannte Konfigurationsdatei im Repository-Root. Der Job
+Scanner explizit übergeben. Der Scanner setzt
+`sonar.scanner.autoconfig.enabled=false`, damit die separat angebotene
+**Automatic configuration (Beta)** unsere ausdrückliche Quell-/Testzuordnung
+nicht ignoriert. Dieser Schalter ist unabhängig von **Automatic Analysis** und
+ändert keine Coverage-Berichtspfade. Die Konfigurationsdatei liegt weiterhin
+außerhalb des Repository-Roots und wird ausdrücklich ausgewählt. Der Job
 `Sonar integration status` erklärt bei deaktivierter CI-Analyse den Grund.
 `Sonar analysis and quality gate` wird dann übersprungen. Ein solcher Skip ist
 kein bestandenes Quality Gate. Ist CI-Analyse aktiviert, führen fehlende
@@ -124,8 +143,10 @@ GitHubs Code-Scanning-Übersicht zeigte bei dieser Kontrolle zusätzlich 23 offe
 CodeQL-Meldungen auf `main`: 22 zu Pfadausdrücken und eine zur TLS-Konfiguration
 des HTTPS-Testservers. Alle waren als High eingestuft. Das ist eine
 Scanner-Inventur, keine Bestätigung von 23 ausnutzbaren Schwachstellen. Die
-Meldungen bleiben für eine nachvollziehbare Prüfung offen; die Tool-Einrichtung
-unterdrückt sie nicht.
+22 Pfadmeldungen wurden am 01.11.2026 einzeln anhand ihrer Datenflüsse geprüft
+und mit konkreter Begründung als False Positive abgeschlossen. Die TLS-Meldung
+bleibt bis zur verifizierten ausdrücklichen Mindestversion im Testserver offen.
+Die Analyseregeln bleiben aktiv; es gibt keine pauschale Unterdrückung.
 
 Sinnvolle nächste Schritte sind die priorisierte Befundprüfung, gezielte Tests
 für bislang ungetestete Fehlerpfade und die gemeinsame fachliche Abnahme von
