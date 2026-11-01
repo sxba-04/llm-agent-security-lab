@@ -38,6 +38,7 @@ class ScriptedModel:
                       lambda match: observed.get(match.group(1), "[not observed]"), value)
 
     def respond(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ModelReply:
+        """Keep tools in the shared model interface; scripted actions use fixtures."""
         if self._position >= len(self._script):
             return ModelReply(text="Keine weiteren Schritte im kontrollierten Testskript.")
         step = self._script[self._position]

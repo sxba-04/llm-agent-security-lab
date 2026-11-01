@@ -41,12 +41,13 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install the locked environment
+        # uv still builds the checked-out editable project; dependency sdists are forbidden.
         run: |
-          python -m pip install uv==0.12.23
-          uv sync --locked --extra web --group dev
+          python -m pip install --only-binary=:all: uv==0.12.23
+          uv sync --locked --no-build --extra web --group dev
       - name: Run the selected mock campaign and verify its archive
         id: campaign
-        run: uv run --locked --extra web python scripts/ci_mock_campaign.py --output runs/manual-mock
+        run: uv run --locked --no-sync --no-build --extra web python scripts/ci_mock_campaign.py --output runs/manual-mock
       - name: Preserve synthetic campaign evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -81,10 +82,12 @@ jobs:
           LAB_CAMPAIGN_OUTCOME: ${{ steps.campaign.outcome }}
         run: |
           import os
+          import subprocess
           from pathlib import Path
+          checked_out_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
           with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
               stream.write("## Job outcome\n\n")
               stream.write("- Campaign step: **" + os.environ["LAB_CAMPAIGN_OUTCOME"] + "**.\n")
-              stream.write("- Checked-out commit: `" + os.environ["GITHUB_SHA"] + "`.\n")
+              stream.write("- Checked-out commit: `" + checked_out_commit + "`.\n")
               stream.write("- This workflow is mock-only and creates no public application endpoint.\n")
               stream.write("- Download artifacts within 14 days; they are not a permanent backup.\n")

@@ -81,6 +81,16 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/campaigns", json=self.body,
                         headers={**self.headers, "Content-Length": str(6 * 1024 * 1024)}).status_code, 413)
 
+    def test_non_ascii_local_token_is_rejected_without_starting_campaign(self):
+        for token in (b"invalid-\xff", b"invalid-\xc3\xa4"):
+            with self.subTest(token=token):
+                response = self.client.post("/api/campaigns", json=self.body,
+                                            headers=[(b"X-Lab-Token", token)])
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.json()["detail"], "Lokales Sitzungstoken fehlt oder ist ungültig.")
+                self.assertFalse(self.app.state.jobs.running)
+                self.assertEqual(self.app.state.jobs.list(), [])
+
     def test_frontend_paths_cannot_escape_build(self):
         frontend = Path(self.temp.name) / "frontend"
         frontend.mkdir()
@@ -360,9 +370,10 @@ class ServerTests(unittest.TestCase):
         for slot, body in drafts.items():
             self.assertEqual(self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers).status_code, 200)
         original_draft = self.client.get(url + "/ratings/a").json()
+        replacement = self.ratings(packets, "New name")
         with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
             with self.assertRaises(OSError):
-                self.client.put(url + "/ratings/a", json=self.ratings(packets, "New name"), headers=self.headers)
+                self.client.put(url + "/ratings/a", json=replacement, headers=self.headers)
         self.assertEqual(self.client.get(url + "/ratings/a").json(), original_draft)
         self.assertEqual(len(list((directory / "drafts-a").glob("*.json"))), 1)
         with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):

@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-11-01",
+  "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+  "patch_base_commit": "3731bcd9a86fd98aca9c8168c9b1bf8065b44d62",
+  "issue_count": 19,
+  "remote_findings_changed": false,
+  "partition_sha256": "972468ea7a18d1f222beaf539d7cb68d763d85a5b419f5dc18c7b9af6d95650e",
+  "verification": {
+    "pip_binary_bootstrap": {
+      "status": "passed_linux",
+      "detail": "Isolierte frische Python-3.12.14-Umgebung; pip install --only-binary=:all: uv==0.12.23 installierte das manylinux-Wheel erfolgreich. uv --version und lokale Hilfe bestätigen 0.12.23."
+    },
+    "uv_wheel_dependency_sync": {
+      "status": "passed_linux",
+      "detail": "uv 0.12.23 sync --locked --no-build --extra web --group dev --no-cache in neuer .venv: 21 Pakete installiert, nur das eigene Editable-Projekt gebaut; uv.lock unverändert."
+    },
+    "npm_install_and_build": {
+      "status": "passed_linux",
+      "detail": "Node 24.22.1/npm 11.9.0; npm ci --ignore-scripts mit neuem Cache: 122 Pakete. npm test: 31/31; npm run build: erfolgreich. Keine Hook-Ausnahme. package-lock.json unverändert; einziges hasInstallScript-Paket ist optionales macOS-fsevents."
+    },
+    "playwright_cli_resolution": {
+      "status": "cli_passed_browser_pending",
+      "detail": "node ./node_modules/@playwright/test/cli.js --version: 1.64.1; install --help und install --dry-run chromium erfolgreich. --dry-run --with-deps scheiterte an fehlenden apt-Paketindizes. Tatsächlicher Chromium-Download lieferte ein ungültiges ZIP und anschließend einen Lockfehler; kein Browserlauf erfolgreich behauptet. Linux-/Windows-GitHub-CI steht aus."
+    },
+    "uv_project_path_and_runtime_flags": {
+      "status": "passed_linux",
+      "detail": "Sync mit --project .. aus frontend/ erfolgreich; security-lab-web --help und FastAPI/Uvicorn-Imports mit UV_NO_SYNC=true/UV_NO_BUILD=true und uv 0.12.23 erfolgreich."
+    },
+    "mock_catalog": {
+      "status": "passed_linux",
+      "detail": "96/96 synthetische Mock-Läufe vollständig und gültig; Archivintegrität/-vollständigkeit und Wiederherstellung geprüft; keine Modell-API-Aufrufe."
+    },
+    "summary_provenance": {
+      "status": "passed_linux",
+      "detail": "Beide tatsächlichen Python-Zusammenfassungsblöcke ausgeführt; GITHUB_SHA absichtlich abweichend gesetzt. Ausgabe enthielt git rev-parse HEAD, nicht die Testvariable."
+    },
+    "workflow_structure": {
+      "status": "passed",
+      "detail": "Alle drei YAML-Dateien geparst; eingebettete Python-Blöcke kompiliert; git diff --check erfolgreich. Action-Referenzen unverändert."
+    }
+  },
+  "sources": [
+    {
+      "title": "uv CLI: --no-build, --locked, --no-sync",
+      "url": "https://docs.astral.sh/uv/reference/cli/",
+      "use": "Fremde Sdist-Builds ablehnen; eigener Editable-Build bleibt zulässig. Verhalten zusätzlich mit exakt uv 0.12.23 geprüft."
+    },
+    {
+      "title": "pip install: --only-binary",
+      "url": "https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-only-binary",
+      "use": "Binärdistributionen erzwingen statt Source-Fallback."
+    },
+    {
+      "title": "npm ci: --ignore-scripts",
+      "url": "https://docs.npmjs.com/cli/v11/commands/npm-ci/#ignore-scripts",
+      "use": "Abhängigkeits-Hooks abschalten; ausdrücklich aufgerufene Projektskripte bleiben ausführbar."
+    },
+    {
+      "title": "npm exec / npx",
+      "url": "https://docs.npmjs.com/cli/v11/commands/npm-exec/#description",
+      "use": "Lokale Auflösung und Paketinstallations-Fallback unterscheiden."
+    },
+    {
+      "title": "GitHub Actions variables",
+      "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/variables",
+      "use": "GITHUB_SHA ist ereignisabhängig; tatsächlichen Checkout separat bestimmen."
+    },
+    {
+      "title": "Sonar staff: supply-chain rules",
+      "url": "https://community.sonarsource.com/t/rules-to-reduce-supply-chain-risks/182615",
+      "use": "Bestätigung der Regeln gegen ungesperrte Installationen und Build-/Installationsskripte. Exakte S7689-Metadaten waren nicht abrufbar; dafür wird keine unbestätigte Regelbeschreibung behauptet."
+    }
+  ],
+  "issues": [
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nZ",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/pages.yml",
+      "source_line": 36,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Pages: pip installiert zwar uv==0.12.23, verbietet aber keinen Sdist-Fallback. Der geprüfte Linux-Lauf erhielt bereits ein Wheel; ein schädlicher Build wurde nicht beobachtet. --only-binary=:all: macht den Wheel-Zwang ausdrücklich und lässt eine fehlende Binärdistribution sicher scheitern.",
+      "verification": [
+        "pip_binary_bootstrap",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1na",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/pages.yml",
+      "source_line": 37,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Pages: --locked schützt Versionsauflösung und Lockdatei, untersagt jedoch keine Build-Backends fremder Sdists. --no-build ergänzt diese Grenze. uv 0.12.23 erlaubt dabei weiterhin den benötigten, überprüfbaren lokalen Editable-Build; Drittanbieter-Builds werden nicht pauschal freigegeben.",
+      "verification": [
+        "uv_wheel_dependency_sync",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nb",
+      "rule": "githubactions:S6505",
+      "file": ".github/workflows/pages.yml",
+      "source_line": 38,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "confirmed_install_hook_exposure",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Pages: npm ci erzwingt package-lock.json, führte aber standardmäßig Installationsskripte der Pakete aus. npm ci --ignore-scripts behält den Lock-Zwang und unterbindet diese Hooks. Frische Installation, 31 React-Tests und Produktionsbuild funktionieren ohne Ausnahme für einzelne Pakete.",
+      "verification": [
+        "npm_install_and_build",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nc",
+      "rule": "githubactions:S6505",
+      "file": ".github/workflows/pages.yml",
+      "source_line": 50,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "conditional_risk_hardened",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Pages: npx playwright benutzt nach erfolgreichem npm ci hier die lokale, gesperrte Installation. Ein zusätzlich heruntergeladenes Paket wurde nicht nachgewiesen. Bei fehlender lokaler CLI besitzt npx dennoch einen Installationspfad samt Hooks. Der direkte Node-Aufruf der installierten @playwright/test/cli.js entfernt diesen impliziten Paketinstallationspfad.",
+      "verification": [
+        "playwright_cli_resolution",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8y7rRJBvbBA1nd",
+      "rule": "githubactions:S8543",
+      "file": ".github/workflows/pages.yml",
+      "source_line": 50,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "conditional_risk_hardened",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Pages: derselbe npx-Aufruf kann generell auf eine nicht im Projekt installierte Paketversion ausweichen. Der konkrete erfolgreiche Installationspfad verwendete bereits die Lockdatei. Direkter Aufruf der ausdrücklich deklarierten @playwright/test-CLI bindet die Ausführung an genau deren installierte Version und scheitert bei fehlender Datei.",
+      "verification": [
+        "playwright_cli_resolution",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1ne",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/mock-campaign.yml",
+      "source_line": 45,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Manuelle Mock-Kampagne: die uv-Version ist fest, aber pip erlaubte einen Sdist-Fallback. --only-binary=:all: erzwingt das getestete Wheel und vermeidet Build-Backend-Ausführung während dieses Bootstraps.",
+      "verification": [
+        "pip_binary_bootstrap",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1nf",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/mock-campaign.yml",
+      "source_line": 46,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Manuelle Mock-Kampagne: uv sync --locked konnte fremde Quellen bauen. --no-build untersagt diese Builds und bewahrt den explizit benötigten lokalen Editable-Build. Die frisch installierte Umgebung führte den vollständigen 96er-Mock-Katalog und den Archiv-Roundtrip erfolgreich aus.",
+      "verification": [
+        "uv_wheel_dependency_sync",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1ng",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/mock-campaign.yml",
+      "source_line": 49,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Manuelle Mock-Kampagne: uv run konnte trotz vorgelagertem Sync die Umgebung erneut abgleichen und dabei bauen. --no-sync --no-build verwendet ausschließlich die vorbereitete Umgebung. Der Kataloglauf mit diesen Flags lief vollständig ohne Modell-API-Aufruf.",
+      "verification": [
+        "mock_catalog",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8z7rRJBvbBA1nh",
+      "rule": "githubactions:S7689",
+      "file": ".github/workflows/mock-campaign.yml",
+      "source_line": 88,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "context_clarification",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Die manuelle Kampagne wird nur durch workflow_dispatch gestartet; ein PR-Merge-/Quell-SHA-Fehler ist deshalb hier nicht nachgewiesen. Die Beschriftung behauptet aber den ausgecheckten Commit. git rev-parse HEAD ermittelt diesen unmittelbar, unabhängig vom auslösenden Ereignis. Eine absichtlich abweichende GITHUB_SHA-Testvariable beeinflusste die Zusammenfassung nicht.",
+      "verification": [
+        "summary_provenance",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nT",
+      "rule": "githubactions:S7689",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 121,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "context_clarification",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Offline tests verwendet den standardmäßigen Checkout; beim pull_request-Ereignis ist dessen getesteter Stand regelmäßig der synthetische Merge-Commit. Die bisherige GITHUB_SHA ist dafür aktuell plausibel und darf nicht durch die PR-Quell-SHA ersetzt werden. git rev-parse HEAD protokolliert den tatsächlichen Checkout, die Beschriftung erläutert den PR-Merge-Fall.",
+      "verification": [
+        "summary_provenance",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_947rRJBvbBA1pV",
+      "rule": "python:S1192",
+      "file": "scripts/ci_mock_campaign.py",
+      "source_line": 79,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "maintenance_debt",
+      "disposition": "deferred_maintenance_debt",
+      "rationale": "summary.json wird beim Erzeugen, Tabellenexport und späteren Lesen konsistent als derselbe feste Artefaktname verwendet. Die Wiederholung ist ein zutreffender Wartbarkeitshinweis, kein bestätigter Sicherheits- oder Laufzeitfehler. Konstantenextraktion bleibt offen; keine Scannerunterdrückung oder False-positive-Schließung.",
+      "verification": [
+        "mock_catalog",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_947rRJBvbBA1pW",
+      "rule": "python:S1192",
+      "file": "scripts/ci_mock_campaign.py",
+      "source_line": 84,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "maintenance_debt",
+      "disposition": "deferred_maintenance_debt",
+      "rationale": "campaign.zip wird beim Export, Verifizieren und Wiederherstellen konsistent verwendet. Eine benannte Konstante könnte spätere Schreibfehler vermeiden; derzeit bestätigt der Roundtrip die Zuordnung. Diese berechtigte Wartbarkeitsschuld bleibt offen und wird nicht als behobener Fehler oder False positive ausgegeben.",
+      "verification": [
+        "mock_catalog",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nP",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 43,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Offline-Python-Matrix: pip erhielt keine Vorgabe gegen Source-Builds des fest versionierten uv-Bootstraps. --only-binary=:all: schließt diesen Fallback. Die tatsächliche Installation von uv 0.12.23 mit diesem Flag war unter Linux erfolgreich; Windows wird in CI geprüft.",
+      "verification": [
+        "pip_binary_bootstrap",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nQ",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 44,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Offline-Python-Matrix: gesperrte Versionen allein verhindern keine fremden Build-Backends. uv sync --locked --no-build installiert Binärdistributionen der Abhängigkeiten und baut weiterhin das eigene Editable-Projekt. Frischer Sync ohne uv-Cache gelang; Lockdatei blieb unverändert.",
+      "verification": [
+        "uv_wheel_dependency_sync",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nU",
+      "rule": "githubactions:S6505",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 142,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "confirmed_install_hook_exposure",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Frontend-Matrix: npm ci erlaubte die Installations-Hooks der gesperrten Abhängigkeiten. --ignore-scripts unterbindet sie. Die unveränderte Lockdatei, 31 React-Tests und der Produktionsbuild funktionieren nach frischer Installation; keine zusätzliche Buildskript-Freigabe ist nötig.",
+      "verification": [
+        "npm_install_and_build",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nV",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 167,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Backend-Installation im Frontend-Job: derselbe fest versionierte pip-Bootstrap erlaubte Source-Builds. Das ergänzte --only-binary=:all: verlangt ein kompatibles Wheel. Die Linux-CLI-Version und Flagkompatibilität wurden tatsächlich geprüft.",
+      "verification": [
+        "pip_binary_bootstrap",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nW",
+      "rule": "githubactions:S8541",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 168,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "valid_hardening",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Backend-Installation aus frontend/: --project .. ändert die Projektauflösung, aber --locked sperrt keine Buildskripte. Der ergänzte --no-build-Zwang funktioniert auch mit diesem relativen Projektpfad. Für spätere Playwright-Backendstarts gelten zusätzlich UV_NO_SYNC und UV_NO_BUILD.",
+      "verification": [
+        "uv_project_path_and_runtime_flags",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nX",
+      "rule": "githubactions:S6505",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 170,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "conditional_risk_hardened",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Frontend-Matrix: nach erfolgreichem npm ci ist die Playwright-CLI lokal und gesperrt; eine separate Installation wurde nicht beobachtet. Der generelle npx-Installationspfad samt Hooks wird durch node ./node_modules/@playwright/test/cli.js vollständig vermieden.",
+      "verification": [
+        "playwright_cli_resolution",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    },
+    {
+      "key": "AaGMS_8w7rRJBvbBA1nY",
+      "rule": "githubactions:S8543",
+      "file": ".github/workflows/tests.yml",
+      "source_line": 170,
+      "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
+      "classification": "conditional_risk_hardened",
+      "disposition": "patch_prepared_pending_ci_and_rescan",
+      "rationale": "Frontend-Matrix: die implizite npx-Auflösung wird durch einen festen Pfad zur ausdrücklich deklarierten, gesperrten Test-CLI ersetzt. Damit kann eine fehlende lokale CLI keine neue Paketversion aus dem Netz nachinstallieren. Die lokale Version 1.64.1 und Browserinstallationsoptionen wurden geprüft.",
+      "verification": [
+        "playwright_cli_resolution",
+        "workflow_structure"
+      ],
+      "inventory_status": "OPEN",
+      "remote_mutation": false
+    }
+  ],
+  "limits": [
+    "Keine Aussage über eine tatsächlich kompromittierte Abhängigkeit.",
+    "Keine neue Modell-, Tool- oder Bewertungssemantik; keine realen Modellaufrufe.",
+    "Lokaler Editable-Build und bewusst gestartete Projektwerkzeuge führen weiterhin Code aus; die Änderung ist keine vollständige Build-Sandbox.",
+    "Windows und tatsächliche Browserintegration am endgültigen CI-Head stehen aus.",
+    "Zwei S1192-Wartbarkeitshinweise bleiben offen; keine globale Unterdrückung."
+  ],
+  "patch_commit": "60c7ffeac15b1db47b8aa550a2b31dff65cf17ce",
+  "patch_sha256": "ca28ba9ab56a1c209b206475e4855de7c47be21e2356415c746539d2dd8c0d65",
+  "workflow_sha256": {
+    ".github/workflows/mock-campaign.yml": "220dda23795e3d7760015a25fb0eef0c8d8fd572e76ebc84bb08806dfea27404",
+    ".github/workflows/pages.yml": "fbcc93fc59981fbc5cfbda3f2d15a84703e569536421f53e137567de3e9121ca",
+    ".github/workflows/tests.yml": "39ed5099ca732b22ebf48e3fbfc5a1ce1afd0ed9e3422b263dc7c9f71da96ea5"
+  }
+}

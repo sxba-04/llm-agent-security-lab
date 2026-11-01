@@ -1,0 +1,555 @@
+{
+  "schema_version": 1,
+  "project": "sxba-04_llm-agent-security-lab",
+  "inventory_analysis_revision": "12db393771b70f05f12f947fe213c43084a0fce5",
+  "review_base_revision": "3731bcd9a86fd98aca9c8168c9b1bf8065b44d62",
+  "review_date": "2026-11-01",
+  "scope": "Python-Kern/Provider/Bewertungen und alle Python-Testbefunde; ohne separate Server-/Archiv-Gruppe",
+  "issues": [
+    {
+      "key": "AaGMS_9r7rRJBvbBA1pM",
+      "rule": "python:S5778",
+      "path": "tests/test_hosted.py",
+      "analysis_line": 214,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Hash-Erzeugung lag im AssertRaises-Bereich. Setup liegt nun davor; nur HostedSettings für jede ungültige Origin bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9r7rRJBvbBA1pN",
+      "rule": "python:S5778",
+      "path": "tests/test_hosted.py",
+      "analysis_line": 235,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Aufbau des unvollständigen Environment-Dictionary lag im AssertRaises-Bereich. Setup liegt nun davor; nur configuration für den gezielt fehlenden Pflichtwert bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9w7rRJBvbBA1pO",
+      "rule": "python:S5778",
+      "path": "tests/test_server.py",
+      "analysis_line": 329,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Erzeugung der Ersatzbewertung lag im AssertRaises-Bereich. Setup liegt nun davor; nur HTTP-PUT unter injiziertem fsync-Fehler bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n9",
+      "rule": "python:S3776",
+      "path": "src/security_lab/comparisons.py",
+      "analysis_line": 43,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "_execution_evidence: Verzweigte Prüfung von Start-Ereignis, Versionskonsistenz und aufgezeichneten Limits; fehlende/ungültige Angaben bleiben getrennt. Eine funktionale Abweichung ist durch diese Komplexitätsmeldung nicht belegt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n-",
+      "rule": "python:S3776",
+      "path": "src/security_lab/comparisons.py",
+      "analysis_line": 110,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "paired_comparisons: Indexierung, Paarbildung, Ausschlussgründe und Kennzahlen liegen in einer großen Funktion. Eine spätere Zerlegung muss gemeinsame Eingaben, Versionsgrenzen und unbekannte Urteile unverändert erhalten.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_877rRJBvbBA1n_",
+      "rule": "python:S7519",
+      "path": "src/security_lab/comparisons.py",
+      "analysis_line": 149,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "Die neun Ausschlusszähler werden korrekt mit dem unveränderlichen Integer 0 initialisiert. dict.fromkeys wäre idiomatischer; bei dieser konstanten kleinen Menge ist kein relevanter Laufzeitfehler nachgewiesen. In gesondertem Vergleichsmodul-Refactoring bündeln.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9K7rRJBvbBA1oQ",
+      "rule": "python:S3776",
+      "path": "src/security_lab/evaluation.py",
+      "analysis_line": 95,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "evaluate_run: Vorschläge, Backend-Effekte, Kontextoffenlegung, Zustand und menschliche Urteile werden getrennt ausgewertet. Die hohe Verzweigungszahl ist echte Wartungsschuld, kein Beweis eines falschen wissenschaftlichen Ergebnisses.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9D7rRJBvbBA1oG",
+      "rule": "python:S3776",
+      "path": "src/security_lab/cli.py",
+      "analysis_line": 92,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "main: Der große argparse-Kommandodispatch enthält unterschiedliche Operator-Abläufe. Eine spätere Aufteilung darf Freigaben, Schutz der Originalbelege und Fehlercodes nicht verändern.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oA",
+      "rule": "python:S3776",
+      "path": "src/security_lab/review.py",
+      "analysis_line": 298,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "validate_combined: Die verschachtelte Validierung prüft Hash, Version, zwei ursprüngliche Bewertungen, Status und Klärungskette. Zerlegung ist sinnvoll, aber erst mit gezieltem Erhalt aller Ablehnungsfälle.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9Y7rRJBvbBA1oj",
+      "rule": "python:S8520",
+      "path": "src/security_lab/sample_pdf.py",
+      "analysis_line": 20,
+      "classification": "confirmed_performance_defect",
+      "local_action": "fixed",
+      "rationale": "sum(Absatzlisten, []) kopierte bereits gesammelte Zeilen bei jedem Absatz erneut (quadratisch). lines.extend plus ein leerer Zeileneintrag je Absatz hält Reihenfolge, Umbruchbreite, Seitenzahl und PDF-Inhalt bei linearer Akkumulation gleich. Kein vorheriger produktiver Ausfall oder erreichbarer Remote-DoS behauptet.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9m7rRJBvbBA1pA",
+      "rule": "python:S5778",
+      "path": "tests/test_documents.py",
+      "analysis_line": 80,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "BytesIO.getvalue lag im AssertRaises-Bereich. Setup liegt nun davor; nur import_document mit der zuvor erzeugten ungültigen PDF bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_937rRJBvbBA1pU",
+      "rule": "python:S5778",
+      "path": "tests/test_sample_pdf.py",
+      "analysis_line": 80,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Laden des gültigen Fallkatalogs lag im AssertRaises-Bereich. Setup liegt nun davor; nur article_pdf mit unbekanntem Quelltyp bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9Q7rRJBvbBA1oU",
+      "rule": "python:S3776",
+      "path": "src/security_lab/cases.py",
+      "analysis_line": 41,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "validate_case: Die Fallvalidierung verknüpft Sitzungsrechte, erlaubte Tickets, Faktenquellen und Mock-Schritte. Hohe Komplexität bestätigt; die Regel zeigt keinen konkreten Validierungsbypass.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9N7rRJBvbBA1oT",
+      "rule": "python:S3776",
+      "path": "src/security_lab/core.py",
+      "analysis_line": 107,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "run_case: Der Runner umfasst Grenzen, Filter/Policy-Gateway, Ereignisbelege, Abbruch und Modellantworten. Ein mechanischer Umbau allein für die Kennzahl könnte die B/F/P/FP-Vergleichbarkeit beeinträchtigen; gesonderter Refactoring-Schritt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oo",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 56,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oq",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 99,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "TimeoutError erbt von dem bereits im selben except-Tupel enthaltenen OSError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1or",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 112,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ou",
+      "rule": "python:S3776",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 130,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "validate_config: Whitelist-, Typ-, Preis-, Zeit- und Requestlimit-Prüfungen ergeben viele Zweige. Diese Validierung bleibt hier unverändert; keine zusätzliche Freigabe echter API-Aufrufe.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ov",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 232,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ow",
+      "rule": "python:S3776",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 264,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "_account_response: Abrechnung, Reservierungsbeibehaltung und Rohantwortbelege enthalten mehrere Fehlerpfade. Die Komplexitätswarnung ist berechtigt; ein Umbau benötigt gesonderte Budget-/Beleginvariantenprüfung.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ox",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 300,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oy",
+      "rule": "python:S3776",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 312,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "_parse: Antwort- und Toolargumentvalidierung, Finish-Grund und Duplikaterkennung bilden viele Zweige. Kein Parserbypass aus dieser Meldung bestätigt; bestehende Ablehnungsfälle bleiben erhalten.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1oz",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 358,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1o0",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 369,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "UnicodeError erbt von dem bereits im selben except-Tupel enthaltenen ValueError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oD",
+      "rule": "pythonsecurity:S8707",
+      "path": "src/security_lab/review.py",
+      "analysis_line": 52,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "CLI --mapping → combine_reviews → _read_mapping → read_bytes. Der Betreiber wählt die Mapping-Datei ausdrücklich; im gemeldeten Flow stammt kein Pfadanteil aus Ratinginhalt, Modell oder HTTP. Schema, Mapping-Hash und Zuordnungen werden anschließend geprüft. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oE",
+      "rule": "pythonsecurity:S8707",
+      "path": "src/security_lab/review.py",
+      "analysis_line": 75,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "CLI --packets → combine_reviews → _read_packets → read_bytes. Die Paketdatei wird ausdrücklich vom Betreiber gewählt; enthaltene Review-IDs werden nicht als Dateipfade verwendet. Paketzuordnung und Hash zum Mapping werden verifiziert. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oC",
+      "rule": "pythonsecurity:S8707",
+      "path": "src/security_lab/review.py",
+      "analysis_line": 215,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "CLI --ratings → combine_reviews → _load_ratings → read_bytes. Die beiden Operator-Dateipfade sind die Quelle; CSV-Zellen wählen keine weiteren Pfade. Spalten, bekannte Review-IDs, Ratereindeutigkeit und Werte werden validiert. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pC",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 145,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit ungültigen Unicode-/Zahlenwerten in der erhaltenen Antwort bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pD",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 157,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit ungültiger Toolantwortstruktur bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pE",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 170,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit tatsächlich erhaltenem, ungültigem HTTP-Antwortkörper bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pF",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 183,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond bei fehlgeschlagenem HTTP-Verbindungsaufbau bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pG",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 193,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit zu großer dekodierter Antwort bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pH",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 207,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit zu großem HTTP-Antwortkörper bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_957rRJBvbBA1pY",
+      "rule": "pythonsecurity:S8707",
+      "path": "analysis/export_tables.py",
+      "analysis_line": 14,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "analysis/export_tables.py liest genau die über sys.argv[1] ausdrücklich angegebene Zusammenfassungsdatei. Es ist ein lokaler Operator-Export, kein HTTP-/Modelltool oder erhöht privilegierter Dateidienst; JSON-Inhalt wählt keinen weiteren Eingabepfad. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_957rRJBvbBA1pX",
+      "rule": "pythonsecurity:S8707",
+      "path": "analysis/export_tables.py",
+      "analysis_line": 20,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "analysis/export_tables.py schreibt genau das über sys.argv[2] ausdrücklich angegebene Operator-Ziel. open(\"x\") ersetzt keine vorhandene Datei. Kein Bestandteil von Summary-Zellen bestimmt das Ziel; frei wählbare lokale Ausgabe ist Teil des CLI-Vertrags. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9Q7rRJBvbBA1oV",
+      "rule": "pythonsecurity:S8707",
+      "path": "src/security_lab/cases.py",
+      "analysis_line": 220,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "CLI freeze --cases → load_cases → load_case → read_text. Die vertrauenswürdige Fallquelle wird vom Betreiber gewählt, nicht durch Artikel-/Modelltext. Dateisuche verwendet festes *.json, danach strenge Fall- und Duplicate-Key-Validierung; keine zusätzliche Hostberechtigung entsteht. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9D7rRJBvbBA1oF",
+      "rule": "python:S1192",
+      "path": "src/security_lab/cli.py",
+      "analysis_line": 19,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "Das CLI-Literal --cases ist bei mehreren getrennten argparse-Kommandos wiederholt. Eine gemeinsame Konstante könnte Änderungen erleichtern; derzeit sind alle Optionen konsistent und kein unterschiedliches Verhalten belegt. Mit CLI-Dispatch-Refactoring bündeln.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9K7rRJBvbBA1oR",
+      "rule": "python:S3358",
+      "path": "src/security_lab/evaluation.py",
+      "analysis_line": 253,
+      "classification": "valid_maintainability_debt",
+      "local_action": "deferred_refactor",
+      "rationale": "Der verschachtelte Ausdruck bewahrt absichtlich drei Zustände: nachgewiesene Kontextoffenlegung True, nur unsichere Übermittlung None, sonst False. Lesbarkeit ist verbesserbar; ein bool-Vereinfachen wäre fachlich falsch. Explizite Verzweigung später zusammen mit evaluate_run-Refactoring.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9L7rRJBvbBA1oS",
+      "rule": "python:S1172",
+      "path": "src/security_lab/models.py",
+      "analysis_line": 40,
+      "classification": "false_positive",
+      "local_action": "interface_intent_documented",
+      "rationale": "ScriptedModel.respond muss dieselbe messages/tools-Schnittstelle wie der reale Modelladapter erfüllen. Die deterministische Fixture nutzt absichtlich keine dynamische Toolauswahl; Entfernen von tools würde den gemeinsamen Runner-Vertrag brechen. Docstring erklärt den Parameter; keine Filter-/Policy-Änderung.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1op",
+      "rule": "python:S4830",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 91,
+      "classification": "false_positive",
+      "local_action": "regression_test_added_no_remote_disposition",
+      "rationale": "HTTPSHandler erhält ssl.create_default_context(): CERT_REQUIRED und check_hostname=True; es gibt keine Änderung auf CERT_NONE. Das ist die von Sonars eigener Regel ausdrücklich empfohlene sichere Lösung. Neuer Test erfasst den tatsächlich verwendeten Kontext und prüft Zertifikatsfehler ohne Retry, Secret-Ausgabe oder fälschlich behaupteten Antwortempfang; alle HTTP-Aufrufe sind gemockt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1os",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 120,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "URLError erbt von dem bereits im selben except-Tupel enthaltenen OSError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9e7rRJBvbBA1ot",
+      "rule": "python:S5713",
+      "path": "src/security_lab/providers.py",
+      "analysis_line": 120,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "TimeoutError erbt von dem bereits im selben except-Tupel enthaltenen OSError. Nur der redundante Unterklasseneintrag wurde entfernt; Fangbereich, Bereinigung, Reservierung und Exception-Ausgabe bleiben gleich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_8-7rRJBvbBA1oB",
+      "rule": "pythonsecurity:S8707",
+      "path": "src/security_lab/review.py",
+      "analysis_line": 147,
+      "classification": "false_positive",
+      "local_action": "documented_no_remote_disposition",
+      "rationale": "CLI review-export --output → export_review → output_dir.mkdir. Das Ziel ist ausdrücklich vom Betreiber angegeben; run_id, Artikeltext und Modellantworten bestimmen es nicht. Belegte Exportziele werden abgewiesen. Die gehostete API verwendet separat verwaltete Pfade. Das gilt für diesen konkreten Flow, nicht pauschal für beliebige CLI-Eingaben oder interne Archivpfade.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_907rRJBvbBA1pR",
+      "rule": "python:S5778",
+      "path": "tests/test_budget.py",
+      "analysis_line": 20,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Neuladen des BudgetLedger lag im AssertRaises-Bereich. Setup liegt nun davor; nur reserve nach Neustart bei bereits reserviertem Budget bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_907rRJBvbBA1pS",
+      "rule": "python:S5778",
+      "path": "tests/test_budget.py",
+      "analysis_line": 31,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Neuladen des BudgetLedger lag im AssertRaises-Bereich. Setup liegt nun davor; nur reserve nach dokumentiertem Budgetüberlauf bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_927rRJBvbBA1pT",
+      "rule": "python:S5906",
+      "path": "tests/test_core.py",
+      "analysis_line": 59,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Die allgemeine assertEqual(..., False)-Assertion wird durch assertFalse ersetzt. Der konkrete Policy-Entscheidungswert bleibt das Prüfziel; der vollständige Core-Testblock ist erneut erfolgreich.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9o7rRJBvbBA1pB",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 107,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit fehlschlagendem Transport bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pI",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 215,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit unvollständiger Antwortstruktur bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pJ",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 221,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des Modells mit kleinem Laufbudget lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond, das vor Transport wegen BudgetExceeded stoppen muss bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pK",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 223,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des Modells mit kleinem Inputlimit lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond, das vor Transport wegen BudgetExceeded stoppen muss bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9p7rRJBvbBA1pL",
+      "rule": "python:S5778",
+      "path": "tests/test_providers.py",
+      "analysis_line": 293,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Konstruktion des gültigen Modells lag im AssertRaises-Bereich. Setup liegt nun davor; nur respond mit doppelten Call-IDs bzw. unvereinbarem Finish-Grund bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9y7rRJBvbBA1pP",
+      "rule": "python:S5778",
+      "path": "tests/test_review.py",
+      "analysis_line": 48,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Erzeugung des Ergebnis-Fixtures lag im AssertRaises-Bereich. Setup liegt nun davor; nur export_review in ein bereits belegtes Ziel bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    },
+    {
+      "key": "AaGMS_9y7rRJBvbBA1pQ",
+      "rule": "python:S5778",
+      "path": "tests/test_review.py",
+      "analysis_line": 115,
+      "classification": "valid_maintainability_debt",
+      "local_action": "fixed",
+      "rationale": "Erzeugung der unvollständigen Ergebnisliste lag im AssertRaises-Bereich. Setup liegt nun davor; nur attach_reviews gegen das vollständige Bewertungspaket bleibt unter der Ausnahmeassertion. Keine bestehende Assertion entfernt.",
+      "remote_issue_status": "not_changed_by_this_review"
+    }
+  ],
+  "validation": [
+    "Vollständige Python-Suite: 288 ausgeführt, 287 bestanden, ein Windows-spezifischer Test unter Linux übersprungen; Python 3.12.14",
+    "85 betroffene Tests auf Linux/Python 3.12.14 erfolgreich, einschließlich PDF-Rendering mit Poppler",
+    "17 Core-Tests auf Linux/Python 3.12.14 erfolgreich",
+    "25 Beispiel-/Mehrseiten-PDFs sind vor/nach der linearen Akkumulation bytegleich; ein lokaler Vergleich mit 10.000 Absätzen ergab 0,165 s gegenüber 0,027 s, keine garantierte Laufzeitangabe",
+    "Keine echten Provider-Aufrufe; Transporttests gemockt",
+    "Windows und endgültige integrierte PR-CI stehen aus",
+    "Nach Verstärkung der Reservierungsassertion wurde der einzelne Zertifikatsfehler-Test erneut erfolgreich ausgeführt"
+  ],
+  "limitations": [
+    "Kein Sonar-Befund remote geschlossen, kein Quality Gate oder Regelprofil geändert.",
+    "S8707-Detailbeschreibung war im öffentlichen Analyzer-Repository nicht verfügbar. Bewertung stützt sich auf jede exportierte Datenflussposition, den Quellcode und die dokumentierte Vertrauensgrenze; keine unbekannte Regelausnahme unterstellt.",
+    "Die zehn Komplexitätsbefunde und drei weitere Lesbarkeitsbefunde bleiben ausdrücklich offene Wartungsschuld.",
+    "Zeilenangaben beziehen sich auf die Inventur-Revision; Korrekturen können spätere Zeilen verschieben."
+  ]
+}

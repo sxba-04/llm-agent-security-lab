@@ -77,5 +77,6 @@ class SamplePdfTests(unittest.TestCase):
             self.assertIn(line, text)
 
     def test_unknown_source_rejected(self):
+        case = load_cases(Path("cases/dev"))[0]
         with self.assertRaises(ValueError):
-            article_pdf(load_cases(Path("cases/dev"))[0], "unknown")
+            article_pdf(case, "unknown")

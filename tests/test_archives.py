@@ -495,3 +495,38 @@ class ArchiveTests(unittest.TestCase):
             # POSIX must also reject it during semantic JSON classification.
             with self.assertRaises(ValueError):
                 export_campaign(campaign, root / 'rejected.zip')
+
+    def test_rehashed_extra_pdf_source_must_still_contain_valid_utf8(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            valid = root / 'valid.zip'
+            export_campaign(campaign, valid)
+            original = b'%PDF-synthetic-extra-source'
+            extracted = b'\xffinvalid utf-8'
+            metadata = {'document_id': 'doc-extra',
+                        'sha256': hashlib.sha256(original).hexdigest(),
+                        'text_sha256': hashlib.sha256(extracted).hexdigest()}
+            files = {'original.pdf': original, 'extracted.txt': extracted,
+                     'document.json': json.dumps(metadata).encode(),
+                     'confirmation.json': json.dumps({'text_sha256': metadata['text_sha256']}).encode()}
+
+            def add_invalid_source(content):
+                for filename, data in files.items():
+                    member = 'sources/doc-extra/' + filename
+                    content[member] = data
+                    self.rehash_member(content, member)
+
+            invalid = root / 'invalid.zip'
+            self.rewrite(valid, invalid, add_invalid_source)
+            # Integrity hashes alone cannot certify that extracted source text
+            # is readable. The strict decode is intentional validation.
+            with self.assertRaisesRegex(ValueError, 'Invalid or inconsistent campaign archive') as checked:
+                verify_archive(invalid)
+            self.assertIsInstance(checked.exception.__cause__, UnicodeDecodeError)
+            restored = root / 'restored'
+            with self.assertRaisesRegex(ValueError, 'Invalid or inconsistent campaign archive') as imported:
+                import_campaign(invalid, restored)
+            self.assertIsInstance(imported.exception.__cause__, UnicodeDecodeError)
+            self.assertFalse(restored.exists())
+            self.assertEqual(list(root.glob('.campaign-import-*')), [])

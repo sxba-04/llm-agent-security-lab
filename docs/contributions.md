@@ -71,3 +71,34 @@ und menschliche Autorenabnahme sind damit nicht vorweggenommen.
 Es wurden keine Modell-API-Aufrufe durchgeführt, keine kostenpflichtigen Ressourcen
 gebucht und keine empirischen LLM-Ergebnisse erzeugt. Versuchsbedingungen,
 Bewertungslogik und Originalbelege bleiben unverändert.
+
+## Ergänzung vom 1. November 2026: vollständige Sonar-Triage
+
+ChatGPT/Codex bewertete mit mehreren getrennten Arbeits- und Prüfschritten alle
+230 Kennungen der abgerufenen Sonar-Inventur. Die
+[Einzelberichte](sonar-triage/README.md) unterscheiden 49 adressierte Hinweise,
+26 kontextuelle Fehlalarme, zwei begründete Verwendungen und 153 verbleibende
+Wartbarkeitshinweise. Diese Bewertung ersetzt keine aktuelle Scanneranzeige;
+Sonar-Statusänderungen wurden nicht manuell vorgenommen.
+
+Die Korrekturen betreffen zusätzlich einen HTTP-500-Fehler bei ungültigen lokalen
+Tokenbytes, die Zustandserhaltung gefilterter Vergleichskarten, quadratischen
+Aufwand beim Zusammenstellen von PDF-Zeilen, präzisere Ausnahmetests und
+gehärtete CI-Installationsschritte. Ein neuer Zertifikatsfehler-Test verwendet
+ausschließlich simulierte Antworten und prüft weiterhin aktive Zertifikats- und
+Hostnamenverifikation. Ein zusätzlicher Archivtest verwirft korrekt gehashte,
+aber ungültig kodierte Textbelege.
+
+Der zusammengeführte Stand wurde lokal unter Linux mit den gesperrten und bereits
+aktualisierten Python-/npm-Abhängigkeiten geprüft: 300 Python-Tests ausgeführt,
+299 bestanden und ein Windows-spezifischer Test übersprungen; 33 React-Tests sowie
+TypeScript-/Vite-Produktionsbuild erfolgreich. Eine unabhängige Code- und
+Sicherheitsprüfung des kombinierten Implementierungs-/Test-/Workflow-Deltas fand
+keinen Blocker. Die Vollständigkeit der 230 Kennungen wurde mechanisch geprüft;
+die zusätzliche unabhängige Triage-Gegenprüfung prüfte kritische Beispiele,
+nicht erneut jede Wartbarkeitsbewertung. Windows- und Browserintegration sowie
+Sonar-Ergebnisse sind gesondert in der CI des endgültigen PR-Heads nachzuweisen.
+
+Diese Arbeit verändert weder fachliche Bewertungen noch den Versuchsvergleich
+B/F/P/FP und enthält keine empirischen Modellaufrufe. Die menschliche Prüfung
+und der fachliche Autorenbeitrag bleiben Aufgaben des Teams.

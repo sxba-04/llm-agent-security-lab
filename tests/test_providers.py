@@ -2,6 +2,7 @@ from copy import deepcopy
 import base64
 import json
 from pathlib import Path
+import ssl
 import tempfile
 import unittest
 import urllib.error
@@ -104,8 +105,9 @@ class ProviderTests(unittest.TestCase):
         def fail(*args):
             calls.append(1)
             raise OSError('FAKE-TEST-KEY proxy-secret')
+        model = self.make_model(fail)
         with self.assertRaises(ModelError) as caught:
-            self.make_model(fail).respond(MESSAGES, TOOLS)
+            model.respond(MESSAGES, TOOLS)
         self.assertEqual(len(calls), 1)
         self.assertNotIn('FAKE-TEST-KEY', str(caught.exception))
         state = self.ledger.snapshot()
@@ -142,8 +144,9 @@ class ProviderTests(unittest.TestCase):
                 raw['choices'][0]['message']['tool_calls'][0]['id'] = '\ud800'
             else:
                 raw['choices'][0]['message']['tool_calls'][0]['function']['name'] = '\ud800'
+            model = self.make_model(lambda *args: raw)
             with self.subTest(position=position), self.assertRaises(ReceivedResponseError) as caught:
-                self.make_model(lambda *args: raw).respond(MESSAGES, TOOLS)
+                model.respond(MESSAGES, TOOLS)
             usage = caught.exception.usage
             self.assertIsNone(usage['raw_response'])
             self.assertEqual(usage['raw_response_escaped'], json.dumps(raw, ensure_ascii=True, allow_nan=True))
@@ -154,8 +157,9 @@ class ProviderTests(unittest.TestCase):
     def test_invalid_response_structure_still_settles_and_preserves_exact_raw(self):
         raw = response(None, '{"ticket_id":"A17"}')
         raw['choices'][0]['message']['tool_calls'] *= 2
+        model = self.make_model(lambda *args: raw)
         with self.assertRaises(ReceivedResponseError) as caught:
-            self.make_model(lambda *args: raw).respond(MESSAGES, TOOLS)
+            model.respond(MESSAGES, TOOLS)
         self.assertEqual(caught.exception.usage['raw_response'], raw)
         self.assertEqual(caught.exception.usage['accounting'], 'reported_usage')
         self.assertEqual(float(self.ledger.snapshot()['accounted_eur']), 0.00014)
@@ -166,9 +170,10 @@ class ProviderTests(unittest.TestCase):
             received = opener.open.return_value.__enter__.return_value
             received.status = 200
             received.read.return_value = body
+            model = self.make_model(_http_transport)
             with self.subTest(body=body), patch('security_lab.providers.urllib.request.build_opener', return_value=opener):
                 with self.assertRaises(ReceivedResponseError) as caught:
-                    self.make_model(_http_transport).respond(MESSAGES, TOOLS)
+                    model.respond(MESSAGES, TOOLS)
             usage = caught.exception.usage
             self.assertEqual(usage['accounting'], 'reservation_retained')
             self.assertIn('reservation_id', usage)
@@ -178,10 +183,11 @@ class ProviderTests(unittest.TestCase):
         for failure in (TimeoutError('FAKE-TEST-KEY'), OSError('FAKE-TEST-KEY')):
             opener = unittest.mock.Mock()
             opener.open.side_effect = failure
+            model = self.make_model(_http_transport)
             with self.subTest(failure=type(failure).__name__), patch(
                     'security_lab.providers.urllib.request.build_opener', return_value=opener):
                 with self.assertRaises(ModelError) as caught:
-                    self.make_model(_http_transport).respond(MESSAGES, TOOLS)
+                    model.respond(MESSAGES, TOOLS)
             self.assertNotIsInstance(caught.exception, ReceivedResponseError)
             self.assertNotIn('FAKE-TEST-KEY', str(caught.exception))
             self.assertEqual(opener.open.call_count, 1)
@@ -189,9 +195,10 @@ class ProviderTests(unittest.TestCase):
 
     def test_oversized_received_evidence_is_bounded_and_marked_truncated(self):
         raw = response('x' * 2000)
+        model = self.make_model(lambda *args: raw)
         with patch('security_lab.providers.MAX_RESPONSE_BYTES', 1024):
             with self.assertRaises(ReceivedResponseError) as caught:
-                self.make_model(lambda *args: raw).respond(MESSAGES, TOOLS)
+                model.respond(MESSAGES, TOOLS)
         usage = caught.exception.usage
         self.assertEqual(len(usage['raw_response_escaped']), 1024)
         self.assertTrue(usage['raw_response_escaped_truncated'])
@@ -202,26 +209,30 @@ class ProviderTests(unittest.TestCase):
         received = opener.open.return_value.__enter__.return_value
         received.status = 200
         received.read.return_value = b'x' * 1025
+        model = self.make_model(_http_transport)
         with patch('security_lab.providers.MAX_RESPONSE_BYTES', 1024), patch(
                 'security_lab.providers.urllib.request.build_opener', return_value=opener):
             with self.assertRaises(ReceivedResponseError) as caught:
-                self.make_model(_http_transport).respond(MESSAGES, TOOLS)
+                model.respond(MESSAGES, TOOLS)
         usage = caught.exception.usage
         self.assertEqual(base64.b64decode(usage['raw_response_body_base64']), b'x' * 1024)
         self.assertTrue(usage['raw_response_body_truncated'])
         self.assertEqual(usage['accounting'], 'reservation_retained')
 
     def test_malformed_response_keeps_reservation(self):
+        model = self.make_model(lambda *args: {'choices': []})
         with self.assertRaises(ModelError):
-            self.make_model(lambda *args: {'choices': []}).respond(MESSAGES, TOOLS)
+            model.respond(MESSAGES, TOOLS)
         self.assertGreater(float(self.ledger.snapshot()['accounted_eur']), 0)
 
     def test_budget_and_input_limits_prevent_transport(self):
         fail = lambda *args: self.fail('transport called')
+        budget_limited = self.make_model(fail, run_budget_eur=0.000001)
+        input_limited = self.make_model(fail, max_input_tokens=1)
         with self.assertRaises(BudgetExceeded):
-            self.make_model(fail, run_budget_eur=0.000001).respond(MESSAGES, TOOLS)
+            budget_limited.respond(MESSAGES, TOOLS)
         with self.assertRaises(BudgetExceeded):
-            self.make_model(fail, max_input_tokens=1).respond(MESSAGES, TOOLS)
+            input_limited.respond(MESSAGES, TOOLS)
         self.assertFalse(self.ledger.path.exists())
 
     def test_request_count_is_bounded(self):
@@ -290,8 +301,28 @@ class ProviderTests(unittest.TestCase):
         stopped = response(None, '{"ticket_id":"A17"}')
         stopped['choices'][0]['finish_reason'] = 'stop'
         for invalid in (duplicate, stopped):
+            model = self.make_model(lambda *args: invalid)
             with self.subTest(invalid=invalid), self.assertRaises(ModelError):
-                self.make_model(lambda *args: invalid).respond(MESSAGES, TOOLS)
+                model.respond(MESSAGES, TOOLS)
+
+    def test_certificate_failure_preserves_verification_and_never_retries(self):
+        opener = unittest.mock.Mock()
+        opener.open.side_effect = urllib.error.URLError(
+            ssl.SSLCertVerificationError('synthetic certificate failure: FAKE-TEST-KEY'))
+        model = self.make_model(_http_transport)
+        with patch('security_lab.providers.urllib.request.build_opener', return_value=opener) as build:
+            with self.assertRaises(ModelError) as caught:
+                model.respond(MESSAGES, TOOLS)
+        handlers = build.call_args.args
+        tls = next(handler for handler in handlers if isinstance(handler, urllib.request.HTTPSHandler))
+        self.assertEqual(tls._context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(tls._context.check_hostname)
+        self.assertEqual(opener.open.call_count, 1)
+        self.assertNotIn('FAKE-TEST-KEY', str(caught.exception))
+        self.assertNotIsInstance(caught.exception, ReceivedResponseError)
+        reservations = self.ledger.snapshot()['reservations']
+        self.assertEqual(len(reservations), 1)
+        self.assertEqual(next(iter(reservations.values()))['state'], 'reserved')
 
     def test_redirects_are_refused_without_forwarding_credentials(self):
         request = urllib.request.Request(API_URL, headers={'Authorization': 'Bearer FAKE-TEST-KEY'})

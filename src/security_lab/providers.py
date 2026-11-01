@@ -53,7 +53,7 @@ def _response_evidence(raw: Any) -> dict[str, Any]:
         encoded = _strict_json(raw)
         if len(encoded) <= MAX_RESPONSE_BYTES:
             return {"raw_response": raw}
-    except (TypeError, ValueError, UnicodeError, RecursionError):
+    except (TypeError, ValueError, RecursionError):
         pass
     try:
         escaped = json.dumps(raw, ensure_ascii=True, allow_nan=True).encode("ascii")
@@ -96,7 +96,7 @@ def _http_transport(payload: dict[str, Any], api_key: str, timeout: float) -> di
                 raise ModelError("Unexpected API HTTP status; reservation retained")
             try:
                 body = response.read(MAX_RESPONSE_BYTES + 1)
-            except (http.client.HTTPException, TimeoutError, OSError) as error:
+            except (http.client.HTTPException, OSError) as error:
                 # The successful response headers already confirm receipt.
                 # A later body failure must not turn that into uncertainty or
                 # discard the bytes available from an IncompleteRead.
@@ -109,7 +109,7 @@ def _http_transport(payload: dict[str, Any], api_key: str, timeout: float) -> di
                 raise _received_body_error(body, truncated=True)
         try:
             value = json.loads(body.decode("utf-8"))
-        except (ValueError, UnicodeError, RecursionError):
+        except (ValueError, RecursionError):
             raise _received_body_error(body) from None
         if not isinstance(value, dict):
             raise ReceivedResponseError(_response_evidence(value))
@@ -117,7 +117,7 @@ def _http_transport(payload: dict[str, Any], api_key: str, timeout: float) -> di
     except urllib.error.HTTPError as error:
         # Do not include response bodies, URLs, proxy credentials or headers.
         raise ModelError(f"API HTTP {error.code}; no automatic retry; reservation retained") from None
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+    except (OSError, ValueError):
         raise ModelError("API transport or JSON error; no automatic retry; reservation retained") from None
 
 
@@ -229,7 +229,7 @@ class OpenAIModel:
         try:
             # Byte count plus generous framing margin; excludes hidden provider changes.
             input_bound = 2 * len(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")) + 4096
-        except (TypeError, ValueError, UnicodeError, RecursionError):
+        except (TypeError, ValueError, RecursionError):
             raise ModelError("Request is not valid JSON") from None
         if input_bound > self.max_input_tokens:
             raise BudgetExceeded("Conservative input estimate exceeds max_input_tokens")
@@ -297,7 +297,7 @@ class OpenAIModel:
             try:
                 if len(_strict_json(usage)) <= MAX_RESPONSE_BYTES:
                     safe_usage = usage
-            except (TypeError, ValueError, UnicodeError, RecursionError):
+            except (TypeError, ValueError, RecursionError):
                 # Retain useful reported tokens even if unrelated usage metadata
                 # is malformed. Full metadata survives in escaped raw evidence.
                 if valid_usage:
@@ -355,7 +355,7 @@ class OpenAIModel:
                     # it can also decode an escaped lone surrogate. Neither may
                     # enter proposals, tool state or the next API request.
                     _strict_json(arguments)
-                except (ValueError, TypeError, UnicodeError, RecursionError):
+                except (ValueError, TypeError, RecursionError):
                     arguments = None
                 if not isinstance(arguments, dict):
                     # Keep generated invalid arguments as an observable model proposal.
@@ -366,5 +366,5 @@ class OpenAIModel:
             if (finish == "tool_calls" and not result_calls) or (result_calls and finish == "stop"):
                 raise ValueError
             return ModelReply(text=text, tool_calls=result_calls, finish_reason=finish)
-        except (ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+        except (ValueError, KeyError, TypeError, RecursionError):
             raise ModelError("Invalid API response structure") from None
