@@ -10,13 +10,15 @@ from pathlib import Path
 from .batch import SOURCES, VARIANTS, digest, load_results, provenance, run_batch, write_json, write_json_new
 from .cases import load_cases
 
+DEVELOPMENT_CASES_DIR = Path("cases/dev")
+
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Synthetic LLM agent security lab (offline by default)")
     sub = p.add_subparsers(dest="command", required=True)
     for name in ("demo", "run"):
         cmd = sub.add_parser(name, help="Run offline engineering demo" if name == "demo" else "Run a development campaign")
-        cmd.add_argument("--cases", type=Path, default=Path("cases/dev"))
+        cmd.add_argument("--cases", type=Path, default=DEVELOPMENT_CASES_DIR)
         cmd.add_argument("--output", type=Path, default=Path("runs") / (name + "-" + datetime.now().strftime("%Y%m%d-%H%M%S")))
         cmd.add_argument("--variants", nargs="+", choices=VARIANTS, default=list(VARIANTS))
         cmd.add_argument("--sources", nargs="+", choices=SOURCES, default=list(SOURCES))
@@ -54,10 +56,10 @@ def parser() -> argparse.ArgumentParser:
     cmd.add_argument("--ratings", nargs=2, type=Path, required=True)
     cmd.add_argument("--output", type=Path, required=True)
     cmd = sub.add_parser("freeze", help="Record a development snapshot; not a release of the main experiment")
-    cmd.add_argument("--cases", type=Path, default=Path("cases/dev"))
+    cmd.add_argument("--cases", type=Path, default=DEVELOPMENT_CASES_DIR)
     cmd.add_argument("--output", type=Path, required=True)
     cmd = sub.add_parser("validate", help="Validate case structure and paired source data")
-    cmd.add_argument("--cases", type=Path, default=Path("cases/dev"))
+    cmd.add_argument("--cases", type=Path, default=DEVELOPMENT_CASES_DIR)
     cmd = sub.add_parser("archive", help="Export and verify a complete campaign archive")
     cmd.add_argument("directory", type=Path)
     cmd.add_argument("--output", type=Path, required=True)

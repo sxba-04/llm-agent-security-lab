@@ -34,12 +34,16 @@ export function Value({ value }: Readonly<{ value: Json | undefined }>) {
   return <span className="wrap">{value === undefined || value === null ? '—' : String(value)}</span>;
 }
 export function DataFields({ value }: Readonly<{ value: Data }>) { return <dl className="data-fields">{Object.entries(value).map(([key, val]) => <div key={key}><dt>{key}</dt><dd><Value value={val} /></dd></div>)}</dl>; }
+function ticketTitle(value: Json): string {
+  if (value !== null && typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
 export function TicketDiff({ before, after }: Readonly<{ before: Record<string, Data>; after: Record<string, Data> }>) {
   const ids = [...new Set([...Object.keys(before), ...Object.keys(after)])];
   return <div className="ticket-list">{ids.length === 0 && <p className="muted">Keine Ticketdaten vorhanden.</p>}{ids.map(id => {
     const changed = JSON.stringify(before[id]) !== JSON.stringify(after[id]);
     return <details key={id} className={`ticket-diff ${changed ? 'changed' : ''}`} open={changed}>
-      <summary><span className="mono">{id}</span><span>{String(after[id]?.title || before[id]?.title || 'Ticket')}</span><Pill tone={changed ? 'amber' : 'neutral'}>{changed ? 'Verändert' : 'Unverändert'}</Pill></summary>
+      <summary><span className="mono">{id}</span><span>{ticketTitle(after[id]?.title || before[id]?.title || 'Ticket')}</span><Pill tone={changed ? 'amber' : 'neutral'}>{changed ? 'Verändert' : 'Unverändert'}</Pill></summary>
       <div className="split"><div><h4>Vorher</h4><JsonBlock value={before[id] || null} /></div><div><h4>Nachher</h4><JsonBlock value={after[id] || null} /></div></div>
     </details>;
   })}</div>;

@@ -13,14 +13,14 @@ test('explicit eight-run experiment, evidence, PDF provenance and independent re
     await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
-    expect((await campaigns()).length).toBe(baseline);
+    expect(await campaigns()).toHaveLength(baseline);
     await page.screenshot({ path: testInfo.outputPath('desktop-overview.png'), fullPage: true, animations: 'disabled' });
   });
 
   await test.step('A deliberate click starts exactly one eight-run mock campaign', async () => {
     await page.getByRole('button', { name: 'Neuer Mock-Versuch', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Neuen Mock-Versuch vorbereiten' })).toBeVisible();
-    expect((await campaigns()).length).toBe(baseline);
+    expect(await campaigns()).toHaveLength(baseline);
     await page.getByRole('button', { name: 'Mock-Versuch starten', exact: true }).click();
     await expect(page).toHaveURL(/#campaigns\?id=/);
     campaignId = new URLSearchParams(page.url().split('?')[1]).get('id')!;
@@ -28,7 +28,7 @@ test('explicit eight-run experiment, evidence, PDF provenance and independent re
     expect((await campaigns()).find(c => c.campaign_id === campaignId)?.completed_runs).toBe(8);
     await page.reload();
     await expect(page.getByRole('tab', { name: 'Ereignisprotokoll' })).toBeVisible();
-    expect((await campaigns()).length).toBe(baseline + 1);
+    expect(await campaigns()).toHaveLength(baseline + 1);
     await expect(page.locator('.timeline-event').first()).toBeVisible();
     await page.getByRole('tab', { name: 'Tickets vorher / nachher' }).click();
     await expect(page.locator('.ticket-diff').first()).toBeVisible();

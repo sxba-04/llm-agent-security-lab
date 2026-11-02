@@ -14,6 +14,9 @@ from urllib.parse import urlsplit
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse, Response
 
+HTTP_RESPONSE_START = "http.response.start"
+REQUEST_TOO_LARGE = "Anfrage überschreitet die Größenbegrenzung."
+
 
 def _https_origin(value: str) -> str:
     """Accept one explicit HTTPS origin, never a URL prefix or wildcard."""
@@ -82,7 +85,7 @@ class HostedAccessMiddleware:
                           and origin in {self.settings.public_origin, self.settings.frontend_origin})
 
         async def secured_send(message):
-            if message["type"] == "http.response.start":
+            if message["type"] == HTTP_RESPONSE_START:
                 message = {**message, "headers": list(message.get("headers", []))}
                 output = MutableHeaders(scope=message)
                 output["Cache-Control"] = "no-store"
@@ -147,7 +150,7 @@ class HostedAccessMiddleware:
             if len(headers.getlist("content-length")) > 1 or not 0 <= length <= self.max_request_bytes:
                 raise ValueError
         except ValueError:
-            return await reject(413, "Anfrage überschreitet die Größenbegrenzung.")
+            return await reject(413, REQUEST_TOO_LARGE)
 
         received = 0
         oversized = False
@@ -171,12 +174,12 @@ class HostedAccessMiddleware:
             nonlocal replaced_response, response_started
             if replaced_response:
                 return
-            if oversized and message["type"] == "http.response.start":
+            if oversized and message["type"] == HTTP_RESPONSE_START:
                 # Multipart/JSON parsers may convert receive errors to 400.
                 # Preserve the actual limit failure without exposing the body.
                 replaced_response = True
-                return await reject(413, "Anfrage überschreitet die Größenbegrenzung.")
-            if message["type"] == "http.response.start":
+                return await reject(413, REQUEST_TOO_LARGE)
+            if message["type"] == HTTP_RESPONSE_START:
                 response_started = True
             await secured_send(message)
 
@@ -184,5 +187,5 @@ class HostedAccessMiddleware:
             await self.app(scope, limited_receive, limited_send)
         except TooLarge:
             if not response_started and not replaced_response:
-                return await reject(413, "Anfrage überschreitet die Größenbegrenzung.")
+                return await reject(413, REQUEST_TOO_LARGE)
             raise

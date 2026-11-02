@@ -68,6 +68,8 @@ def execute(args: argparse.Namespace) -> dict:
     # Never reuse or clear an existing evidence directory.
     destination.mkdir(parents=True, exist_ok=False)
     campaign = destination / "campaign"
+    summary_path = destination / "summary.json"
+    archive_path = destination / "campaign.zip"
     command, per_repeat = PRESETS[args.preset]
     report = {"preset": args.preset, "repeats": args.repeats, "completed": False,
               "engineering_only": True, "planned_runs": per_repeat * args.repeats}
@@ -76,18 +78,18 @@ def execute(args: argparse.Namespace) -> dict:
         if command == "run":
             run_args += ["--provider", "mock"]
         _cli(*run_args)
-        _cli("summarize", campaign, "--output", destination / "summary.json")
+        _cli("summarize", campaign, "--output", summary_path)
         _cli("review-export", campaign, "--output", campaign / "reviews" / "ci-review")
         subprocess.run([sys.executable, str(ROOT / "analysis/export_tables.py"),
-                        str(destination / "summary.json"), str(destination / "metrics.csv")],
+                        str(summary_path), str(destination / "metrics.csv")],
                        cwd=ROOT, check=True)
-        _cli("archive", campaign, "--output", destination / "campaign.zip", capture=True)
-        verified = json.loads(_cli("verify-archive", destination / "campaign.zip", capture=True))
+        _cli("archive", campaign, "--output", archive_path, capture=True)
+        verified = json.loads(_cli("verify-archive", archive_path, capture=True))
         _json(destination / "verification.json", verified)
-        restored = json.loads(_cli("restore-archive", destination / "campaign.zip",
+        restored = json.loads(_cli("restore-archive", archive_path,
                                    "--output", destination / "restored", capture=True))
         _cli("summarize", destination / "restored", "--output", destination / "restored-summary.json")
-        summary = json.loads((destination / "summary.json").read_text(encoding="utf-8"))
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
         restored_summary = json.loads((destination / "restored-summary.json").read_text(encoding="utf-8"))
         manifest = json.loads((campaign / "manifest.json").read_text(encoding="utf-8"))
         expected = report["planned_runs"]

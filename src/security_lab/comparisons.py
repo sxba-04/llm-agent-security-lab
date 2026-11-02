@@ -146,9 +146,9 @@ def paired_comparisons(results: list[dict[str, Any]]) -> dict[str, Any]:
             relevant = {key: block for key, block in blocks.items() if left in block or right in block}
             if not relevant:
                 continue
-            excluded_counts = {key: 0 for key in ("missing_left", "missing_right", "invalid_left", "invalid_right",
-                                                  "input_mismatch", "missing_input_evidence", "execution_mismatch",
-                                                  "missing_execution_evidence", "invalid_execution_evidence")}
+            excluded_counts = dict.fromkeys(("missing_left", "missing_right", "invalid_left", "invalid_right",
+                                             "input_mismatch", "missing_input_evidence", "execution_mismatch",
+                                             "missing_execution_evidence", "invalid_execution_evidence"), 0)
             excluded_blocks = []
             pairs = []
             for (case_id, repetition), block in sorted(relevant.items()):
