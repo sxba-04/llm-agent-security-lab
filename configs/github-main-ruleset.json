@@ -32,7 +32,10 @@
           {"context": "test (ubuntu-latest)", "integration_id": 15368},
           {"context": "test (windows-latest)", "integration_id": 15368},
           {"context": "frontend (ubuntu-latest)", "integration_id": 15368},
-          {"context": "frontend (windows-latest)", "integration_id": 15368}
+          {"context": "frontend (windows-latest)", "integration_id": 15368},
+          {"context": "Dependency review", "integration_id": 15368},
+          {"context": "build", "integration_id": 15368},
+          {"context": "CodeQL", "integration_id": 57789}
         ]
       }
     }

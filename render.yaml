@@ -1,13 +1,15 @@
-# Free, disposable mock test environment. No disk or database is provisioned.
-# Keep the Hobby workspace without a payment method to stop instead of billing
-# when free quotas are exhausted. See docs/hosting.md before deployment.
+# Existing paid compute plan, upgraded by the owner on 2026-11-02.
+# The live service is managed directly in Render, not through Blueprint sync.
+# This file records its intended configuration; do not create a duplicate service.
+# Storage remains ephemeral. No disk or database is provisioned here.
+# Additional paid resources require a separate decision. See docs/hosting.md.
 services:
   - type: web
     name: llm-agent-security-lab-demo-api
     runtime: python
     branch: main
     region: frankfurt
-    plan: free
+    plan: 0.5c-512mb
     numInstances: 1
     autoDeployTrigger: checksPass
     buildCommand: |

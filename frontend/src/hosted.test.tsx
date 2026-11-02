@@ -96,6 +96,67 @@ describe('protected online workbench', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     await expect(api('/api/cases')).rejects.toThrow('Bitte zuerst anmelden.');
     expect(fetch).toHaveBeenCalledTimes(2);
+    render(<AccessGate><p>Private Werkbank</p></AccessGate>);
+    expect(screen.getByRole('alert')).toHaveTextContent('Der Server akzeptiert deinen Zugangscode nicht mehr');
+    expect(screen.queryByText('Private Werkbank')).not.toBeInTheDocument();
+  });
+
+  it('renews a restarted server session only on the next manual action and never replays a mutation', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'before-restart' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    fetch.mockImplementationOnce(async () => json({ code: 'csrf_token_invalid', detail: 'Expired' }, 403));
+    await expect(api('/api/campaigns', { method: 'POST', body: '{}' })).rejects.toThrow('Die Aktion wurde nicht ausgeführt');
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sessionIsAuthenticated()).toBe(true);
+    fetch.mockImplementationOnce(async () => json({ csrf_token: 'after-restart' }));
+    fetch.mockImplementationOnce(async () => json({ campaign_id: 'new-campaign' }));
+    await expect(api('/api/campaigns', { method: 'POST', body: '{}' })).resolves.toEqual({ campaign_id: 'new-campaign' });
+    expect(fetch.mock.calls.map(call => call[0])).toEqual([
+      'https://lab.example/api/health', 'https://lab.example/api/campaigns',
+      'https://lab.example/api/health', 'https://lab.example/api/campaigns',
+    ]);
+    expect(new Headers(fetch.mock.calls[3][1].headers).get('X-Lab-Token')).toBe('after-restart');
+  });
+
+  it('does not misidentify an unrelated forbidden request as an expired session', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    fetch.mockImplementationOnce(async () => json({ detail: 'Diese Webseite ist nicht zugelassen.' }, 403));
+    await expect(api('/api/campaigns', { method: 'POST', body: '{}' })).rejects.toThrow('Diese Webseite ist nicht zugelassen.');
+    await api('/api/campaigns', { method: 'POST', body: '{}' });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(new Headers(fetch.mock.calls[2][1].headers).get('X-Lab-Token')).toBe('csrf');
+  });
+
+  it('does not let a delayed rejection from an old session sign out the new session with the same code', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    let completeOldRequest!: (response: Response) => void;
+    fetch.mockImplementationOnce(() => new Promise<Response>(resolve => { completeOldRequest = resolve; }));
+    const oldRequest = api('/api/cases');
+    signOut();
+    await signIn(code);
+    completeOldRequest(json({ detail: 'Old session rejected' }, 401));
+    await expect(oldRequest).rejects.toThrow('Old session rejected');
+    expect(sessionIsAuthenticated()).toBe(true);
+  });
+
+  it('ignores a delayed health token from an old session after signing back in with the same code', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'current-session' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    let completeOldRequest!: (response: Response) => void;
+    fetch.mockImplementationOnce(() => new Promise<Response>(resolve => { completeOldRequest = resolve; }));
+    const oldRequest = api('/api/health');
+    signOut();
+    await signIn(code);
+    completeOldRequest(json({ csrf_token: 'old-session' }));
+    await oldRequest;
+    await api('/api/campaigns', { method: 'POST', body: '{}' });
+    expect(new Headers(fetch.mock.calls[3][1].headers).get('X-Lab-Token')).toBe('current-session');
   });
 
   it('downloads bytes with authentication and rejects errors instead of saving them as PDFs', async () => {

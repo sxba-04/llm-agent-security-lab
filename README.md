@@ -15,11 +15,13 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Online-Werkbank
 
-Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und mit dem persönlichen Labor-Zugangscode anmelden. Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Die Erreichbarkeit, der Zugriffsschutz und der Free-Plan wurden am 30. Oktober 2026 erneut geprüft. Einrichtung, Prüfgrenzen und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
+Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und mit dem persönlichen Labor-Zugangscode anmelden. Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Der bestehende Render-Dienst wurde vom Betreiber am 2. November 2026 auf den kostenpflichtigen Plan mit 0,5 CPU und 512 MB RAM umgestellt; die Betriebsprüfung bestätigt den laufenden Dienst, noch keine dauerhafte Speicherung. Einrichtung, Prüfgrenzen und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
 
-**Dieser kostenlose Testbetrieb verliert hochgeladene PDFs, Versuche und Bewertungen bei Ruhezustand, Neustart oder Deployment.** Benötigte Archive vorher herunterladen; wichtige Studienbelege lokal sichern. Die Oberfläche bleibt im Mock-Betrieb. Nach einer Ruhephase kann die erste Verbindung ungefähr eine Minute dauern.
+**Der Workspace bleibt flüchtig und verliert hochgeladene PDFs, Versuche und Bewertungen bei Neustart oder Deployment.** Das Compute-Upgrade enthält keine persistente Disk. Benötigte Archive vorher herunterladen; wichtige Studienbelege lokal sichern. Die Oberfläche bleibt im Mock-Betrieb.
 
 Für spätere echte Modellversuche kann das Sprachmodell beim API-Anbieter laufen. Das eigene Backend steuert die Versuche, prüft Toolvorschläge und wertet Belege aus; es benötigt dafür keine lokalen Modellgewichte oder GPU. Echte API-Aufrufe und ihre Kosten bleiben dem separat freizugebenden Pilotbetrieb vorbehalten.
+
+[Dokumentationsübersicht](docs/README.md) · [Zugangscode wiederherstellen](docs/hosting.md#verlorener-code-und-ungültige-sitzung) · [Projektstruktur](docs/architecture.md#verzeichnisstruktur-und-modulgrenzen)
 
 ## Grafische Oberfläche unter Windows
 
@@ -92,7 +94,7 @@ In einem Ausgabeordner enthält `manifest.json` die Konfiguration und Reihenfolg
 
 | Pfad | Zweck |
 |---|---|
-| `src/security_lab/` | Anwendung, Tools, Filter, Modellanbindung, Auswertung und CLI |
+| `src/security_lab/` | Gemeinsames Python-Paket: Versuchskern, FastAPI-Backend, Auswertung und CLI |
 | `cases/dev/` | Zwölf Entwicklungsfälle mit sauberem und manipuliertem Artikel |
 | `cases/test/` | Platz für den später separat entwickelten Haupttestkatalog |
 | `tests/` | Automatisierte technische Prüfungen ohne echte API-Aufrufe |
@@ -101,8 +103,12 @@ In einem Ausgabeordner enthält `manifest.json` die Konfiguration und Reihenfolg
 | `frontend/` | React-/TypeScript-Oberfläche mit Vite, Tests und Lockdatei |
 | `.vscode/tasks.json` | Gemeinsame VS-Code-Aufgaben für Installation, Start und Prüfungen |
 | `.github/workflows/` | Windows-/Linux-CI und manuell startbare Mock-Kampagnen |
-| `scripts/ci_mock_campaign.py` | Begrenzte Mock-Kampagne mit Archivprüfung und Wiederherstellung |
+| `scripts/` | CI-Hilfen für Mock-Kampagnen und Sonar-Inventur |
+| `analysis/` | Export und Weiterverarbeitung von Auswertungen |
+| `render.yaml` | Vorlage des bestehenden Render-Dienstes; kein aktiver Blueprint-Sync |
 | `runs/` | Lokale Laufdaten; nicht automatisch Teil der Git-Historie |
+
+Das Backend liegt bereits in `src/security_lab/`; `frontend/` hat wegen seines eigenen Node-/Vite-Builds einen separaten Ordner. Der Python-Kern wird auch von der CLI und der Auswertung genutzt. Ein zusätzlicher `backend/`-Ordner würde dafür keinen fachlichen Vorteil bringen. Die [Architekturübersicht](docs/architecture.md#verzeichnisstruktur-und-modulgrenzen) erklärt die Modulgrenzen und den Umgang mit späteren Aufteilungen.
 
 ## Grenzen des Labors
 
@@ -116,6 +122,6 @@ Arbeiten erfolgen in kurzen Branches mit Pull Requests und nachvollziehbarer Geg
 
 Vor dem Zusammenführen müssen die Tests und angeforderten Reviews für den aktuellen Commit abgeschlossen und sämtliche Befunde geprüft sein; ausdrücklich genehmigte Ausnahmen werden gemäß Arbeitsablauf dokumentiert. Die vorhandenen Tests ersetzen keine abgeschlossene Gegenprüfung.
 
-Der [Schutz von `main`](docs/branch-protection.md) verlangt Pull Requests, vier erfolgreiche CI-Jobs, einen aktuellen Basisstand und erledigte Review-Gespräche. Force-Push und Löschen sind gesperrt; es gibt keine Bypass-Liste.
+Der [Schutz von `main`](docs/branch-protection.md) verlangt Pull Requests, die konfigurierten erfolgreichen Pflichtprüfungen, einen aktuellen Basisstand und erledigte Review-Gespräche. Force-Push und Löschen sind gesperrt; es gibt keine Bypass-Liste.
 
 Die aktuelle Implementierung wurde mit ChatGPT/Codex erstellt. Die Autoren prüfen, verstehen und überarbeiten die übernommenen Bestandteile vor der wissenschaftlichen Verwendung. Ein Commit ist kein Nachweis einer bereits erfolgten menschlichen Prüfung.

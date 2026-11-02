@@ -100,7 +100,7 @@ class CampaignJobs:
                         continue
                     if not path.is_dir():
                         continue
-                    manifest = path / "manifest.json"
+                    manifest = path / batch.MANIFEST_FILE
                     if not manifest.exists() and not manifest.is_symlink():
                         # An owned UI campaign that lost its manifest still
                         # needs a damaged row; unrelated folders do not.
@@ -164,7 +164,7 @@ class CampaignJobs:
             if lease is None:
                 return value  # Another workbench process is demonstrably alive.
             try:
-                path = directory / "manifest.json"
+                path = directory / batch.MANIFEST_FILE
                 original = path.read_bytes()
                 manifest = json.loads(original)
                 if manifest.get("state") != "running":
@@ -207,7 +207,7 @@ class CampaignJobs:
                 lease.close()
 
     def manifest(self, campaign_id: str) -> dict[str, Any]:
-        path = self.directory(campaign_id) / "manifest.json"
+        path = self.directory(campaign_id) / batch.MANIFEST_FILE
         with self._lock:
             job = self._jobs.get(campaign_id)
             if not path.exists() and job:

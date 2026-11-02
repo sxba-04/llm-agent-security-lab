@@ -9,23 +9,32 @@ export const statusNames: Record<string, string> = { queued: 'Eingeplant', runni
 export const metricNames: Record<string, string> = { proposal_violation: 'Unberechtigter Vorschlag', backend_violation: 'Unberechtigter Effekt', context_disclosure: 'Offenlegung im Kontext', output_disclosure: 'Offenlegung in der Ausgabe', attacker_goal: 'Angriffsziel erreicht', legitimate_success: 'Legitime Aufgabe erfüllt', false_block: 'Fehlblockade' };
 export function isDamagedCampaign(campaign: Campaign | undefined) { return campaign?.state === 'damaged' || campaign?.valid_evidence === false; }
 export function hasActiveWorker(campaign: Campaign) { return campaign.worker_active !== undefined ? campaign.worker_active === true : ['queued', 'running', 'cancelling'].includes(campaign.state); }
-export function formatDate(date: string) { const d = new Date(date); return isNaN(d.getTime()) ? 'Zeitpunkt unbekannt' : new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(d); }
-export function Pill({ children, tone = 'neutral' }: { children: ReactNode; tone?: string }) { return <span className={`pill ${tone}`}>{children}</span>; }
-export function Status({ value }: { value: string }) { return <Pill tone={['running', 'queued', 'cancelling'].includes(value) ? 'blue' : ['completed', 'consensus', 'adjudicated'].includes(value) ? 'green' : ['technical_error', 'disagreement', 'interrupted', 'stopped', 'damaged'].includes(value) ? 'red' : 'neutral'}>{statusNames[value] || value}</Pill>; }
-export function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) { return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action}</div>; }
-export function Panel({ title, subtitle, children, action, className = '' }: { title?: ReactNode; subtitle?: string; children: ReactNode; action?: ReactNode; className?: string }) { return <section className={`panel ${className}`}>{(title || action) && <header className="panel-header"><div>{title && <h2>{title}</h2>}{subtitle && <p>{subtitle}</p>}</div>{action}</header>}<div className="panel-body">{children}</div></section>; }
-export function Empty({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) { return <div className="empty-state"><span className="empty-icon"><Inbox size={24} /></span><h3>{title}</h3><p>{children}</p>{action}</div>; }
-export function ErrorBox({ error, retry }: { error: string; retry?: () => void }) { return error ? <div role="alert" className="notice error"><AlertCircle size={19} /><div>{error}</div>{retry && <button className="text-button" onClick={retry}>Erneut versuchen</button>}</div> : null; }
-export function Success({ children }: { children: ReactNode }) { return <div className="notice success" role="status"><Check size={18} /><span>{children}</span></div>; }
-export function Loading({ text = 'Daten werden geladen …' }: { text?: string }) { return <div className="loading" role="status"><LoaderCircle className="spin" size={20} />{text}</div>; }
+export function formatDate(date: string) { const d = new Date(date); return Number.isNaN(d.getTime()) ? 'Zeitpunkt unbekannt' : new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(d); }
+export function Pill({ children, tone = 'neutral' }: Readonly<{ children: ReactNode; tone?: string }>) { return <span className={`pill ${tone}`}>{children}</span>; }
+function statusTone(value: string) {
+  if (['running', 'queued', 'cancelling'].includes(value)) return 'blue';
+  if (['completed', 'consensus', 'adjudicated'].includes(value)) return 'green';
+  if (['technical_error', 'disagreement', 'interrupted', 'stopped', 'damaged'].includes(value)) return 'red';
+  return 'neutral';
+}
+export function Status({ value }: Readonly<{ value: string }>) { return <Pill tone={statusTone(value)}>{statusNames[value] || value}</Pill>; }
+export function PageHeader({ eyebrow, title, description, action }: Readonly<{ eyebrow: string; title: string; description: string; action?: ReactNode }>) { return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action}</div>; }
+export function Panel({ title, subtitle, children, action, className = '' }: Readonly<{ title?: ReactNode; subtitle?: string; children: ReactNode; action?: ReactNode; className?: string }>) { return <section className={`panel ${className}`}>{(title || action) && <header className="panel-header"><div>{title && <h2>{title}</h2>}{subtitle && <p>{subtitle}</p>}</div>{action}</header>}<div className="panel-body">{children}</div></section>; }
+export function Empty({ title, children, action }: Readonly<{ title: string; children?: ReactNode; action?: ReactNode }>) { return <div className="empty-state"><span className="empty-icon"><Inbox size={24} /></span><h3>{title}</h3><p>{children}</p>{action}</div>; }
+export function ErrorBox({ error, retry }: Readonly<{ error: string; retry?: () => void }>) { return error ? <div role="alert" className="notice error"><AlertCircle size={19} /><div>{error}</div>{retry && <button className="text-button" onClick={retry}>Erneut versuchen</button>}</div> : null; }
+export function Success({ children }: Readonly<{ children: ReactNode }>) { return <output className="notice success"><Check size={18} /><span>{children}</span></output>; }
+export function Loading({ text = 'Daten werden geladen …' }: Readonly<{ text?: string }>) { return <output className="loading"><LoaderCircle className="spin" size={20} />{text}</output>; }
 export function EngineeringNote() { return <p className="engineering-note"><span className="tiny-dot" />Diese Werkbank startet Mock-Läufe zur Funktionsprüfung. Mock-Ergebnisse sind keine empirischen LLM-Befunde.</p>; }
-export function JsonBlock({ value }: { value: unknown }) { return <pre className="code-block">{JSON.stringify(value, null, 2)}</pre>; }
-export function TextBlock({ children, className = '' }: { children: ReactNode; className?: string }) { return <div className={`text-block ${className}`}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</div>; }
-export function Disclosure({ title, children, open = false }: { title: string; children: ReactNode; open?: boolean }) { return <details className="disclosure" open={open}><summary><ChevronRight size={16} />{title}</summary><div>{children}</div></details>; }
-export function GoButton({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <button className="text-button" onClick={onClick}>{children}<ArrowRight size={16} /></button>; }
-export function Value({ value }: { value: Json | undefined }) { return value !== null && typeof value === 'object' ? <JsonBlock value={value} /> : <span className="wrap">{value === undefined || value === null ? '—' : String(value)}</span>; }
-export function DataFields({ value }: { value: Data }) { return <dl className="data-fields">{Object.entries(value).map(([key, val]) => <div key={key}><dt>{key}</dt><dd><Value value={val} /></dd></div>)}</dl>; }
-export function TicketDiff({ before, after }: { before: Record<string, Data>; after: Record<string, Data> }) {
+export function JsonBlock({ value }: Readonly<{ value: unknown }>) { return <pre className="code-block">{JSON.stringify(value, null, 2)}</pre>; }
+export function TextBlock({ children, className = '' }: Readonly<{ children: ReactNode; className?: string }>) { return <div className={`text-block ${className}`}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</div>; }
+export function Disclosure({ title, children, open = false }: Readonly<{ title: string; children: ReactNode; open?: boolean }>) { return <details className="disclosure" open={open}><summary><ChevronRight size={16} />{title}</summary><div>{children}</div></details>; }
+export function GoButton({ children, onClick }: Readonly<{ children: ReactNode; onClick: () => void }>) { return <button className="text-button" onClick={onClick}>{children}<ArrowRight size={16} /></button>; }
+export function Value({ value }: Readonly<{ value: Json | undefined }>) {
+  if (value !== null && typeof value === 'object') return <JsonBlock value={value} />;
+  return <span className="wrap">{value === undefined || value === null ? '—' : String(value)}</span>;
+}
+export function DataFields({ value }: Readonly<{ value: Data }>) { return <dl className="data-fields">{Object.entries(value).map(([key, val]) => <div key={key}><dt>{key}</dt><dd><Value value={val} /></dd></div>)}</dl>; }
+export function TicketDiff({ before, after }: Readonly<{ before: Record<string, Data>; after: Record<string, Data> }>) {
   const ids = [...new Set([...Object.keys(before), ...Object.keys(after)])];
   return <div className="ticket-list">{ids.length === 0 && <p className="muted">Keine Ticketdaten vorhanden.</p>}{ids.map(id => {
     const changed = JSON.stringify(before[id]) !== JSON.stringify(after[id]);
@@ -53,7 +62,7 @@ export function diffLines(clean: string, attack: string): { clean: { text: strin
   }
   return { clean: l, attack: r };
 }
-export function SourceDiff({ clean, attack }: { clean: string; attack: string }) {
+export function SourceDiff({ clean, attack }: Readonly<{ clean: string; attack: string }>) {
   const diff = diffLines(clean, attack);
   return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre>{diff[source].map((line, index) => <span key={index} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
 }

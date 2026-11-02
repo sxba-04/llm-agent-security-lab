@@ -34,7 +34,44 @@ from .hosted import HostedAccessMiddleware, HostedSettings
 REVIEW_ID = re.compile(r"review-[0-9a-f]{32}\Z")
 REVIEW_API_ID = re.compile(r"(?:review-[0-9a-f]{32}|review-copy-[0-9a-f]{64})\Z")
 REVIEW_ERROR = "Die Bewertungsbelege sind beschädigt oder unvollständig. Originaldateien bleiben erhalten."
+REVIEW_MAPPING_FILE = "mapping.json"
 MAX_REQUEST_BYTES = MAX_PDF_BYTES + 65536
+REQUEST_TOO_LARGE = "Anfrage überschreitet die Größenbegrenzung."
+
+
+def _valid_local_host(headers: Headers) -> bool:
+    if len(headers.getlist("host")) != 1:
+        return False
+    try:
+        # URL parsing only; local access never opens a connection here.
+        parsed = urlsplit("//" + headers.get("host", ""))
+        valid = (parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+                 and parsed.username is None and parsed.path == ""
+                 and not parsed.query and not parsed.fragment)
+        _ = parsed.port  # Accessing the property validates the port syntax/range.
+        return valid
+    except ValueError:
+        return False
+
+
+def _local_request_error(scope, headers: Headers, token: str) -> tuple[int, str] | None:
+    if not _valid_local_host(headers):
+        return 403, "Nur lokale Hostnamen sind zugelassen."
+    origin = headers.get("origin")
+    expected_origin = scope.get("scheme", "http") + "://" + headers["host"]
+    if (origin is not None and origin != expected_origin) or headers.get("sec-fetch-site") == "cross-site":
+        return 403, "Anfragen anderer Webseiten sind nicht zugelassen."
+    if scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
+        supplied = headers.get("x-lab-token", "")
+        if not secrets.compare_digest(supplied.encode("utf-8"), token.encode("ascii")):
+            return 403, "Lokales Sitzungstoken fehlt oder ist ungültig."
+    try:
+        length = int(headers.get("content-length", "0"))
+        if not 0 <= length <= MAX_REQUEST_BYTES:
+            return 413, REQUEST_TOO_LARGE
+    except ValueError:
+        return 413, REQUEST_TOO_LARGE
+    return None
 
 
 class LocalAccessMiddleware:
@@ -46,29 +83,10 @@ class LocalAccessMiddleware:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         headers = Headers(scope=scope)
-        host = headers.get("host", "")
-        try:
-            parsed = urlsplit("http://" + host)
-            host_ok = parsed.hostname in {"127.0.0.1", "localhost", "::1"} and parsed.username is None and parsed.path == "" and not parsed.query and not parsed.fragment
-            _ = parsed.port
-        except ValueError:
-            host_ok = False
-        if len(headers.getlist("host")) != 1 or not host_ok:
-            return await JSONResponse({"detail": "Nur lokale Hostnamen sind zugelassen."}, 403)(scope, receive, send)
-        origin = headers.get("origin")
-        expected_origin = scope.get("scheme", "http") + "://" + host
-        if (origin is not None and origin != expected_origin) or headers.get("sec-fetch-site") == "cross-site":
-            return await JSONResponse({"detail": "Anfragen anderer Webseiten sind nicht zugelassen."}, 403)(scope, receive, send)
-        if scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
-            supplied = headers.get("x-lab-token", "")
-            if not secrets.compare_digest(supplied.encode("utf-8"), self.token.encode("ascii")):
-                return await JSONResponse({"detail": "Lokales Sitzungstoken fehlt oder ist ungültig."}, 403)(scope, receive, send)
-        try:
-            length = int(headers.get("content-length", "0"))
-            if length < 0 or length > MAX_REQUEST_BYTES:
-                raise ValueError
-        except ValueError:
-            return await JSONResponse({"detail": "Anfrage überschreitet die Größenbegrenzung."}, 413)(scope, receive, send)
+        error = _local_request_error(scope, headers, self.token)
+        if error is not None:
+            status, detail = error
+            return await JSONResponse({"detail": detail}, status)(scope, receive, send)
         received = 0
         class TooLarge(Exception):
             pass
@@ -83,11 +101,27 @@ class LocalAccessMiddleware:
         try:
             await self.app(scope, limited_receive, send)
         except TooLarge:
-            await JSONResponse({"detail": "Anfrage überschreitet die Größenbegrenzung."}, 413)(scope, receive, send)
+            await JSONResponse({"detail": REQUEST_TOO_LARGE}, 413)(scope, receive, send)
 
 
 class StrictBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class APIError(BaseModel):
+    """Document existing error payloads without changing exception handling."""
+    detail: str
+
+
+API_ERROR_RESPONSES = {
+    400: {"model": APIError, "description": "Invalid input or damaged evidence."},
+    403: {"model": APIError, "description": "Host, origin or mutation token is not allowed."},
+    404: {"model": APIError, "description": "Requested resource or evidence file was not found."},
+    413: {"model": APIError, "description": "Request exceeds the configured size limit."},
+}
+CONFLICT_RESPONSE = {
+    409: {"model": APIError, "description": "Operation conflicts with the current workbench state."},
+}
 
 
 class DocumentOverride(StrictBody):
@@ -167,10 +201,12 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
 
     app = FastAPI(title="LLM Agent Security Lab", version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None,
+                  responses=API_ERROR_RESPONSES.copy(),
                   redirect_slashes=hosted_settings is None)
     if hosted_settings is None:
         app.add_middleware(LocalAccessMiddleware, token=token)
     else:
+        app.router.responses[401] = {"model": APIError, "description": "A valid operator access code is required."}
         app.add_middleware(HostedAccessMiddleware, settings=hosted_settings,
                            token=token, max_request_bytes=MAX_REQUEST_BYTES)
     app.state.jobs = jobs
@@ -250,7 +286,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
                     if len(verified) != metadata["packet_count"]:
                         raise ValueError("Review packet count differs from metadata")
                     if by_id is not None:
-                        mapping = _read_json(directory / "mapping.json", workspace)["private_review_mapping"]
+                        mapping = _read_json(directory / REVIEW_MAPPING_FILE, workspace)["private_review_mapping"]
                         if {item["run_id"] for item in mapping.values()} != set(by_id):
                             raise ValueError("Review mapping does not cover its containing campaign")
                         for item in mapping.values():
@@ -290,7 +326,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         return review_entry(identifier)["directory"]
 
     def packets(directory: Path) -> list[dict[str, Any]]:
-        return review.verify_packets(directory / "mapping.json", directory / "reviews.jsonl")
+        return review.verify_packets(directory / REVIEW_MAPPING_FILE, directory / "reviews.jsonl")
 
     def latest_combined(directory: Path) -> dict[str, Any]:
         versions = sorted((directory / "combined").glob("combined-*.json"))
@@ -339,7 +375,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
     def campaigns():
         return {"campaigns": jobs.list()}
 
-    @app.post("/api/campaigns", status_code=202)
+    @app.post("/api/campaigns", status_code=202, responses=CONFLICT_RESPONSE)
     def start_campaign(body: CampaignRequest):
         for values in (body.case_ids, body.variants, body.sources):
             if len(values) != len(set(values)):
@@ -391,7 +427,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         campaign_directory(campaign_id)
         return jobs.cancel(campaign_id)
 
-    @app.get("/api/campaigns/{campaign_id}/archive")
+    @app.get("/api/campaigns/{campaign_id}/archive", responses=CONFLICT_RESPONSE)
     def archive(campaign_id: str):
         from .archives import export_campaign, verify_archive
         directory = campaign_directory(campaign_id, finished=True)
@@ -412,7 +448,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         return FileResponse(path, media_type="application/zip", filename=campaign_id + ".zip",
                             background=BackgroundTask(path.unlink, missing_ok=True))
 
-    @app.post("/api/documents", status_code=201)
+    @app.post("/api/documents", status_code=201, responses=CONFLICT_RESPONSE)
     async def upload_document(file: Annotated[UploadFile, File()]):
         if not extraction_slot.acquire(blocking=False):
             await file.close()
@@ -435,7 +471,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         with lock:
             return confirm_document(jobs.documents, document_id, body.text_sha256)
 
-    @app.post("/api/campaigns/{campaign_id}/review-export", status_code=201)
+    @app.post("/api/campaigns/{campaign_id}/review-export", status_code=201, responses=CONFLICT_RESPONSE)
     def review_export(campaign_id: str):
         directory = campaign_directory(campaign_id, finished=True)
         results = load_results(directory)
@@ -477,7 +513,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         with lock:
             return {**latest_ratings(directory, slot), "locked": ratings_locked(directory)}
 
-    @app.put("/api/reviews/{review_set_id}/ratings/{slot}")
+    @app.put("/api/reviews/{review_set_id}/ratings/{slot}", responses=CONFLICT_RESPONSE)
     def ratings_put(review_set_id: str, slot: Literal["a", "b"], body: RatingsRequest):
         directory = review_directory(review_set_id)
         known = {packet["review_id"] for packet in packets(directory)}
@@ -493,7 +529,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
                        {"rater": body.rater, "ratings": values}, workspace)
         return {"saved": len(values), "complete": complete}
 
-    @app.post("/api/reviews/{review_set_id}/combine")
+    @app.post("/api/reviews/{review_set_id}/combine", responses=CONFLICT_RESPONSE)
     def combine(review_set_id: str):
         directory = review_directory(review_set_id)
         with lock:
@@ -512,7 +548,7 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
                         writer.writerow({**rating, "rater": draft["rater"]})
                 paths.append(path)
             output = _version_path(directory / "combined", "combined")
-            return review.combine_reviews(directory / "mapping.json", paths, output,
+            return review.combine_reviews(directory / REVIEW_MAPPING_FILE, paths, output,
                                           packets_path=directory / "reviews.jsonl")
 
     @app.get("/api/reviews/{review_set_id}/combined")

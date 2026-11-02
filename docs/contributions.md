@@ -102,3 +102,24 @@ Sonar-Ergebnisse sind gesondert in der CI des endgültigen PR-Heads nachzuweisen
 Diese Arbeit verändert weder fachliche Bewertungen noch den Versuchsvergleich
 B/F/P/FP und enthält keine empirischen Modellaufrufe. Die menschliche Prüfung
 und der fachliche Autorenbeitrag bleiben Aufgaben des Teams.
+
+## Ergänzung vom 2. November 2026: Betrieb und Dokumentationsstruktur
+
+Sebastian meldete das selbst vorgenommene Upgrade des bestehenden Render-Dienstes.
+ChatGPT/Codex prüfte getrennt davon die erreichbaren Betriebsdaten und stellte die
+Dokumentation auf den bestätigten kostenpflichtigen Compute-Plan bei weiterhin
+flüchtigem Workspace um. Die Render-Vorlage beschreibt diesen Plan; sie aktiviert
+keinen Blueprint-Sync und bucht keine zusätzliche Disk oder Datenbank.
+
+Codex ergänzte den Dokumentationsindex, eine Modul- und Verzeichnisübersicht,
+Quellen für einen kleinen Wiki-Einstieg sowie Anleitungen zur Unterscheidung von
+persönlichem Zugangscode, internem Sitzungstoken und möglichem Konto-Login. Die
+vorbereiteten Wiki-Dateien belegen noch keine Veröffentlichung. Die vorgeschlagene
+Persistenzmigration enthält Sicherung, Wiederherstellung und eine kontrollierte
+Neustartprüfung; eine bereits durchgeführte Migration wird nicht behauptet.
+
+Die relativen Dateilinks der betroffenen Dokumente und das Dokumentationsdelta
+wurden technisch geprüft. Fachliche Autorenabnahme, echte Modellversuche und
+menschliche Bewertungen werden dadurch nicht ersetzt. Weitere Codeänderungen,
+Tests und Gegenprüfungen dieses Arbeitsschritts sind am zugehörigen PR und in der
+Validierungsdokumentation festzuhalten.

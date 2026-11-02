@@ -5,7 +5,7 @@ import { api, hosted, message, post, useResource } from './api';
 import type { Document, DocumentEntry, LabCase } from './types';
 import { Disclosure, Empty, ErrorBox, JsonBlock, Loading, PageHeader, Panel, Pill, Success, TextBlock } from './ui';
 
-export function DocumentsPage({ cases }: { cases: LabCase[] }) {
+export function DocumentsPage({ cases }: Readonly<{ cases: LabCase[] }>) {
   const documents = useResource<{ documents: DocumentEntry[] }>('/api/documents');
   const [selected, setSelected] = useState(''), [newDocument, setNewDocument] = useState<Document | null>(null);
   const [file, setFile] = useState<File | null>(null), [busy, setBusy] = useState(''), [error, setError] = useState(''), [success, setSuccess] = useState('');
@@ -43,6 +43,36 @@ export function DocumentsPage({ cases }: { cases: LabCase[] }) {
       <Panel title="Mit einem Beispiel beginnen" subtitle="Die Beispiel-PDFs enthalten den jeweiligen Quelltext aus dem Fallkatalog."><label className="field"><span>Beispielfall</span><select value={exampleCase} onChange={e => setExampleCase(e.target.value)}>{cases.map(c => <option key={c.case_id} value={c.case_id}>{c.case_id}</option>)}</select></label><div className="stack compact"><DownloadButton className="button secondary" path={`/api/cases/${encodeURIComponent(exampleCase)}/articles/clean/pdf`} filename={`${exampleCase}-clean.pdf`}><ArrowDownToLine size={16} />Saubere Beispiel-PDF</DownloadButton><DownloadButton className="button secondary" path={`/api/cases/${encodeURIComponent(exampleCase)}/articles/attack/pdf`} filename={`${exampleCase}-attack.pdf`}><ArrowDownToLine size={16} />Manipulierte Beispiel-PDF</DownloadButton></div><p className="muted small-text">Herunterladen, links importieren und die Extraktion mit dem Fallkatalog vergleichen.</p></Panel></div>
     <ErrorBox error={error || documents.error} retry={documents.error ? documents.refresh : undefined} />{success && <Success>{success}</Success>}
     {damaged.length > 0 && <Panel title="Nicht prüfbare PDF-Quellen"><p className="muted">Diese Originaldateien bleiben erhalten. Sie können erst nach einer erfolgreichen Prüfung bestätigt oder einem Versuch zugewiesen werden.</p>{damaged.map(d => <div key={d.document_id}><strong className="mono">{d.document_id}</strong><ErrorBox error={d.error} /></div>)}</Panel>}
-    {documents.loading && !usableNew ? <Loading /> : rows.length || usableNew ? <div className="browser-layout documents-browser"><Panel title="Quellenbestand"><div className="document-list">{(rows.length ? rows : usableNew ? [usableNew] : []).map(d => <button key={d.document_id} className={`document-item ${d.document_id === document?.document_id ? 'selected' : ''}`} onClick={() => { setSelected(d.document_id); setReviewedKey(''); setSuccess(''); }}><FileText size={20} /><span><strong>{d.filename}</strong><small>{d.page_count} {d.page_count === 1 ? 'Seite' : 'Seiten'} · {d.text_sha256.slice(0, 8)}</small><Pill tone={d.confirmed ? 'green' : 'amber'}>{d.confirmed ? 'Bestätigt' : 'Prüfung offen'}</Pill></span></button>)}</div></Panel>{document && <Panel title={document.filename} subtitle={`${document.page_count} Seiten · Extraktion: ${document.extractor}`} action={<Pill tone={document.confirmed ? 'green' : 'amber'}>{document.confirmed ? 'Bestätigte Quelle' : 'Noch nicht bestätigt'}</Pill>}><div className="section-label">EXTRAHIERTER TEXT · UNVERÄNDERLICH</div><TextBlock className="pdf-text">{document.extracted_text}</TextBlock><Disclosure title="Herkunft und Prüfsummen"><JsonBlock value={{ document_id: document.document_id, filename: document.filename, sha256: document.sha256, text_sha256: document.text_sha256, extractor: document.extractor, page_count: document.page_count }} /></Disclosure>{!document.confirmed ? <div className="confirmation-panel"><label className="inline-check"><input type="checkbox" checked={reviewed} onChange={e => setReviewedKey(e.target.checked ? documentKey : '')} /><span>Ich habe den extrahierten Text mit der PDF verglichen und geprüft, dass die relevante Quelle vollständig und korrekt enthalten ist.</span></label><button className="button primary" disabled={!reviewed || Boolean(busy)} onClick={confirm}><CheckCheck size={17} />{busy === 'confirm' ? 'Wird bestätigt …' : 'Extraktion bestätigen'}</button></div> : <div className="notice success"><CheckCheck size={19} /><span>Für eine explizite Zuweisung beim nächsten Mock-Versuch verfügbar. Der bestehende Fallkatalog wird dadurch nicht verändert.</span></div>}</Panel>}</div> : <Empty title={damaged.length ? "Keine prüfbaren PDF-Quellen vorhanden" : "Deine Quellenwerkstatt ist noch leer"}>Importiere eine eigene synthetische PDF oder beginne mit einer Beispiel-PDF aus dem Fallkatalog.</Empty>}
+    <DocumentBrowser loading={documents.loading && !usableNew} rows={displayedDocuments(rows, usableNew)} document={document} hasDamaged={damaged.length > 0} reviewed={reviewed} busy={busy}
+      onSelect={id => { setSelected(id); setReviewedKey(''); setSuccess(''); }}
+      onReviewedChange={checked => setReviewedKey(checked ? documentKey : '')} onConfirm={confirm} />
   </>;
+}
+
+function displayedDocuments(rows: Document[], imported: Document | null): Document[] {
+  if (rows.length) return rows;
+  if (imported) return [imported];
+  return [];
+}
+interface DocumentBrowserProps {
+  readonly loading: boolean;
+  readonly rows: Document[];
+  readonly document: Document | undefined;
+  readonly hasDamaged: boolean;
+  readonly reviewed: boolean;
+  readonly busy: string;
+  readonly onSelect: (id: string) => void;
+  readonly onReviewedChange: (checked: boolean) => void;
+  readonly onConfirm: () => void;
+}
+function DocumentBrowser({ loading, rows, document, hasDamaged, reviewed, busy, onSelect, onReviewedChange, onConfirm }: DocumentBrowserProps) {
+  if (loading) return <Loading />;
+  if (!rows.length) return <Empty title={hasDamaged ? "Keine prüfbaren PDF-Quellen vorhanden" : "Deine Quellenwerkstatt ist noch leer"}>Importiere eine eigene synthetische PDF oder beginne mit einer Beispiel-PDF aus dem Fallkatalog.</Empty>;
+  return <div className="browser-layout documents-browser"><Panel title="Quellenbestand"><div className="document-list">{rows.map(d => <button key={d.document_id} className={`document-item ${d.document_id === document?.document_id ? 'selected' : ''}`} onClick={() => onSelect(d.document_id)}><FileText size={20} /><span><strong>{d.filename}</strong><small>{d.page_count} {d.page_count === 1 ? 'Seite' : 'Seiten'} · {d.text_sha256.slice(0, 8)}</small><Pill tone={d.confirmed ? 'green' : 'amber'}>{d.confirmed ? 'Bestätigt' : 'Prüfung offen'}</Pill></span></button>)}</div></Panel>{document && <DocumentDetails document={document} reviewed={reviewed} busy={busy} onReviewedChange={onReviewedChange} onConfirm={onConfirm} />}</div>;
+}
+function DocumentDetails({ document, reviewed, busy, onReviewedChange, onConfirm }: Readonly<{
+  document: Document; reviewed: boolean; busy: string;
+  onReviewedChange: (checked: boolean) => void; onConfirm: () => void;
+}>) {
+  return <Panel title={document.filename} subtitle={`${document.page_count} Seiten · Extraktion: ${document.extractor}`} action={<Pill tone={document.confirmed ? 'green' : 'amber'}>{document.confirmed ? 'Bestätigte Quelle' : 'Noch nicht bestätigt'}</Pill>}><div className="section-label">EXTRAHIERTER TEXT · UNVERÄNDERLICH</div><TextBlock className="pdf-text">{document.extracted_text}</TextBlock><Disclosure title="Herkunft und Prüfsummen"><JsonBlock value={{ document_id: document.document_id, filename: document.filename, sha256: document.sha256, text_sha256: document.text_sha256, extractor: document.extractor, page_count: document.page_count }} /></Disclosure>{!document.confirmed ? <div className="confirmation-panel"><label className="inline-check"><input type="checkbox" checked={reviewed} onChange={e => onReviewedChange(e.target.checked)} /><span>Ich habe den extrahierten Text mit der PDF verglichen und geprüft, dass die relevante Quelle vollständig und korrekt enthalten ist.</span></label><button className="button primary" disabled={!reviewed || Boolean(busy)} onClick={onConfirm}><CheckCheck size={17} />{busy === 'confirm' ? 'Wird bestätigt …' : 'Extraktion bestätigen'}</button></div> : <div className="notice success"><CheckCheck size={19} /><span>Für eine explizite Zuweisung beim nächsten Mock-Versuch verfügbar. Der bestehende Fallkatalog wird dadurch nicht verändert.</span></div>}</Panel>;
 }

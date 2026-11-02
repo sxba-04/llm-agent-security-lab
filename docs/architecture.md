@@ -2,6 +2,36 @@
 
 Das Labor führt Nutzeraufträge auf synthetischen Service-Tickets aus. Der externe Artikel ist die untersuchte Angriffsfläche. Eine Fallbeschreibung enthält außerdem vertrauenswürdige Sitzungsrechte und Bewertungsdaten. Diese Bereiche haben unterschiedliche Aufgaben und dürfen nicht vermischt werden.
 
+## Verzeichnisstruktur und Modulgrenzen
+
+Das Repository enthält ein installierbares Python-Paket und einen separat gebauten Browserclient. `src/security_lab/` ist ein Python-`src`-Layout: Unterhalb von `src` liegt der importierbare Paketname, während Projektkonfiguration und Tests außerhalb des Pakets bleiben. `pyproject.toml` legt dieses Layout ausdrücklich für die Paketinstallation fest. Das Backend fehlt also nicht; es ist Teil dieses gemeinsamen Pakets.
+
+| Pfad / Module | Verantwortung |
+|---|---|
+| `src/security_lab/core.py`, `models.py`, `contracts.py`, `cases.py` | Versuchskern, Datenverträge und validierte synthetische Fälle |
+| `providers.py`, `budget.py` | Kontrollierter Modelladapter und Kostenbegrenzung |
+| `batch.py`, `jobs.py` | Serienausführung, Zustände und Unterbrechungen |
+| `evaluation.py`, `comparisons.py`, `review.py` | Gemeinsame technische Auswertung, gepaarte Vergleiche und menschliche Urteile |
+| `documents.py`, `sample_pdf.py`, `archives.py` | PDF-Quellen, Beispiel-PDFs und verifizierbare Belegarchive |
+| `server.py`, `hosted.py` | FastAPI-Schnittstelle und zusätzliche gehostete Zugriffsgrenze |
+| `cli.py`, `web_cli.py`, `hosted_cli.py`, `__main__.py` | Getrennte Startwege für CLI, lokale Werkbank und expliziten Hostingbetrieb |
+| `frontend/src/` | React-/TypeScript-Seiten, API-Client, Gestaltung und komponentennahe Tests |
+| `frontend/e2e/`, `frontend/e2e-hosted/` | Browserprüfungen für lokalen beziehungsweise HTTPS-Hostingbetrieb |
+| `tests/` | Python-Regressions- und Integrationstests mit synthetischen Daten |
+| `cases/dev/`, `cases/test/` | Entwicklungsfälle und getrennt vorgesehener Haupttestkatalog |
+| `configs/` | Versionierte Vorlagen; keine echten Zugangsdaten |
+| `scripts/`, `analysis/` | CI-Hilfen, Befundinventur und Tabellenexport |
+| `docs/`, `.github/`, `.vscode/` | Dokumentation, automatisierte Prüfungen und gemeinsame IDE-Aufgaben |
+| `pyproject.toml`, `uv.lock` | Python-Paket, optionale Webabhängigkeiten und aufgelöste Versionen |
+| `frontend/package.json`, `frontend/package-lock.json` | Eigener Node-/Vite-Build und dessen aufgelöste Versionen |
+| `render.yaml` | Beschreibung des Render-Dienstes; Live-Einstellungen werden derzeit direkt in Render verwaltet |
+
+Ein Umbenennen von `src/` in `backend/` würde Importe, Paketbau, CI, IDE-Aufgaben und Deploymentpfade berühren. Es löst hier kein konkretes Problem: Der Python-Code ist zugleich Backend, Kommandozeilenanwendung und Auswertungsbibliothek. Daher bleiben diese Pfade bestehen.
+
+Sinnvolle spätere Aufteilungen folgen fachlichen Verantwortlichkeiten. Beispielsweise können wachsende HTTP-Routen in ein Unterpaket `security_lab/web/` ausgelagert werden, wenn dies konkrete Komplexität reduziert. Dabei bleiben öffentliche Imports, Startbefehle und gemeinsame Auswertungslogik kompatibel; eine solche Änderung wird separat mit API- und Browserprüfungen umgesetzt. Reine Verzeichnisverschiebungen und eine gleichzeitige Änderung der Versuchsmethode sollten nicht in denselben Umbau fallen.
+
+Generierte Builds, virtuelle Umgebungen, Coverage und persönliche Laufdaten gehören weiterhin nicht in die Quellcodehistorie. Wissenschaftliche Belege werden als geprüfte Archive mit ihrem Code- und Konfigurationsstand gesichert. Das [Dokumentationsverzeichnis](README.md) ist der Einstieg für Betrieb und Entwicklung; ein Wiki kann darauf verweisen.
+
 ## Daten und Verantwortlichkeiten
 
 | Bestandteil | Aufgabe und Vertrauensgrenze |
@@ -72,9 +102,9 @@ Die Modell-API ist Infrastruktur für Inferenz und kein Werkzeug, das das Modell
 
 ## Weboberfläche und PDF-Quellen
 
-React/TypeScript ist die lokale Bedienoberfläche. FastAPI prüft Eingaben und ruft die bestehenden Python-Funktionen auf. Ein kleiner Jobmanager erlaubt genau eine aktive UI-Serie; Fortschritt und Ergebnisse stammen aus gespeicherten Manifesten und Records. Der Browser entscheidet keine Berechtigung und keine Erfolgsbewertung. Die CLI bleibt unabhängig von den optionalen Webpaketen verwendbar.
+React/TypeScript ist die Bedienoberfläche für den lokalen und den explizit gehosteten Betrieb. FastAPI prüft Eingaben und ruft die bestehenden Python-Funktionen auf. Ein kleiner Jobmanager erlaubt genau eine aktive UI-Serie; Fortschritt und Ergebnisse stammen aus gespeicherten Manifesten und Records. Der Browser entscheidet keine Berechtigung und keine Erfolgsbewertung. Die CLI bleibt unabhängig von den optionalen Webpaketen verwendbar.
 
-Der Standardstart liefert Frontend und API vom selben Loopback-Dienst aus. Host-/Origin-Prüfung und ein Token auf schreibenden Anfragen begrenzen Zugriffe fremder Webseiten; vom Browser frei wählbare Dateisystempfade gibt es nicht. Dies ist ein lokales Einzelbenutzersystem ohne Netzwerkfreigabe oder Loginverwaltung.
+Der Standardstart liefert Frontend und API vom selben Loopback-Dienst aus. Host-/Origin-Prüfung und ein Token auf schreibenden Anfragen begrenzen Zugriffe fremder Webseiten; vom Browser frei wählbare Dateisystempfade gibt es nicht. Dieser Standardstart bleibt ein lokales Einzelbenutzersystem ohne Netzwerkfreigabe oder Loginverwaltung. Der getrennte Hostingstart verwendet eine öffentliche HTTPS-API mit zufälligen Betreiber-Zugangscodes; Aufbau, Speichergrenzen und Abgrenzung zu einem Konto-Login stehen in [hosting.md](hosting.md).
 
 Eine PDF wird im separaten Extraktionsprozess in Text überführt. Der Import speichert das Original und die Extraktionsnachweise. Nach Vorschau und Bestätigung kann der Text einer festen Fallquelle zugewiesen werden. Die Kampagne übernimmt eigene Quellenbelege. Das Ereignis `document_provided` und das Ergebnisfeld `document_source` halten Identität, Herkunft und tatsächlichen Texthash fest. Diese Auswahl ist anwendungsseitig festgelegt; die zwei Agententools bleiben unverändert.
 

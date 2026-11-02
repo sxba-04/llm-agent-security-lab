@@ -20,6 +20,11 @@ from datetime import datetime, timezone
 from typing import Any
 import uuid
 
+ORIGINAL_PDF_FILE = "original.pdf"
+EXTRACTED_TEXT_FILE = "extracted.txt"
+DOCUMENT_METADATA_FILE = "document.json"
+CONFIRMATION_FILE = "confirmation.json"
+
 MAX_PDF_BYTES = 5 * 1024 * 1024
 MAX_PAGES = 50
 MAX_TEXT_CHARS = 200_000
@@ -137,17 +142,17 @@ def import_document(storage: Path, filename: str, content: bytes) -> dict[str, A
     document_id = "doc-" + uuid.uuid4().hex
     temporary = Path(tempfile.mkdtemp(prefix="import-", dir=storage))
     try:
-        pdf = temporary / "original.pdf"
+        pdf = temporary / ORIGINAL_PDF_FILE
         pdf.write_bytes(content)
         extraction = extract_pdf(pdf)
         text_bytes = extraction.pop("extracted_text").encode("utf-8")
-        (temporary / "extracted.txt").write_bytes(text_bytes)
+        (temporary / EXTRACTED_TEXT_FILE).write_bytes(text_bytes)
         metadata = {
             "document_id": document_id, "filename": name, "sha256": _sha(content),
             "text_sha256": _sha(text_bytes), **extraction,
             "origin": "uploaded_pdf", "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        (temporary / "document.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False, allow_nan=False), encoding="utf-8")
+        (temporary / DOCUMENT_METADATA_FILE).write_text(json.dumps(metadata, indent=2, ensure_ascii=False, allow_nan=False), encoding="utf-8")
         temporary.rename(_managed(storage, document_id))
     finally:
         if temporary.exists():
@@ -157,18 +162,18 @@ def import_document(storage: Path, filename: str, content: bytes) -> dict[str, A
 
 def load_document(storage: Path, document_id: str) -> dict[str, Any]:
     directory = _managed(Path(storage), document_id)
-    for name in ("document.json", "original.pdf", "extracted.txt", "confirmation.json"):
+    for name in (DOCUMENT_METADATA_FILE, ORIGINAL_PDF_FILE, EXTRACTED_TEXT_FILE, CONFIRMATION_FILE):
         reject_symlinks(directory / name, Path(storage))
     try:
-        if (directory / "document.json").stat().st_size > 16384 or (directory / "original.pdf").stat().st_size > MAX_PDF_BYTES or (directory / "extracted.txt").stat().st_size > MAX_TEXT_CHARS * 4:
+        if (directory / DOCUMENT_METADATA_FILE).stat().st_size > 16384 or (directory / ORIGINAL_PDF_FILE).stat().st_size > MAX_PDF_BYTES or (directory / EXTRACTED_TEXT_FILE).stat().st_size > MAX_TEXT_CHARS * 4:
             raise DocumentError("Gespeicherte Dokumentdaten überschreiten die Größenbegrenzung.")
-        metadata = json.loads((directory / "document.json").read_text(encoding="utf-8"))
+        metadata = json.loads((directory / DOCUMENT_METADATA_FILE).read_text(encoding="utf-8"))
         if (not isinstance(metadata, dict) or metadata.get("origin") != "uploaded_pdf"
                 or type(metadata.get("page_count")) is not int or not 1 <= metadata["page_count"] <= MAX_PAGES
                 or not isinstance(metadata.get("filename"), str) or not isinstance(metadata.get("extractor"), str)):
             raise DocumentError("Ungültige Dokumentmetadaten.")
-        original = (directory / "original.pdf").read_bytes()
-        text_bytes = (directory / "extracted.txt").read_bytes()
+        original = (directory / ORIGINAL_PDF_FILE).read_bytes()
+        text_bytes = (directory / EXTRACTED_TEXT_FILE).read_bytes()
     except FileNotFoundError:
         raise
     except (OSError, ValueError) as exc:
@@ -183,10 +188,10 @@ def load_document(storage: Path, document_id: str) -> dict[str, Any]:
     except UnicodeError as exc:
         raise DocumentError("Extraktion ist kein gültiger UTF-8-Text.") from exc
     confirmed = False
-    if (directory / "confirmation.json").exists():
-        if (directory / "confirmation.json").stat().st_size > 2048:
+    if (directory / CONFIRMATION_FILE).exists():
+        if (directory / CONFIRMATION_FILE).stat().st_size > 2048:
             raise DocumentError("Ungültige Bestätigungsdaten.")
-        confirmation = json.loads((directory / "confirmation.json").read_text(encoding="utf-8"))
+        confirmation = json.loads((directory / CONFIRMATION_FILE).read_text(encoding="utf-8"))
         if not isinstance(confirmation, dict) or confirmation.get("text_sha256") != metadata["text_sha256"]:
             raise DocumentError("Bestätigung gehört zu einer anderen Extraktion.")
         confirmed = True
@@ -217,7 +222,7 @@ def confirm_document(storage: Path, document_id: str, text_sha256: str) -> dict[
     document = load_document(storage, document_id)
     if document["text_sha256"] != text_sha256:
         raise DocumentError("Die Bestätigung stimmt nicht mit dem angezeigten Text überein.")
-    path = _managed(Path(storage), document_id) / "confirmation.json"
+    path = _managed(Path(storage), document_id) / CONFIRMATION_FILE
     if not path.exists():
         write_json_new(path, {"text_sha256": text_sha256, "confirmed_at": datetime.now(timezone.utc).isoformat()})
     return load_document(storage, document_id)
@@ -252,7 +257,7 @@ def copy_document_sources(storage: Path, document_ids: list[str], campaign: Path
         source = _managed(Path(storage), document_id)
         target = reject_symlinks(Path(campaign) / "sources" / document_id, Path(campaign))
         target.mkdir(parents=True, exist_ok=False)
-        for name in ("original.pdf", "extracted.txt", "document.json", "confirmation.json"):
+        for name in (ORIGINAL_PDF_FILE, EXTRACTED_TEXT_FILE, DOCUMENT_METADATA_FILE, CONFIRMATION_FILE):
             with (target / name).open("xb") as stream:
                 stream.write((source / name).read_bytes())
 

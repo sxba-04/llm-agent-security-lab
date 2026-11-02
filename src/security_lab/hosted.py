@@ -95,8 +95,11 @@ class HostedAccessMiddleware:
                     output["Access-Control-Expose-Headers"] = "Content-Disposition"
             await send(message)
 
-        async def reject(status, detail):
-            response = JSONResponse({"detail": detail}, status_code=status,
+        async def reject(status, detail, code=None):
+            payload = {"detail": detail}
+            if code is not None:
+                payload["code"] = code
+            response = JSONResponse(payload, status_code=status,
                                     headers={"WWW-Authenticate": "Bearer"} if status == 401 else None)
             await response(scope, receive, secured_send)
 
@@ -138,7 +141,7 @@ class HostedAccessMiddleware:
             supplied = headers.get("x-lab-token", "")
             if (len(headers.getlist("x-lab-token")) != 1
                     or not secrets.compare_digest(supplied.encode("utf-8"), self.token.encode("ascii"))):
-                return await reject(403, "Das Sitzungstoken fehlt oder ist ungültig. Bitte neu anmelden.")
+                return await reject(403, "Das Sitzungstoken fehlt oder ist ungültig.", "csrf_token_invalid")
         try:
             length = int(headers.get("content-length", "0"))
             if len(headers.getlist("content-length")) > 1 or not 0 <= length <= self.max_request_bytes:

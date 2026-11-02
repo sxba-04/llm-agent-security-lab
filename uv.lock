@@ -247,7 +247,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.161.1" },
-    { name = "pypdf", marker = "extra == 'web'", specifier = ">=6.21.2" },
+    { name = "pypdf", marker = "extra == 'web'", specifier = ">=6.21.4" },
     { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.32" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.54.0" },
 ]

@@ -38,6 +38,10 @@
     "workflow_structure": {
       "status": "passed",
       "detail": "Alle drei YAML-Dateien geparst; eingebettete Python-Blöcke kompiliert; git diff --check erfolgreich. Action-Referenzen unverändert."
+    },
+    "s7689_rule_and_python_shell_review": {
+      "status": "source_reviewed_2026_11_02",
+      "detail": "Offizielle Sonar-Release-Notes benennen S7689 als Shell-Kommandosubstitution mit Backticks. Beide historischen Workflow-Schritte und der aktuelle main-Stand verwenden shell: python {0}; die Zeichen stehen in Python-Strings für Markdown-Ausgabe. Kein Scanner-Rescan oder Remote-Abschluss durch diese Dokumentationskorrektur."
     }
   },
   "sources": [
@@ -69,7 +73,12 @@
     {
       "title": "Sonar staff: supply-chain rules",
       "url": "https://community.sonarsource.com/t/rules-to-reduce-supply-chain-risks/182615",
-      "use": "Bestätigung der Regeln gegen ungesperrte Installationen und Build-/Installationsskripte. Exakte S7689-Metadaten waren nicht abrufbar; dafür wird keine unbestätigte Regelbeschreibung behauptet."
+      "use": "Bestätigung der Regeln gegen ungesperrte Installationen und Build-/Installationsskripte; nicht die Quelle für die S7689-Korrektur."
+    },
+    {
+      "title": "SonarQube Server 2026.1 LTA release notes: Shell / bash, S7689",
+      "url": "https://docs.sonarsource.com/sonarqube-server/2026.1/server-update-and-maintenance/lta-to-lta-release-notes",
+      "use": "Offizielle Regelbedeutung: Shell-Kommandosubstitution soll $() statt Backticks verwenden. Grundlage der datierten Korrektur beider S7689-Bewertungen."
     }
   ],
   "issues": [
@@ -207,15 +216,24 @@
       "file": ".github/workflows/mock-campaign.yml",
       "source_line": 88,
       "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
-      "classification": "context_clarification",
-      "disposition": "patch_prepared_pending_ci_and_rescan",
-      "rationale": "Die manuelle Kampagne wird nur durch workflow_dispatch gestartet; ein PR-Merge-/Quell-SHA-Fehler ist deshalb hier nicht nachgewiesen. Die Beschriftung behauptet aber den ausgecheckten Commit. git rev-parse HEAD ermittelt diesen unmittelbar, unabhängig vom auslösenden Ereignis. Eine absichtlich abweichende GITHUB_SHA-Testvariable beeinflusste die Zusammenfassung nicht.",
+      "classification": "false_positive",
+      "disposition": "corrected_review_no_remote_disposition",
+      "rationale": "Korrektur vom 02.11.2026: S7689 verlangt bei Shell-Kommandosubstitution $() statt Backticks. Die gemeldeten Backticks sind hier Markdown-Zeichen innerhalb eines Python-Strings; der Schritt verwendet ausdrücklich shell: python {0}. Es findet an dieser Stelle keine Shell-Kommandosubstitution statt. Die frühere Erklärung zur Commit-Provenienz traf die Regelbedeutung nicht. git rev-parse HEAD bleibt eine unabhängig sinnvolle Provenienzangabe, ist aber kein Fix für S7689. Kontextueller False Positive; kein Sonar-Status wurde durch diese Nachprüfung geändert.",
       "verification": [
-        "summary_provenance",
-        "workflow_structure"
+        "s7689_rule_and_python_shell_review"
       ],
       "inventory_status": "OPEN",
-      "remote_mutation": false
+      "remote_mutation": false,
+      "previous_assessment_2026_11_01": {
+        "classification": "context_clarification",
+        "disposition": "patch_prepared_pending_ci_and_rescan",
+        "rationale": "Die manuelle Kampagne wird nur durch workflow_dispatch gestartet; ein PR-Merge-/Quell-SHA-Fehler ist deshalb hier nicht nachgewiesen. Die Beschriftung behauptet aber den ausgecheckten Commit. git rev-parse HEAD ermittelt diesen unmittelbar, unabhängig vom auslösenden Ereignis. Eine absichtlich abweichende GITHUB_SHA-Testvariable beeinflusste die Zusammenfassung nicht.",
+        "verification": [
+          "summary_provenance",
+          "workflow_structure"
+        ]
+      },
+      "review_correction_date": "2026-11-02"
     },
     {
       "key": "AaGMS_8w7rRJBvbBA1nT",
@@ -223,15 +241,24 @@
       "file": ".github/workflows/tests.yml",
       "source_line": 121,
       "source_analysis_commit": "12db393771b70f05f12f947fe213c43084a0fce5",
-      "classification": "context_clarification",
-      "disposition": "patch_prepared_pending_ci_and_rescan",
-      "rationale": "Offline tests verwendet den standardmäßigen Checkout; beim pull_request-Ereignis ist dessen getesteter Stand regelmäßig der synthetische Merge-Commit. Die bisherige GITHUB_SHA ist dafür aktuell plausibel und darf nicht durch die PR-Quell-SHA ersetzt werden. git rev-parse HEAD protokolliert den tatsächlichen Checkout, die Beschriftung erläutert den PR-Merge-Fall.",
+      "classification": "false_positive",
+      "disposition": "corrected_review_no_remote_disposition",
+      "rationale": "Korrektur vom 02.11.2026: S7689 verlangt bei Shell-Kommandosubstitution $() statt Backticks. Die gemeldeten Backticks sind hier Markdown-Zeichen innerhalb eines Python-Strings; der Schritt verwendet ausdrücklich shell: python {0}. Es findet an dieser Stelle keine Shell-Kommandosubstitution statt. Die frühere Erklärung zur Commit-Provenienz traf die Regelbedeutung nicht. git rev-parse HEAD bleibt eine unabhängig sinnvolle Provenienzangabe, ist aber kein Fix für S7689. Kontextueller False Positive; kein Sonar-Status wurde durch diese Nachprüfung geändert.",
       "verification": [
-        "summary_provenance",
-        "workflow_structure"
+        "s7689_rule_and_python_shell_review"
       ],
       "inventory_status": "OPEN",
-      "remote_mutation": false
+      "remote_mutation": false,
+      "previous_assessment_2026_11_01": {
+        "classification": "context_clarification",
+        "disposition": "patch_prepared_pending_ci_and_rescan",
+        "rationale": "Offline tests verwendet den standardmäßigen Checkout; beim pull_request-Ereignis ist dessen getesteter Stand regelmäßig der synthetische Merge-Commit. Die bisherige GITHUB_SHA ist dafür aktuell plausibel und darf nicht durch die PR-Quell-SHA ersetzt werden. git rev-parse HEAD protokolliert den tatsächlichen Checkout, die Beschriftung erläutert den PR-Merge-Fall.",
+        "verification": [
+          "summary_provenance",
+          "workflow_structure"
+        ]
+      },
+      "review_correction_date": "2026-11-02"
     },
     {
       "key": "AaGMS_947rRJBvbBA1pV",
@@ -391,5 +418,16 @@
     ".github/workflows/mock-campaign.yml": "220dda23795e3d7760015a25fb0eef0c8d8fd572e76ebc84bb08806dfea27404",
     ".github/workflows/pages.yml": "fbcc93fc59981fbc5cfbda3f2d15a84703e569536421f53e137567de3e9121ca",
     ".github/workflows/tests.yml": "39ed5099ca732b22ebf48e3fbfc5a1ce1afd0ed9e3422b263dc7c9f71da96ea5"
-  }
+  },
+  "review_corrections": [
+    {
+      "date": "2026-11-02",
+      "issue_keys": [
+        "AaGMS_8z7rRJBvbBA1nh",
+        "AaGMS_8w7rRJBvbBA1nT"
+      ],
+      "reason": "Falsche Zuordnung von S7689 zur Commit-Provenienz berichtigt. Vorherige Einzelbewertungen bleiben separat erhalten; die 19 historischen Inventur-IDs, Positionen, Quell-SHA und Artefakt-Hashes sind unverändert. summary.json bewahrt die ursprüngliche Zusammenführung vom 01.11.2026 und wird nicht als aktuelle Bestandsliste ausgegeben.",
+      "remote_findings_changed": false
+    }
+  ]
 }

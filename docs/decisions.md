@@ -47,3 +47,18 @@ Neue Entscheidungen ergänzen Datum, Anlass, betrachtete Alternative, Begründun
 | Merge-Verfahren | Abgeschlossene Tests und angeforderte Reviews auf dem aktuellen Commit, Befunde nachgeprüft. Keine Wiederholung des vorzeitigen Merge von PR #1. |
 
 Die fachliche Abnahme der neuen Fälle und Bewertungsbeispiele durch Sebastian und Jonah sowie die äußere Isolation bleiben offen. Die technische Umsetzung fälscht hierfür keine Freigaben oder menschlichen Urteile.
+
+## Ergänzungen vom 2. November 2026
+
+| Entscheidung / Einordnung | Anlass, Alternative und Folge |
+|---|---|
+| Bestehender kostenpflichtiger Render-Plan | Sebastian meldete das selbst vorgenommene Upgrade; die Render-Prüfung bestätigt `0.5c-512mb` mit 0,5 CPU und 512 MB RAM. Die frühere Beschränkung auf kostenlosen Compute ist damit für diesen bestehenden Dienst überholt. Zusätzliche Ressourcen sind dadurch nicht gebucht oder freigegeben. |
+| Speicher bleibt zunächst flüchtig | Der laufende Dienst meldet weiterhin `ephemeral`; eine persistente Disk wurde nicht nachgewiesen. Das Compute-Upgrade ersetzt keine Speichereinrichtung. Die [Hosting-Anleitung](hosting.md) beschreibt einen möglichen Umstieg samt Sicherung und Neustartprüfung; eine tatsächliche Persistenzfreigabe und -prüfung bleiben offen. |
+| Bestehendes Python-Layout beibehalten | `src/security_lab/` enthält bereits Backend, CLI und gemeinsamen Versuchskern. Eine pauschale Umbenennung in `backend/` bringt keinen fachlichen Vorteil. Künftige Aufteilungen sollen konkrete Modulkomplexität reduzieren und getrennt geprüft werden. |
+| Dokumentation mit einem Einstieg bündeln | Codex ergänzt einen [Dokumentationsindex](README.md) und vorbereitete Wiki-Verweise. Die technischen Anleitungen bleiben im Repository versioniert; die Wiki-Dateien allein behaupten keine Veröffentlichung im getrennten GitHub-Wiki. |
+| Betreiberzugang von Konten unterscheiden | Die vorhandenen zufälligen Codes bleiben ein gültiger Zugriffsschutz für das kleine Team. Ein persönlicher Konto-Login ist eine mögliche spätere Funktion, keine durch das Render-Upgrade automatisch eingerichtete Eigenschaft. Die Wiederherstellung eines verlorenen Codes erfolgt durch kontrollierte Rotation der Hashliste. |
+
+Die betrieblichen Änderungen ändern weder den Variantenvergleich B/F/P/FP noch
+menschliche Bewertungsregeln. Die Oberfläche bleibt auf Mock-Versuche begrenzt.
+Ein Wechsel zu FastAPI Cloud wurde nicht vorgenommen; FastAPI bleibt das auf
+Render betriebene Webframework.
