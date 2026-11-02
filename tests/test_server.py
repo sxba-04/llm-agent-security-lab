@@ -81,6 +81,51 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/campaigns", json=self.body,
                         headers={**self.headers, "Content-Length": str(6 * 1024 * 1024)}).status_code, 413)
 
+    def test_non_ascii_local_token_is_rejected_without_starting_campaign(self):
+        for token in (b"invalid-\xff", b"invalid-\xc3\xa4"):
+            with self.subTest(token=token):
+                response = self.client.post("/api/campaigns", json=self.body,
+                                            headers=[(b"X-Lab-Token", token)])
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.json()["detail"], "Lokales Sitzungstoken fehlt oder ist ungültig.")
+                self.assertFalse(self.app.state.jobs.running)
+                self.assertEqual(self.app.state.jobs.list(), [])
+
+    def test_frontend_paths_cannot_escape_build(self):
+        frontend = Path(self.temp.name) / "frontend"
+        frontend.mkdir()
+        (frontend / "index.html").write_text("synthetic SPA", encoding="utf-8")
+        (frontend / "asset.txt").write_text("public build asset", encoding="utf-8")
+        outside = Path(self.temp.name) / "outside.txt"
+        outside.write_text("must remain outside the frontend", encoding="utf-8")
+        app = create_app(self.workspace, CASES, frontend)
+        with TestClient(app, base_url="http://127.0.0.1") as client:
+            self.assertEqual(client.get("/asset.txt").text, "public build asset")
+            self.assertEqual(client.get("/client/route").text, "synthetic SPA")
+            for path in ("/%2e%2e/outside.txt", "/..%5coutside.txt",
+                         "/%2f" + outside.as_posix().lstrip("/"), "/api/missing"):
+                with self.subTest(path=path):
+                    response = client.get(path)
+                    self.assertIn(response.status_code, (400, 404))
+                    self.assertNotIn(outside.read_text(encoding="utf-8"), response.text)
+
+    def test_frontend_rejects_symlink_inserted_after_startup(self):
+        frontend = Path(self.temp.name) / "frontend"
+        frontend.mkdir()
+        (frontend / "index.html").write_text("synthetic SPA", encoding="utf-8")
+        outside = Path(self.temp.name) / "outside.txt"
+        outside.write_text("must remain outside the frontend", encoding="utf-8")
+        app = create_app(self.workspace, CASES, frontend)
+        with TestClient(app, base_url="http://127.0.0.1") as client:
+            # Insert a link after app startup to exercise the per-request guard.
+            try:
+                (frontend / "linked.txt").symlink_to(outside)
+            except OSError as exc:
+                self.skipTest(f"Symlink creation is unavailable: {exc}")
+            response = client.get("/linked.txt")
+            self.assertEqual(response.status_code, 400)
+            self.assertNotIn(outside.read_text(encoding="utf-8"), response.text)
+
     def test_full_campaign_review_adjudication_and_archive(self):
         campaign = self.start()
         detail = self.client.get(f"/api/campaigns/{campaign}").json()
@@ -325,9 +370,10 @@ class ServerTests(unittest.TestCase):
         for slot, body in drafts.items():
             self.assertEqual(self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers).status_code, 200)
         original_draft = self.client.get(url + "/ratings/a").json()
+        replacement = self.ratings(packets, "New name")
         with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
             with self.assertRaises(OSError):
-                self.client.put(url + "/ratings/a", json=self.ratings(packets, "New name"), headers=self.headers)
+                self.client.put(url + "/ratings/a", json=replacement, headers=self.headers)
         self.assertEqual(self.client.get(url + "/ratings/a").json(), original_draft)
         self.assertEqual(len(list((directory / "drafts-a").glob("*.json"))), 1)
         with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):

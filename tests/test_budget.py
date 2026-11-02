@@ -17,8 +17,9 @@ class BudgetTests(unittest.TestCase):
     def test_pending_requests_and_restart_count_against_cap(self):
         ledger = BudgetLedger(self.path, 1, 1)
         first = ledger.reserve('0.7')
+        restarted = BudgetLedger(self.path, 1, 1)
         with self.assertRaises(BudgetExceeded):
-            BudgetLedger(self.path, 1, 1).reserve('0.4')
+            restarted.reserve('0.4')
         ledger.settle(first, '0.2')
         ledger.reserve('0.8')
         self.assertEqual(ledger.snapshot()['accounted_eur'], '1.0')
@@ -28,8 +29,9 @@ class BudgetTests(unittest.TestCase):
         entry = ledger.reserve('0.5')
         self.assertFalse(ledger.settle(entry, '0.8'))
         self.assertEqual(ledger.snapshot()['accounted_eur'], '0.8')
+        restarted = BudgetLedger(self.path, 5, 1)
         with self.assertRaises(BudgetExceeded):
-            BudgetLedger(self.path, 5, 1).reserve('0.1')
+            restarted.reserve('0.1')
 
     def test_reservation_cannot_be_settled_twice(self):
         ledger = BudgetLedger(self.path, 1, 1)

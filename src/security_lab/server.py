@@ -61,7 +61,7 @@ class LocalAccessMiddleware:
             return await JSONResponse({"detail": "Anfragen anderer Webseiten sind nicht zugelassen."}, 403)(scope, receive, send)
         if scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = headers.get("x-lab-token", "")
-            if not secrets.compare_digest(supplied, self.token):
+            if not secrets.compare_digest(supplied.encode("utf-8"), self.token.encode("ascii")):
                 return await JSONResponse({"detail": "Lokales Sitzungstoken fehlt oder ist ungültig."}, 403)(scope, receive, send)
         try:
             length = int(headers.get("content-length", "0"))

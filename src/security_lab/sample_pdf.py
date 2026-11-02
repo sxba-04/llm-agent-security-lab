@@ -17,9 +17,11 @@ def article_pdf(case: dict, source: str) -> bytes:
     from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 
     title = case.get("document", {}).get("title", "Synthetischer Wissensartikel")
-    lines = [title, "", *sum((textwrap.wrap(p, width=88, break_long_words=False,
-                                         break_on_hyphens=False) + [""]
-                             for p in case["articles"][source].splitlines()), [])]
+    lines = [title, ""]
+    for paragraph in case["articles"][source].splitlines():
+        lines.extend(textwrap.wrap(paragraph, width=88, break_long_words=False,
+                                   break_on_hyphens=False))
+        lines.append("")
     writer = PdfWriter()
     font = DictionaryObject({NameObject("/Type"): NameObject("/Font"),
                              NameObject("/Subtype"): NameObject("/Type1"),

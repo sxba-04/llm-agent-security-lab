@@ -77,8 +77,9 @@ class DocumentTests(unittest.TestCase):
                 writer.encrypt("private")
             output = BytesIO()
             writer.write(output)
+            invalid_pdf = output.getvalue()
             with self.subTest(mode=mode), self.assertRaises(DocumentError):
-                import_document(self.storage, mode + ".pdf", output.getvalue())
+                import_document(self.storage, mode + ".pdf", invalid_pdf)
         self.assertEqual(list(self.storage.glob("doc-*")), [])
         self.assertEqual(list(self.storage.glob("import-*")), [])
 

@@ -1,0 +1,2293 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-11-01",
+  "inventory_analysis_revision": "12db393771b70f05f12f947fe213c43084a0fce5",
+  "reviewed_base_revision": "3731bcd9a86fd98aca9c8168c9b1bf8065b44d62",
+  "scope": "All 92 assigned frontend TS/TSX issues; frontend/e2e-hosted/server.py excluded and reviewed separately.",
+  "source_comparison": "Frontend source files referenced in this ledger are unchanged between the inventory revision and reviewed base.",
+  "method": "Each inventory ID was mapped to its exact base source range and reviewed with SonarJS official implementation mappings; specific upstream documentation was used for label, keys and native-element semantics. Free-text Sonar diagnostics were intentionally not exported.",
+  "classification_counts": {
+    "validmaintainabilitydebt": 89,
+    "FP": 2,
+    "confirmedbehaviorbug": 1
+  },
+  "validation": {
+    "os": "Linux",
+    "npm_ci": "passed, locked dependencies",
+    "frontend_tests": "33 passed in 5 files, including 2 new regressions",
+    "frontend_build": "passed: tsc -b and vite build",
+    "pre_fix_reproduction": "The comparison disclosure identity regression failed on the original index-key implementation.",
+    "limitations": [
+      "No remote finding was resolved, dismissed or accepted. Debt remains open.",
+      "The comparison-key patch is local and still requires integration CI and current-head independent review.",
+      "No real browser Playwright suite or Windows run was executed for this local component-only patch.",
+      "Mocked fixtures exercise UI behavior only; they are not experiment evidence or human ratings.",
+      "A fresh Sonar analysis may change issue membership after the main analysis-scope configuration change."
+    ],
+    "independent_review": "Local code/security review passed with no blockers, including final P-B fixture delta; ledger uniqueness/counts and both FP rationales independently checked. The 89 debt assessments were not all independently re-reviewed.",
+    "reviewed_file_sha256": {
+      "frontend/src/Compare.tsx": "8c84b832b0f242eff853a9e445cb23c77a6a68ad9f9af39f0457cf413bb15173",
+      "frontend/src/sonar-regressions.test.tsx": "088eeb69207520f954d6cf334e50bcf1029dbcf2248f5fb184cbf18e2da84620"
+    },
+    "targeted_final_tests": "2 new regressions passed after final P-B fixture correction."
+  },
+  "issues": [
+    {
+      "issue_id": "AaGMS_8s7rRJBvbBA1nK",
+      "rule": "typescript:S5906",
+      "rule_implementation": "prefer-specific-assertions",
+      "path": "frontend/e2e/workbench.spec.ts",
+      "line": 16,
+      "text_range": {
+        "startLine": 16,
+        "endLine": 16,
+        "startOffset": 4,
+        "endOffset": 43
+      },
+      "source_symbol": null,
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Öffnen und Neuladen: Der Test vergleicht die Arraylänge mit dem erwarteten Basisstand. toHaveLength wäre aussagekräftiger, die vorhandene numerische Gleichheitsprüfung prüft bereits denselben Sachverhalt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/e2e/workbench.spec.ts#L16",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8s7rRJBvbBA1nL",
+      "rule": "typescript:S5906",
+      "rule_implementation": "prefer-specific-assertions",
+      "path": "frontend/e2e/workbench.spec.ts",
+      "line": 23,
+      "text_range": {
+        "startLine": 23,
+        "endLine": 23,
+        "startOffset": 4,
+        "endOffset": 43
+      },
+      "source_symbol": null,
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Öffnen der Vorbereitung: Der Test vergleicht die Arraylänge mit dem erwarteten Basisstand. toHaveLength wäre aussagekräftiger, die vorhandene numerische Gleichheitsprüfung prüft bereits denselben Sachverhalt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/e2e/workbench.spec.ts#L23",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8s7rRJBvbBA1nM",
+      "rule": "typescript:S5906",
+      "rule_implementation": "prefer-specific-assertions",
+      "path": "frontend/e2e/workbench.spec.ts",
+      "line": 31,
+      "text_range": {
+        "startLine": 31,
+        "endLine": 31,
+        "startOffset": 4,
+        "endOffset": 43
+      },
+      "source_symbol": null,
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Start und erneutes Laden nach genau einer Kampagne: Der Test vergleicht die Arraylänge mit dem erwarteten Basisstand. toHaveLength wäre aussagekräftiger, die vorhandene numerische Gleichheitsprüfung prüft bereits denselben Sachverhalt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/e2e/workbench.spec.ts#L31",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8i7rRJBvbBA1mh",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/AccessGate.tsx",
+      "line": 6,
+      "text_range": {
+        "startLine": 6,
+        "endLine": 6,
+        "startOffset": 27,
+        "endOffset": 64
+      },
+      "source_symbol": "AccessGate",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "AccessGate: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/AccessGate.tsx#L6",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mq",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/App.tsx",
+      "line": 22,
+      "text_range": {
+        "startLine": 22,
+        "endLine": 22,
+        "startOffset": 9,
+        "endOffset": 18
+      },
+      "source_symbol": "Workbench",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Routen, initiale Ladezustände, Verbindungsanzeige und Seitenkomposition erzeugen viele Verzweigungen; die ausgewählten Datenpfade und Fehleranzeigen wurden geprüft. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L22",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mr",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/App.tsx",
+      "line": 42,
+      "text_range": {
+        "startLine": 42,
+        "endLine": 42,
+        "startOffset": 493,
+        "endOffset": 589
+      },
+      "source_symbol": "Workbench",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Verbindungsanzeige: erst Fehler, dann initiales Laden, anschließend Online-/Lokaltext. Reihenfolge ist sachlich richtig; die verschachtelte Statusauswahl erschwert das Lesen.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L42",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1ms",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/App.tsx",
+      "line": 42,
+      "text_range": {
+        "startLine": 42,
+        "endLine": 42,
+        "startOffset": 542,
+        "endOffset": 589
+      },
+      "source_symbol": "Workbench",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Innerer Online-/Lokaltext der Verbindungsanzeige; hosted ist ein boolescher Build-Modus. Kein falscher Status durch diesen Zweig belegt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L42",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mt",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/App.tsx",
+      "line": 61,
+      "text_range": {
+        "startLine": 61,
+        "endLine": 61,
+        "startOffset": 18,
+        "endOffset": 83
+      },
+      "source_symbol": "Overview",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Overview: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L61",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mu",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/App.tsx",
+      "line": 68,
+      "text_range": {
+        "startLine": 68,
+        "endLine": 68,
+        "startOffset": 382,
+        "endOffset": 440
+      },
+      "source_symbol": "Overview",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Detail der Versuchsanzahl: aktive Anzahl hat Vorrang vor Online-/Lokalhinweis. Lesbarkeitsbefund, keine Messgrößenänderung.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L68",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mv",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/App.tsx",
+      "line": 75,
+      "text_range": {
+        "startLine": 75,
+        "endLine": 75,
+        "startOffset": 14,
+        "endOffset": 117
+      },
+      "source_symbol": "Stat",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Stat: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L75",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mw",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/App.tsx",
+      "line": 76,
+      "text_range": {
+        "startLine": 76,
+        "endLine": 76,
+        "startOffset": 19,
+        "endOffset": 85
+      },
+      "source_symbol": "CasesPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "CasesPage: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L76",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8l7rRJBvbBA1mx",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/App.tsx",
+      "line": 83,
+      "text_range": {
+        "startLine": 83,
+        "endLine": 83,
+        "startOffset": 965,
+        "endOffset": 1022
+      },
+      "source_symbol": "CasesPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Strategiebezeichnung: dependency erhält Abhängigkeit, unbekannte Werte bleiben sichtbar; der äußere Zweig behandelt authority. Die Fallback-Reihenfolge ist korrekt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/App.tsx#L83",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1my",
+      "rule": "typescript:S7776",
+      "rule_implementation": "unicorn/prefer-set-has",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 7,
+      "text_range": {
+        "startLine": 7,
+        "endLine": 7,
+        "startOffset": 6,
+        "endOffset": 18
+      },
+      "source_symbol": null,
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "activeStates hat drei konstante Zustände und wird mit includes abgefragt. Set.has wäre die von der Regel gewünschte Datenstruktur; hier kein nachgewiesenes Laufzeit-/Komplexitätsproblem bei drei Elementen.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L7",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1mz",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 8,
+      "text_range": {
+        "startLine": 8,
+        "endLine": 8,
+        "startOffset": 16,
+        "endOffset": 29
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Neuanlage, fehlende/beschädigte Auswahl und Verlauf werden gemeinsam gerendert; die beschädigte Kampagne wird vor der Detailansicht abgefangen. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L8",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m0",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 8,
+      "text_range": {
+        "startLine": 8,
+        "endLine": 8,
+        "startOffset": 30,
+        "endOffset": 225
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "CampaignsPage: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L8",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m1",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 13,
+      "text_range": {
+        "startLine": 13,
+        "endLine": 13,
+        "startOffset": 16,
+        "endOffset": 898
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Ausgewählter Versuch: Laden ohne Daten vor fehlender Auswahl vor beschädigten Belegen vor Detailansicht. Schutz beschädigter Nachweise bleibt vorhanden; tief verschachtelte Darstellung ist Wartungsschuld.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L13",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m2",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 13,
+      "text_range": {
+        "startLine": 13,
+        "endLine": 13,
+        "startOffset": 91,
+        "endOffset": 898
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Fehlender ausgewählter Versuch führt zur Nicht-verfügbar-Ansicht; vorhandene Daten werden anschließend auf Beschädigung geprüft. Kein Zugriff auf fehlende Daten im geprüften Zweig.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L13",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m3",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 13,
+      "text_range": {
+        "startLine": 13,
+        "endLine": 13,
+        "startOffset": 217,
+        "endOffset": 898
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Beschädigte Kampagne erhält Fehleransicht, sonst CampaignDetail; der Zweig schützt die nachfolgenden Belegansichten. Die Verschachtelung erschwert die Nachvollziehbarkeit.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L13",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m4",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 13,
+      "text_range": {
+        "startLine": 13,
+        "endLine": 13,
+        "startOffset": 901,
+        "endOffset": 1972
+      },
+      "source_symbol": "CampaignsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Ohne ausgewählten Versuch erscheint der Verlauf nur bei vorhandenen Kampagnen und geschlossener Neuanlage. Sonst null; kein unbeabsichtigter Start.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L13",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m5",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 17,
+      "text_range": {
+        "startLine": 17,
+        "endLine": 17,
+        "startOffset": 27,
+        "endOffset": 115
+      },
+      "source_symbol": "LaunchForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "LaunchForm: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L17",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m6",
+      "rule": "typescript:S7754",
+      "rule_implementation": "unicorn/prefer-array-some",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 19,
+      "text_range": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 59,
+        "endOffset": 63
+      },
+      "source_symbol": "LaunchForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "find wird ausschließlich als Existenzprüfung für den bevorzugten Fall benutzt; gefundene LabCase-Objekte sind truthy. some wäre direkter und semantisch gleichwertig.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L19",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m7",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 19,
+      "text_range": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 111,
+        "endOffset": 145
+      },
+      "source_symbol": "LaunchForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Initiale Fallauswahl: gültiger bevorzugter Fall, sonst erster Fall, sonst leere Auswahl. Die Existenzprüfung verhindert Zugriff auf einen fehlenden ersten Fall.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L19",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m8",
+      "rule": "typescript:S7721",
+      "rule_implementation": "unicorn/consistent-function-scoping",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 29,
+      "text_range": {
+        "startLine": 29,
+        "endLine": 29,
+        "startOffset": 2,
+        "endOffset": 20
+      },
+      "source_symbol": "LaunchForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "toggle verwendet ausschließlich seine Argumente und kann außerhalb von LaunchForm stehen. Die jetzige Bindung erzeugt eine neue Funktion je Render, aber keinen falschen Auswahlzustand.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L29",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m9",
+      "rule": "typescript:S6853",
+      "rule_implementation": "jsx-a11y/label-has-associated-control",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 40,
+      "text_range": {
+        "startLine": 40,
+        "endLine": 40,
+        "startOffset": 590,
+        "endOffset": 595
+      },
+      "source_symbol": "LaunchForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "FP",
+      "disposition": "retain_no_remote_disposition",
+      "rationale": "Das label umschließt sein input unmittelbar und enthält benannten Falltext in span/strong/small. Testing Library findet die Checkbox über ihren berechneten Accessible Name; Klick auf den sichtbaren Fallnamen schaltet genau diese Checkbox um und deaktiviert bei leerer Auswahl den Start. Die Upstream-Regel unterstützt implizite Assoziation; ihre begrenzte Textsuche ist eine plausible Erklärung für diesen verschachtelten JSX-Fall. Kein zusätzlicher for/id-Zwang.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L40",
+      "supporting_local_references": [
+        "frontend/src/sonar-regressions.test.tsx:49"
+      ],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6853/decorator.ts",
+        "https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/main/docs/rules/label-has-associated-control.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m-",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 47,
+      "text_range": {
+        "startLine": 47,
+        "endLine": 47,
+        "startOffset": 9,
+        "endOffset": 23
+      },
+      "source_symbol": "CampaignDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Polling, Auswahl, Abbruch, Reviewexport, Archivdownload und Ladezustände teilen eine große Komponente; die Operationen behalten Fehlerbehandlung und explizite Bedienaktionen. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L47",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1m_",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 47,
+      "text_range": {
+        "startLine": 47,
+        "endLine": 47,
+        "startOffset": 24,
+        "endOffset": 103
+      },
+      "source_symbol": "CampaignDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "CampaignDetail: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L47",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nA",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 77,
+      "text_range": {
+        "startLine": 77,
+        "endLine": 77,
+        "startOffset": 93,
+        "endOffset": 1327
+      },
+      "source_symbol": "CampaignDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Laufansicht: initiales Laden, danach leerer Zustand, danach Protokollliste. Aktive und beendete leere Versuche erhalten unterschiedliche Hinweise; keine Erfolgswertung daraus.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L77",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nB",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 80,
+      "text_range": {
+        "startLine": 80,
+        "endLine": 80,
+        "startOffset": 26,
+        "endOffset": 59
+      },
+      "source_symbol": "RunDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "RunDetail: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L80",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nC",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 85,
+      "text_range": {
+        "startLine": 85,
+        "endLine": 85,
+        "startOffset": 1138,
+        "endOffset": 1248
+      },
+      "source_symbol": "RunDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Farbwahl trennt legitimate_success von Verletzungsmetriken nach vorheriger null/undefined-Prüfung. Die abweichende Farbpolarität ist fachlich beabsichtigt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L85",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nD",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 85,
+      "text_range": {
+        "startLine": 85,
+        "endLine": 85,
+        "startOffset": 1169,
+        "endOffset": 1206
+      },
+      "source_symbol": "RunDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Wahr/falsch für legitimate_success führt zu grün/rot. Das ist die richtige Polarität für legitimen Aufgabenerfolg; lediglich die Einbettung ist schwer lesbar.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L85",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nE",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 85,
+      "text_range": {
+        "startLine": 85,
+        "endLine": 85,
+        "startOffset": 1209,
+        "endOffset": 1248
+      },
+      "source_symbol": "RunDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Wahr/falsch für Verletzungs- und Angriffszielmetriken führt zu amber/grün. Keine Umdeutung von Angriffserfolg als Schutzwirkung.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L85",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nF",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 85,
+      "text_range": {
+        "startLine": 85,
+        "endLine": 85,
+        "startOffset": 1343,
+        "endOffset": 1378
+      },
+      "source_symbol": "RunDetail",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Nach null/undefined als Bewertung offen werden bekannte boolesche Metriken mit Ja/Nein angezeigt. Unbekannte Urteile werden nicht als Nein dargestellt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L85",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nG",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 93,
+      "text_range": {
+        "startLine": 93,
+        "endLine": 93,
+        "startOffset": 20,
+        "endOffset": 83
+      },
+      "source_symbol": "TraceEvent",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "TraceEvent: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L93",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nH",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 97,
+      "text_range": {
+        "startLine": 97,
+        "endLine": 97,
+        "startOffset": 65,
+        "endOffset": 87
+      },
+      "source_symbol": "TraceEvent",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Ereignisklasse: blockiert hat Vorrang, sonst effect, sonst leer. Eine Klassenauswahl, keine Gateway-Entscheidung.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L97",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nI",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 97,
+      "text_range": {
+        "startLine": 97,
+        "endLine": 97,
+        "startOffset": 311,
+        "endOffset": 440
+      },
+      "source_symbol": "TraceEvent",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Ereignis-Pill: explizite Zulassung vor beobachtetem Effekt, sonst kein Pill; der äußere Zweig behandelt explizite Blockierung. Keine zusätzlichen Effekte ausgelöst.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L97",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8o7rRJBvbBA1nJ",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Campaigns.tsx",
+      "line": 97,
+      "text_range": {
+        "startLine": 97,
+        "endLine": 97,
+        "startOffset": 380,
+        "endOffset": 440
+      },
+      "source_symbol": "TraceEvent",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Der letzte Zweig zeigt beobachtete Backend-/Kontexteffekte an oder null. Die Ereignisdaten werden nur dargestellt, nicht als Autorität verwendet.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Campaigns.tsx#L97",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mi",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Compare.tsx",
+      "line": 12,
+      "text_range": {
+        "startLine": 12,
+        "endLine": 12,
+        "startOffset": 16,
+        "endOffset": 27
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Gültige Kampagnen, Reviewauswahl, Filter und Metrikdarstellung sind zusammengeführt. Der separate Index-Key-Fehler ist unter A1mn erfasst; er wird nicht diesem Komplexitätsbefund zugeschrieben. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L12",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mj",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Compare.tsx",
+      "line": 12,
+      "text_range": {
+        "startLine": 12,
+        "endLine": 12,
+        "startOffset": 28,
+        "endOffset": 103
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "ComparePage: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L12",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mk",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Compare.tsx",
+      "line": 25,
+      "text_range": {
+        "startLine": 25,
+        "endLine": 25,
+        "startOffset": 95,
+        "endOffset": 173
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Summary-URL existiert nur bei Kampagnen-ID; optionale Review-ID wird mit encodeURIComponent kodiert. Verschachtelte Auswahl ändert keine Filter-/Bewertungssemantik.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L25",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1ml",
+      "rule": "typescript:S4624",
+      "rule_implementation": "no-nested-template-literals",
+      "path": "frontend/src/Compare.tsx",
+      "line": 25,
+      "text_range": {
+        "startLine": 25,
+        "endLine": 25,
+        "startOffset": 113,
+        "endOffset": 168
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Review-Query steckt als inneres Template im Summary-Pfad. Beide IDs sind kodiert; Auftrennen würde Lesbarkeit verbessern, keine belegte URL-Injektion beheben.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L25",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mm",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/Compare.tsx",
+      "line": 37,
+      "text_range": {
+        "startLine": 37,
+        "endLine": 37,
+        "startOffset": 335,
+        "endOffset": 340
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Die gefilterten Summary-Zeilen verwenden Positionskeys. Die Zeilen enthalten aktuell nur zustandslose Text-/Pill-/Balkenelemente, sodass kein übertragener Eingabe-/Disclosure-Zustand belegt ist. Fachliche Gruppenkeys wären als vorbeugende Wartung sinnvoll.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L37",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mn",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/Compare.tsx",
+      "line": 40,
+      "text_range": {
+        "startLine": 40,
+        "endLine": 40,
+        "startOffset": 154,
+        "endOffset": 159
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "confirmedbehaviorbug",
+      "disposition": "fixed_locally_pending_ci",
+      "rationale": "Reproduziert: G1-Details öffnen, anschließend nach G2 filtern; key=index wiederverwendet das G1-DOM-Element für G2 und überträgt dessen geöffneten Zustand. Der Patch verwendet die Backend-Identität (linke/rechte Variante, Quelle, Ziel, Modell, Modus) als JSON-Tupelkey. Der Regressionstest schlägt vor dem Patch fehl und besteht danach.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L40",
+      "supporting_local_references": [
+        "src/security_lab/comparisons.py:143",
+        "src/security_lab/comparisons.py:212",
+        "frontend/src/sonar-regressions.test.tsx:21"
+      ],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mo",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Compare.tsx",
+      "line": 40,
+      "text_range": {
+        "startLine": 40,
+        "endLine": 40,
+        "startOffset": 502,
+        "endOffset": 532
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Vorzeichen der bekannten Prozentpunktdifferenz: positives Plus, sonst leer, nach äußerer null-Prüfung. Null bleibt Offen; mathematisches Vorzeichen korrekt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L40",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8k7rRJBvbBA1mp",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/Compare.tsx",
+      "line": 42,
+      "text_range": {
+        "startLine": 42,
+        "endLine": 42,
+        "startOffset": 488,
+        "endOffset": 489
+      },
+      "source_symbol": "ComparePage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Gefilterte Fallprofilzeilen verwenden Positionskeys, enthalten derzeit aber nur Textzellen. Die Backend-Profilidentität enthält zusätzlich Modell/Modus; eine spätere Key-Umstellung muss diese Felder berücksichtigen. Kein konkreter Zustandsverlust wie bei den Vergleichskarten.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Compare.tsx#L42",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8b7rRJBvbBA1l4",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Documents.tsx",
+      "line": 8,
+      "text_range": {
+        "startLine": 8,
+        "endLine": 8,
+        "startOffset": 16,
+        "endOffset": 29
+      },
+      "source_symbol": "DocumentsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Upload, Quellenauswahl, Integritätszustand und hashgebundene Bestätigung teilen eine große Komponente. Die Bestätigung bleibt an documentKey/reviewed gekoppelt. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Documents.tsx#L8",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8b7rRJBvbBA1l5",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Documents.tsx",
+      "line": 8,
+      "text_range": {
+        "startLine": 8,
+        "endLine": 8,
+        "startOffset": 30,
+        "endOffset": 61
+      },
+      "source_symbol": "DocumentsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "DocumentsPage: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Documents.tsx#L8",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8b7rRJBvbBA1l6",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Documents.tsx",
+      "line": 46,
+      "text_range": {
+        "startLine": 46,
+        "endLine": 46,
+        "startOffset": 53,
+        "endOffset": 2400
+      },
+      "source_symbol": "DocumentsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Dokumentansicht priorisiert Laden, danach validierte vorhandene/neue Quelle, sonst leer. Beschädigte Quellen werden vorher separat ausgesondert.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Documents.tsx#L46",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8b7rRJBvbBA1l7",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Documents.tsx",
+      "line": 46,
+      "text_range": {
+        "startLine": 46,
+        "endLine": 46,
+        "startOffset": 214,
+        "endOffset": 242
+      },
+      "source_symbol": "DocumentsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Quellenliste bevorzugt vorhandene gültige Zeilen, sonst eine verwendbare neue Quelle, sonst leeres Array. Kein Zugriff auf eine nicht vorhandene Quelle.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Documents.tsx#L46",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8c7rRJBvbBA1l8",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/DownloadButton.tsx",
+      "line": 5,
+      "text_range": {
+        "startLine": 5,
+        "endLine": 5,
+        "startOffset": 31,
+        "endOffset": 146
+      },
+      "source_symbol": "DownloadButton",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "DownloadButton: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/DownloadButton.tsx#L5",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mS",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 11,
+      "text_range": {
+        "startLine": 11,
+        "endLine": 11,
+        "startOffset": 16,
+        "endOffset": 27
+      },
+      "source_symbol": "ReviewsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Gültige Bewertungssätze, leere Zustände und A/B-/Koordinationsauswahl liegen in einer Komponente; ungültige Kampagnen werden vor der Formularauswahl ausgefiltert. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L11",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mT",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 11,
+      "text_range": {
+        "startLine": 11,
+        "endLine": 11,
+        "startOffset": 28,
+        "endOffset": 182
+      },
+      "source_symbol": "ReviewsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "ReviewsPage: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L11",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mU",
+      "rule": "typescript:S7721",
+      "rule_implementation": "unicorn/consistent-function-scoping",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 15,
+      "text_range": {
+        "startLine": 15,
+        "endLine": 15,
+        "startOffset": 2,
+        "endOffset": 17
+      },
+      "source_symbol": "ReviewsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "change ist ein lokaler Wrapper von navigate und braucht keinen Komponentenabschluss. Hoisting oder direkte Nutzung vereinfacht den Code ohne Verhaltenskorrektur.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L15",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mV",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 22,
+      "text_range": {
+        "startLine": 22,
+        "endLine": 25,
+        "startOffset": 34,
+        "endOffset": 7
+      },
+      "source_symbol": "ReviewsPage",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Bewertungsauswahl: Laden vor fehlendem gültigem Satz vor Formular. Beschädigte oder ungültige Sätze sind vorher ausgefiltert; keine erfundenen Urteile.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L22",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mW",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 28,
+      "text_range": {
+        "startLine": 28,
+        "endLine": 28,
+        "startOffset": 9,
+        "endOffset": 19
+      },
+      "source_symbol": "RatingForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Laden, Entwurf, gesperrter Zustand, Paketwahl und Speichern erzeugen viele Verzweigungen. readOnly/busy-Prüfungen und Konflikt-Refresh bleiben vorhanden. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L28",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mX",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 28,
+      "text_range": {
+        "startLine": 28,
+        "endLine": 28,
+        "startOffset": 20,
+        "endOffset": 65
+      },
+      "source_symbol": "RatingForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "RatingForm: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L28",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mY",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 62,
+      "text_range": {
+        "startLine": 62,
+        "endLine": 68,
+        "startOffset": 123,
+        "endOffset": 7
+      },
+      "source_symbol": "RatingForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Bewertungsformular: Datenladen vor fehlendem Paket vor Formular. Die Verschachtelung ist schwierig lesbar, aber die Vorbedingungen verhindern eine Paketdarstellung ohne Paket.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L62",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mZ",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 64,
+      "text_range": {
+        "startLine": 64,
+        "endLine": 64,
+        "startOffset": 717,
+        "endOffset": 824
+      },
+      "source_symbol": "RatingForm",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Speicherstatus: gesperrt vor dirty vor gespeichert. Schreibgeschützte Originalurteile werden nicht als bearbeitbar angezeigt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L64",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1ma",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 71,
+      "text_range": {
+        "startLine": 71,
+        "endLine": 71,
+        "startOffset": 22,
+        "endOffset": 141
+      },
+      "source_symbol": "RatingFields",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "RatingFields: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L71",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mb",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 74,
+      "text_range": {
+        "startLine": 74,
+        "endLine": 74,
+        "startOffset": 24,
+        "endOffset": 54
+      },
+      "source_symbol": "PacketEvidence",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "PacketEvidence: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L74",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mc",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 75,
+      "text_range": {
+        "startLine": 75,
+        "endLine": 75,
+        "startOffset": 1222,
+        "endOffset": 1227
+      },
+      "source_symbol": "PacketEvidence",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Blockierte Elemente verwenden Positionskeys in einer unveränderlichen Paketliste. DataFields/Value/JsonBlock besitzen hier keinen interaktiven Zustand. Künftige interaktive Erweiterungen sollten Ereignisidentität statt Position benutzen; aktuell kein Reproduktionsfall für falsch zugeordnete Daten.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L75",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1md",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 77,
+      "text_range": {
+        "startLine": 77,
+        "endLine": 77,
+        "startOffset": 22,
+        "endOffset": 44
+      },
+      "source_symbol": "Coordination",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Coordination: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L77",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1me",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 94,
+      "text_range": {
+        "startLine": 94,
+        "endLine": 94,
+        "startOffset": 691,
+        "endOffset": 1132
+      },
+      "source_symbol": "Coordination",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Koordination: Laden vor vorhandener gemeinsamer Bewertung vor Noch keine Bewertung. Ein leerer Stand wird nicht automatisch ergänzt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L94",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mf",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 96,
+      "text_range": {
+        "startLine": 96,
+        "endLine": 96,
+        "startOffset": 212,
+        "endOffset": 213
+      },
+      "source_symbol": "Coordination",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Originalurteile werden als unveränderliche A/B-Liste in zustandslosen Textfeldern gerendert. Der Indexkey ist vermeidbare Identitätsschuld; die separate Adjudication ist bereits durch review_id gekeyt, sodass deren Formularzustand nicht über diesen Key übertragen wird.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L96",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8h7rRJBvbBA1mg",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/Reviews.tsx",
+      "line": 101,
+      "text_range": {
+        "startLine": 101,
+        "endLine": 101,
+        "startOffset": 22,
+        "endOffset": 119
+      },
+      "source_symbol": "Adjudication",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Adjudication: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/Reviews.tsx#L101",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1lx",
+      "rule": "typescript:S2681",
+      "rule_implementation": "no-unenclosed-multiline-block",
+      "path": "frontend/src/api.ts",
+      "line": 26,
+      "text_range": {
+        "startLine": 26,
+        "endLine": 26,
+        "startOffset": 62,
+        "endOffset": 74
+      },
+      "source_symbol": "signIn",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Im catch wird nur signOut an die noch aktuelle Kandidatensitzung gebunden; throw error muss immer erfolgen. Die kompakte einzeilige if/throw-Formatierung ist missverständlich, das erneute Werfen ist beabsichtigt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L26",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1ly",
+      "rule": "typescript:S6557",
+      "rule_implementation": "typescript-eslint/prefer-string-starts-ends-with",
+      "path": "frontend/src/api.ts",
+      "line": 30,
+      "text_range": {
+        "startLine": 30,
+        "endLine": 30,
+        "startOffset": 35,
+        "endOffset": 105
+      },
+      "source_symbol": "endpoint",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "indexOf(/api/) != 0 prüft auf Startposition 0 und entspricht hier startsWith. Die zusätzliche normalisierte Pfadprüfung verhindert weiterhin Ausbrüche; direktere Schreibweise wäre wartbarer.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L30",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1lz",
+      "rule": "typescript:S3776",
+      "rule_implementation": "cognitive-complexity",
+      "path": "frontend/src/api.ts",
+      "line": 35,
+      "text_range": {
+        "startLine": 35,
+        "endLine": 35,
+        "startOffset": 15,
+        "endOffset": 30
+      },
+      "source_symbol": "checkedResponse",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "CRITICAL",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "HTTP-Methode, CSRF, Hosted-Authentifizierung, Abbruch und strukturierte Fehler werden zentral behandelt. Redirects bleiben untersagt, Tokens bleiben an den geprüften API-Pfad gebunden. Gültige Komplexitätsschuld; eine verhaltensbewahrende Zerlegung gehört in einen gesonderten Refactor.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L35",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1l0",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/api.ts",
+      "line": 57,
+      "text_range": {
+        "startLine": 57,
+        "endLine": 59,
+        "startOffset": 58,
+        "endOffset": 75
+      },
+      "source_symbol": "checkedResponse",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Fehlertext behandelt zuerst String-detail, danach ein strukturiertes Fehlerarray, sonst HTTP-Statusfallback. Keine HTML-Ausführung; JSX zeigt den Text später als Daten.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L57",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1l1",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/api.ts",
+      "line": 72,
+      "text_range": {
+        "startLine": 72,
+        "endLine": 72,
+        "startOffset": 71,
+        "endOffset": 123
+      },
+      "source_symbol": "downloadFile",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Download-MIME wird aus erwarteter Endung PDF/ZIP bestimmt, sonst keine spezifische Prüfung. Beide bekannten Downloads werden weiterhin gegen Content-Type geprüft.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L72",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1l2",
+      "rule": "typescript:S1874",
+      "rule_implementation": "deprecation",
+      "path": "frontend/src/api.ts",
+      "line": 131,
+      "text_range": {
+        "startLine": 131,
+        "endLine": 131,
+        "startOffset": 81,
+        "endOffset": 92
+      },
+      "source_symbol": "useUnsavedChanges",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "returnValue ist tatsächlich veraltet; preventDefault wird bereits aufgerufen. Der zusätzliche Legacy-Ausdruck wird ohne ausgewertete Browser-Zielmatrix nicht blind entfernt. MDN beschreibt beide Mechanismen; dies ist eine Kompatibilitäts-/Wartungsentscheidung, kein bewiesener Datenverlust.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L131",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://developer.mozilla.org/en-US/docs/Web/API/BeforeUnloadEvent/returnValue"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_7E7rRJBvbBA1l3",
+      "rule": "typescript:S4624",
+      "rule_implementation": "no-nested-template-literals",
+      "path": "frontend/src/api.ts",
+      "line": 143,
+      "text_range": {
+        "startLine": 143,
+        "endLine": 143,
+        "startOffset": 34,
+        "endOffset": 45
+      },
+      "source_symbol": "navigate",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "navigate fügt einen URLSearchParams-Query über ein inneres Template an. URLSearchParams übernimmt die Werte-Kodierung; die Verschachtelung ist ein Lesbarkeitsbefund.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/api.ts#L143",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1l9",
+      "rule": "typescript:S7773",
+      "rule_implementation": "unicorn/prefer-number-properties",
+      "path": "frontend/src/ui.tsx",
+      "line": 12,
+      "text_range": {
+        "startLine": 12,
+        "endLine": 12,
+        "startOffset": 76,
+        "endOffset": 81
+      },
+      "source_symbol": "formatDate",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "isNaN erhält ausschließlich Date.getTime(), also number einschließlich NaN. Number.isNaN wäre präziser; ein durch globale Typkoerzierung ausgelöster Fehler ist hier nicht erreichbar.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L12",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1l-",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 13,
+      "text_range": {
+        "startLine": 13,
+        "endLine": 13,
+        "startOffset": 21,
+        "endOffset": 91
+      },
+      "source_symbol": "Pill",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Pill: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L13",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1l_",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 14,
+      "text_range": {
+        "startLine": 14,
+        "endLine": 14,
+        "startOffset": 23,
+        "endOffset": 51
+      },
+      "source_symbol": "Status",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Status: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L14",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mA",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/ui.tsx",
+      "line": 14,
+      "text_range": {
+        "startLine": 14,
+        "endLine": 14,
+        "startOffset": 137,
+        "endOffset": 315
+      },
+      "source_symbol": "Status",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Statusfarbe: bekannte abgeschlossene Zustände grün, bekannte Fehler rot, sonst neutral, nach äußerem aktiv/blau-Zweig. Nur Darstellung, keine Zustandsmutation.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L14",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mB",
+      "rule": "typescript:S3358",
+      "rule_implementation": "no-nested-conditional",
+      "path": "frontend/src/ui.tsx",
+      "line": 14,
+      "text_range": {
+        "startLine": 14,
+        "endLine": 14,
+        "startOffset": 207,
+        "endOffset": 315
+      },
+      "source_symbol": "Status",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Fehlerzustände werden rot und sonstige Zustände neutral dargestellt. Kein Lauf wird durch diese Darstellung als erfolgreich ausgewertet.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L14",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mC",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 15,
+      "text_range": {
+        "startLine": 15,
+        "endLine": 15,
+        "startOffset": 27,
+        "endOffset": 143
+      },
+      "source_symbol": "PageHeader",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "PageHeader: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L15",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mD",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 16,
+      "text_range": {
+        "startLine": 16,
+        "endLine": 16,
+        "startOffset": 22,
+        "endOffset": 178
+      },
+      "source_symbol": "Panel",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Panel: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L16",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mE",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 17,
+      "text_range": {
+        "startLine": 17,
+        "endLine": 17,
+        "startOffset": 22,
+        "endOffset": 110
+      },
+      "source_symbol": "Empty",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Empty: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L17",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mF",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 19,
+      "text_range": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 24,
+        "endOffset": 61
+      },
+      "source_symbol": "Success",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Success: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L19",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mG",
+      "rule": "typescript:S6819",
+      "rule_implementation": "jsx-a11y/prefer-tag-over-role",
+      "path": "frontend/src/ui.tsx",
+      "line": 19,
+      "text_range": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 72,
+        "endOffset": 118
+      },
+      "source_symbol": "Success",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Success benutzt einen gültigen ARIA-Live-Status auf div. Die Regel bevorzugt ein natives Element; die bestehende Statussemantik ist vorhanden. Eine semantisch passende output-Umstellung ist als Wartungsarbeit zu prüfen, kein fehlender Accessible Name oder Live-Status belegt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L19",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/main/docs/rules/prefer-tag-over-role.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mH",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 20,
+      "text_range": {
+        "startLine": 20,
+        "endLine": 20,
+        "startOffset": 24,
+        "endOffset": 78
+      },
+      "source_symbol": "Loading",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Loading: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L20",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mI",
+      "rule": "typescript:S6819",
+      "rule_implementation": "jsx-a11y/prefer-tag-over-role",
+      "path": "frontend/src/ui.tsx",
+      "line": 20,
+      "text_range": {
+        "startLine": 20,
+        "endLine": 20,
+        "startOffset": 89,
+        "endOffset": 128
+      },
+      "source_symbol": "Loading",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Loading benutzt role=status für Fortschrittstext. Native-Element-Präferenz ist nachvollziehbar, bestehende implizite Live-Region aber gültig; keine belegte unzugängliche Ladeanzeige.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L20",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/main/docs/rules/prefer-tag-over-role.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mJ",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 22,
+      "text_range": {
+        "startLine": 22,
+        "endLine": 22,
+        "startOffset": 26,
+        "endOffset": 55
+      },
+      "source_symbol": "JsonBlock",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "JsonBlock: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L22",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mK",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 23,
+      "text_range": {
+        "startLine": 23,
+        "endLine": 23,
+        "startOffset": 26,
+        "endOffset": 99
+      },
+      "source_symbol": "TextBlock",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "TextBlock: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L23",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mL",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 24,
+      "text_range": {
+        "startLine": 24,
+        "endLine": 24,
+        "startOffset": 27,
+        "endOffset": 116
+      },
+      "source_symbol": "Disclosure",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Disclosure: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L24",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mM",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 25,
+      "text_range": {
+        "startLine": 25,
+        "endLine": 25,
+        "startOffset": 25,
+        "endOffset": 92
+      },
+      "source_symbol": "GoButton",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "GoButton: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L25",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mN",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 27,
+      "text_range": {
+        "startLine": 27,
+        "endLine": 27,
+        "startOffset": 27,
+        "endOffset": 53
+      },
+      "source_symbol": "DataFields",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "DataFields: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L27",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mO",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 28,
+      "text_range": {
+        "startLine": 28,
+        "endLine": 28,
+        "startOffset": 27,
+        "endOffset": 107
+      },
+      "source_symbol": "TicketDiff",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "TicketDiff: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L28",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mP",
+      "rule": "typescript:S6551",
+      "rule_implementation": "typescript-eslint/no-base-to-string",
+      "path": "frontend/src/ui.tsx",
+      "line": 33,
+      "text_range": {
+        "startLine": 33,
+        "endLine": 33,
+        "startOffset": 63,
+        "endOffset": 112
+      },
+      "source_symbol": "TicketDiff",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "Data ist als beliebiges Json typisiert; String könnte bei einem Objekt einen nutzlosen Objektnamen ergeben. Gültige Fallfixtures verlangen String-Titel (cases.py), reguläre Tools ändern keine Titel. Präzisere Tickettypen/defensive Darstellung sind Wartungsschuld; kein konkreter Fehlerfluss aus gültigen Läufen belegt.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L33",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mQ",
+      "rule": "typescript:S6759",
+      "rule_implementation": "prefer-read-only-props",
+      "path": "frontend/src/ui.tsx",
+      "line": 56,
+      "text_range": {
+        "startLine": 56,
+        "endLine": 56,
+        "startOffset": 27,
+        "endOffset": 79
+      },
+      "source_symbol": "SourceDiff",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MINOR",
+      "classification": "validmaintainabilitydebt",
+      "disposition": "open_debt",
+      "rationale": "SourceDiff: Props sind nicht readonly deklariert. Der geprüfte Komponentenrumpf destrukturiert/liest die Eingaben und verändert sie nicht direkt; Änderungen laufen über lokale State-Setter bzw. Callbacks. Readonly würde den Vertrag statisch stärken, ohne hier einen belegten Verhaltensfehler zu korrigieren.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L56",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/S6759/rule.ts"
+      ]
+    },
+    {
+      "issue_id": "AaGMS_8d7rRJBvbBA1mR",
+      "rule": "typescript:S6479",
+      "rule_implementation": "react/no-array-index-key",
+      "path": "frontend/src/ui.tsx",
+      "line": 58,
+      "text_range": {
+        "startLine": 58,
+        "endLine": 58,
+        "startOffset": 292,
+        "endOffset": 297
+      },
+      "source_symbol": "SourceDiff",
+      "sonar_type": "CODE_SMELL",
+      "sonar_severity": "MAJOR",
+      "classification": "FP",
+      "disposition": "retain_no_remote_disposition",
+      "rationale": "SourceDiff stellt unveränderliche, vollständig neu berechnete Textzeilen als zustandslose spans mit sichtbarer Positionsnummer dar. Die Position ist hier die Identität des dargestellten Zeilenplatzes; identischer Text kann mehrfach vorkommen. Kein Sortieren/Filtern interaktiver Listenelemente und kein übertragbarer Zustand. Ein Textkey wäre bei doppelten Zeilen schlechter; Ausnahme gilt nur für diesen statischen Renderer.",
+      "source_reference": "https://github.com/sxba-04/llm-agent-security-lab/blob/3731bcd9a86fd98aca9c8168c9b1bf8065b44d62/frontend/src/ui.tsx#L58",
+      "supporting_local_references": [],
+      "rule_references": [
+        "https://github.com/SonarSource/SonarJS/blob/master/packages/analysis/src/jsts/rules/README.md",
+        "https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/no-array-index-key.md"
+      ]
+    }
+  ]
+}
