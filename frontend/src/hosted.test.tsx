@@ -159,6 +159,55 @@ describe('protected online workbench', () => {
     expect(new Headers(fetch.mock.calls[3][1].headers).get('X-Lab-Token')).toBe('current-session');
   });
 
+  it('does not clear a renewed CSRF token when another old write rejection arrives late', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'before-restart' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    let finishOldRequest!: (response: Response) => void;
+    fetch.mockImplementationOnce(() => new Promise<Response>(resolve => { finishOldRequest = resolve; }));
+    const oldWrite = api('/api/campaigns', { method: 'POST', body: '{}' });
+    fetch.mockImplementationOnce(async () => json({ code: 'csrf_token_invalid' }, 403));
+    await expect(api('/api/campaigns', { method: 'POST', body: '{}' })).rejects.toThrow('Die Aktion wurde nicht ausgeführt');
+
+    fetch.mockImplementationOnce(async () => json({ csrf_token: 'after-restart' }));
+    fetch.mockImplementationOnce(async () => json({ campaign_id: 'manual-retry' }));
+    await api('/api/campaigns', { method: 'POST', body: '{}' });
+    finishOldRequest(json({ code: 'csrf_token_invalid' }, 403));
+    await expect(oldWrite).rejects.toThrow('Die Aktion wurde nicht ausgeführt');
+
+    await api('/api/campaigns', { method: 'POST', body: '{}' });
+    expect(fetch).toHaveBeenCalledTimes(6);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/api/health'))).toHaveLength(2);
+    expect(new Headers(fetch.mock.calls[5][1].headers).get('X-Lab-Token')).toBe('after-restart');
+    expect(sessionIsAuthenticated()).toBe(true);
+  });
+
+  it('preserves validation details and supplies a useful status when an error body is not JSON', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    fetch.mockImplementationOnce(async () => json({ detail: [
+      { loc: ['body', 'repeats'], msg: 'Invalid repeat count' }, {},
+    ] }, 422));
+    await expect(api('/api/campaigns', { method: 'POST', body: '{}' }))
+      .rejects.toThrow('repeats: Invalid repeat count · Eingabe: ungültig');
+    fetch.mockImplementationOnce(async () => new Response('Service unavailable', { status: 503 }));
+    await expect(api('/api/cases')).rejects.toMatchObject({ status: 503, message: 'Die Anfrage konnte nicht verarbeitet werden (503).' });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(sessionIsAuthenticated()).toBe(true);
+  });
+
+  it('preserves cancellation without converting it to a connectivity error or retrying', async () => {
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
+    vi.stubGlobal('fetch', fetch);
+    await signIn(code);
+    const cancelled = new DOMException('Request cancelled', 'AbortError');
+    fetch.mockRejectedValueOnce(cancelled);
+    await expect(api('/api/cases')).rejects.toBe(cancelled);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sessionIsAuthenticated()).toBe(true);
+  });
+
   it('downloads bytes with authentication and rejects errors instead of saving them as PDFs', async () => {
     const fetch = vi.fn(async (_url: string, _options: RequestInit) => json({ csrf_token: 'csrf' }));
     vi.stubGlobal('fetch', fetch);

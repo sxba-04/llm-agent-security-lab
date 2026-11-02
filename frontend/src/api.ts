@@ -38,10 +38,46 @@ export async function signIn(value: string) {
 }
 function endpoint(path: string) {
   // Only application paths may receive the private authorization header.
-  if (!path.startsWith('/api/') || new URL(path, 'https://local.invalid').pathname.indexOf('/api/') !== 0) {
+  if (!path.startsWith('/api/') || !new URL(path, 'https://local.invalid').pathname.startsWith('/api/')) {
     throw new ApiError('Ungültiger API-Pfad.', 0);
   }
   return `${apiBase || ''}${path}`;
+}
+function requestHeaders(options: RequestInit, mutating: boolean, requestToken: string, requestCsrf: string) {
+  const headers = new Headers(options.headers);
+  if (hosted) {
+    if (!requestToken) throw new ApiError('Bitte zuerst anmelden.', 401);
+    headers.set('Authorization', `Bearer ${requestToken}`);
+  }
+  if (mutating) headers.set('X-Lab-Token', requestCsrf);
+  if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+  return headers;
+}
+async function fetchResponse(path: string, options: RequestInit, headers: Headers) {
+  try { return await fetch(endpoint(path), { ...options, headers, credentials: hosted ? 'omit' : 'same-origin', redirect: 'error' }); }
+  catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    throw new ApiError(hosted ? 'Die Online-Werkbank ist nicht erreichbar. Bitte Verbindung und Serverstatus prüfen.' : 'Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
+  }
+}
+function responseErrorMessage(detail: unknown, status: number): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item: { loc?: string[]; msg?: string }) => `${item.loc?.slice(1).join('.') || 'Eingabe'}: ${item.msg || 'ungültig'}`).join(' · ');
+  }
+  return `Die Anfrage konnte nicht verarbeitet werden (${status}).`;
+}
+async function rejectResponse(response: Response, mutating: boolean, requestSession: number, requestCsrf: string): Promise<never> {
+  if (hosted && response.status === 401 && sessionRevision === requestSession) {
+    clearSession('Der Server akzeptiert deinen Zugangscode nicht mehr. Bitte erneut anmelden oder einen neuen Code beim Betreiber anfordern.');
+  }
+  const body = await response.json().catch(() => ({}));
+  if (mutating && response.status === 403 && body.code === 'csrf_token_invalid') {
+    if (sessionRevision === requestSession && csrfToken === requestCsrf) csrfToken = '';
+    // Never replay a write automatically, even when middleware rejected it.
+    throw new ApiError('Die Serversitzung wurde erneuert. Die Aktion wurde nicht ausgeführt. Bitte die Aktion erneut ausführen; dein Zugangscode bleibt gültig.', 403);
+  }
+  throw new ApiError(responseErrorMessage(body.detail, response.status), response.status);
 }
 async function checkedResponse(path: string, options: RequestInit = {}) {
   const method = (options.method || 'GET').toUpperCase();
@@ -49,37 +85,11 @@ async function checkedResponse(path: string, options: RequestInit = {}) {
   const requestSession = sessionRevision;
   if (mutating && !csrfToken) await api<Health>('/api/health');
   if (requestSession !== sessionRevision) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
-  const headers = new Headers(options.headers);
   const requestToken = accessToken;
   const requestCsrf = csrfToken;
-  if (hosted) {
-    if (!requestToken) throw new ApiError('Bitte zuerst anmelden.', 401);
-    headers.set('Authorization', `Bearer ${requestToken}`);
-  }
-  if (mutating) headers.set('X-Lab-Token', requestCsrf);
-  if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  let response: Response;
-  try { response = await fetch(endpoint(path), { ...options, headers, credentials: hosted ? 'omit' : 'same-origin', redirect: 'error' }); }
-  catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw error;
-    throw new ApiError(hosted ? 'Die Online-Werkbank ist nicht erreichbar. Bitte Verbindung und Serverstatus prüfen.' : 'Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
-  }
-  if (!response.ok) {
-    if (hosted && response.status === 401 && sessionRevision === requestSession) {
-      clearSession('Der Server akzeptiert deinen Zugangscode nicht mehr. Bitte erneut anmelden oder einen neuen Code beim Betreiber anfordern.');
-    }
-    const body = await response.json().catch(() => ({}));
-    if (mutating && response.status === 403 && body.code === 'csrf_token_invalid') {
-      if (sessionRevision === requestSession && csrfToken === requestCsrf) csrfToken = '';
-      // Never replay a write automatically, even when middleware rejected it.
-      throw new ApiError('Die Serversitzung wurde erneuert. Die Aktion wurde nicht ausgeführt. Bitte die Aktion erneut ausführen; dein Zugangscode bleibt gültig.', 403);
-    }
-    const detail = body.detail;
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail)
-      ? detail.map((item: { loc?: string[]; msg?: string }) => `${item.loc?.slice(1).join('.') || 'Eingabe'}: ${item.msg || 'ungültig'}`).join(' · ')
-      : `Die Anfrage konnte nicht verarbeitet werden (${response.status}).`;
-    throw new ApiError(message, response.status);
-  }
+  const headers = requestHeaders(options, mutating, requestToken, requestCsrf);
+  const response = await fetchResponse(path, options, headers);
+  if (!response.ok) await rejectResponse(response, mutating, requestSession, requestCsrf);
   return { response, requestSession };
 }
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -90,7 +100,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 export async function downloadFile(path: string, filename: string) {
   const { response } = await checkedResponse(path);
-  const expectedType = filename.endsWith('.pdf') ? 'application/pdf' : filename.endsWith('.zip') ? 'application/zip' : null;
+  const expectedType = downloadContentType(filename);
   if (expectedType && response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== expectedType) {
     throw new ApiError('Der Server hat keine gültige Download-Datei geliefert.', 0);
   }
@@ -98,6 +108,11 @@ export async function downloadFile(path: string, filename: string) {
   const link = document.createElement('a'); link.href = url; link.download = filename;
   document.body.appendChild(link);
   try { link.click(); } finally { link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 10000); }
+}
+function downloadContentType(filename: string) {
+  if (filename.endsWith('.pdf')) return 'application/pdf';
+  if (filename.endsWith('.zip')) return 'application/zip';
+  return null;
 }
 export function post<T>(path: string, body?: unknown) {
   return api<T>(path, { method: 'POST', ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
@@ -161,7 +176,8 @@ function navigateHash(hash: string) {
 }
 export function navigate(page: string, params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
-  navigateHash(`#${page}${query ? `?${query}` : ''}`);
+  const suffix = query ? `?${query}` : '';
+  navigateHash(`#${page}${suffix}`);
 }
 export function useRoute() {
   const read = () => {

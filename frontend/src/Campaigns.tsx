@@ -4,7 +4,7 @@ import { downloadFile, message, navigate, post, useResource } from './api';
 import type { Campaign, Data, Document, DocumentEntry, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
 import { DataFields, Disclosure, Empty, EngineeringNote, ErrorBox, formatDate, hasActiveWorker, isDamagedCampaign, JsonBlock, Loading, metricNames, PageHeader, Panel, Pill, sourceNames, Status, TextBlock, TicketDiff, variantNames } from './ui';
 
-const activeStates = ['queued', 'running', 'cancelling'];
+const activeStates = new Set(['queued', 'running', 'cancelling']);
 export function CampaignsPage({ cases, campaigns, selected, showNew, onChange, loading = false }: Readonly<{ cases: LabCase[]; campaigns: Campaign[]; selected: string | null; showNew: boolean; onChange: () => void; loading?: boolean }>) {
   return <>
     <PageHeader eyebrow="02 / VERSUCHSDURCHFÜHRUNG" title="Kontrolliert starten. Genau hinsehen." description="Jeder Versuch protokolliert seine Konfiguration, die einzelnen Läufe und alle beobachteten Effekte." action={!showNew && <button className="button primary" onClick={() => navigate('campaigns', { new: '1' })}><Plus size={17} />Neuer Mock-Versuch</button>} />
@@ -32,6 +32,9 @@ function initialCases(cases: LabCase[], preferred: string | null): string[] {
   const first = cases[0];
   return first ? [first.case_id] : [];
 }
+function toggle<T>(value: T, items: T[], setter: (items: T[]) => void) {
+  setter(items.includes(value) ? items.filter(item => item !== value) : [...items, value]);
+}
 export function LaunchForm({ cases, active, onChange }: Readonly<{ cases: LabCase[]; active: boolean; onChange: () => void }>) {
   const preferred = new URLSearchParams(window.location.hash.split('?')[1] || '').get('case');
   const [selected, setSelected] = useState<string[]>(() => initialCases(cases, preferred));
@@ -44,7 +47,6 @@ export function LaunchForm({ cases, active, onChange }: Readonly<{ cases: LabCas
   const confirmed = documents.data?.documents.filter((d): d is Document => d.valid_evidence !== false).filter(d => d.confirmed) || [];
   const planned = selected.length * variants.length * sources.length * repeats;
   const valid = planned > 0 && planned <= 480 && Number.isInteger(repeats) && repeats >= 1 && repeats <= 5 && Number.isSafeInteger(seed) && seed >= 0 && seed <= 4294967295;
-  function toggle<T>(value: T, items: T[], setter: (items: T[]) => void) { setter(items.includes(value) ? items.filter(item => item !== value) : [...items, value]); }
   async function start() {
     if (busy || active || !valid) return;
     setBusy(true); setError('');
@@ -63,7 +65,7 @@ export function LaunchForm({ cases, active, onChange }: Readonly<{ cases: LabCas
   </form></Panel><aside className="launch-aside"><div className="run-estimate"><span className="section-label">GEPLANTER UMFANG</span><strong>{Number.isFinite(planned) ? planned : '—'}<small>Läufe</small></strong><div className="calculation"><span>{selected.length} Fälle</span><span>× {variants.length} Varianten</span><span>× {sources.length} Quellen</span><span>× {Number.isFinite(repeats) ? repeats : '—'} Wiederholungen</span></div><span className="pill green">Mock · keine API-Kosten</span></div><div className="info-card"><CheckCheck size={22} /><h3>Ein gemeinsamer Ausführungspfad</h3><p>Die Varianten unterscheiden sich nur durch aktivierte Schutzmaßnahmen. Quellen, Rechte und Protokollierung bleiben nachvollziehbar.</p></div></aside></div>;
 }
 function CampaignDetail({ id, brief, onChange }: Readonly<{ id: string; brief?: Campaign; onChange: () => void }>) {
-  const active = !brief || activeStates.includes(brief.state);
+  const active = !brief || activeStates.has(brief.state);
   const detail = useResource<{ manifest: Manifest; summary: Summary | null }>(`/api/campaigns/${encodeURIComponent(id)}`, active ? 1500 : 0);
   const records = useResource<{ records: RunRecord[] }>(`/api/campaigns/${encodeURIComponent(id)}/records`, active ? 1500 : 0);
   const [selectedRun, setSelectedRun] = useState(''), [filter, setFilter] = useState('');
@@ -91,7 +93,7 @@ function CampaignDetail({ id, brief, onChange }: Readonly<{ id: string; brief?: 
       await downloadFile(`/api/campaigns/${encodeURIComponent(id)}/archive`, `${id}.zip`);
     } catch (err) { setError(message(err)); } finally { setBusy(''); }
   }
-  return <div className="stack"><Panel title={<span className="title-with-pill"><span className="mono">{id}</span><Status value={state} /><Pill>{brief?.engineering_only === false ? 'CLI-Import · Laufmodus im Protokoll' : 'Mock'}</Pill></span>} subtitle={brief?.created_at ? formatDate(brief.created_at) : 'Versuch wird vorbereitet'} action={<button className="button quiet small" onClick={() => { detail.refresh(); records.refresh(); onChange(); }}><RefreshCw size={14} />Aktualisieren</button>}><div className="campaign-progress"><span><strong>{count}</strong> / {planned} Läufe protokolliert</span><span>{activeStates.includes(state) ? 'Status wird automatisch aktualisiert' : 'Versuch beendet'}</span></div><progress value={count} max={Math.max(1, planned)} aria-label="Versuchsfortschritt" /><div className="button-row detail-actions"><button className="button secondary small" onClick={() => navigate('compare', { id })}><GitCompareArrows size={16} />Vergleichen</button><button className="button secondary small" disabled={Boolean(busy) || activeStates.includes(state) || !rows.length} onClick={exportReview}><ClipboardCheck size={16} />{busy === 'review' ? 'Wird erstellt …' : 'Bewertungssatz erstellen'}</button><button className="button quiet small" disabled={Boolean(busy) || activeStates.includes(state)} onClick={download}><ArrowDownToLine size={16} />{busy === 'download' ? 'Archiv wird geprüft …' : 'Archiv herunterladen'}</button>{activeStates.includes(state) && brief?.can_cancel !== false && <button className="button danger small" disabled={Boolean(busy) || state === 'cancelling'} onClick={cancel}><Square size={14} />{busy === 'cancel' || state === 'cancelling' ? 'Abbruch angefordert …' : 'Versuch abbrechen'}</button>}</div><ErrorBox error={error || detail.error || records.error} /><Disclosure title="Konfiguration und Herkunft (Manifest)">{manifest ? <JsonBlock value={manifest} /> : <Loading />}</Disclosure></Panel>
+  return <div className="stack"><Panel title={<span className="title-with-pill"><span className="mono">{id}</span><Status value={state} /><Pill>{brief?.engineering_only === false ? 'CLI-Import · Laufmodus im Protokoll' : 'Mock'}</Pill></span>} subtitle={brief?.created_at ? formatDate(brief.created_at) : 'Versuch wird vorbereitet'} action={<button className="button quiet small" onClick={() => { detail.refresh(); records.refresh(); onChange(); }}><RefreshCw size={14} />Aktualisieren</button>}><div className="campaign-progress"><span><strong>{count}</strong> / {planned} Läufe protokolliert</span><span>{activeStates.has(state) ? 'Status wird automatisch aktualisiert' : 'Versuch beendet'}</span></div><progress value={count} max={Math.max(1, planned)} aria-label="Versuchsfortschritt" /><div className="button-row detail-actions"><button className="button secondary small" onClick={() => navigate('compare', { id })}><GitCompareArrows size={16} />Vergleichen</button><button className="button secondary small" disabled={Boolean(busy) || activeStates.has(state) || !rows.length} onClick={exportReview}><ClipboardCheck size={16} />{busy === 'review' ? 'Wird erstellt …' : 'Bewertungssatz erstellen'}</button><button className="button quiet small" disabled={Boolean(busy) || activeStates.has(state)} onClick={download}><ArrowDownToLine size={16} />{busy === 'download' ? 'Archiv wird geprüft …' : 'Archiv herunterladen'}</button>{activeStates.has(state) && brief?.can_cancel !== false && <button className="button danger small" disabled={Boolean(busy) || state === 'cancelling'} onClick={cancel}><Square size={14} />{busy === 'cancel' || state === 'cancelling' ? 'Abbruch angefordert …' : 'Versuch abbrechen'}</button>}</div><ErrorBox error={error || detail.error || records.error} /><Disclosure title="Konfiguration und Herkunft (Manifest)">{manifest ? <JsonBlock value={manifest} /> : <Loading />}</Disclosure></Panel>
     <CampaignRecords loading={records.loading && !records.data} active={active} rows={rows} filtered={filtered} record={record} filter={filter} setFilter={setFilter} setSelectedRun={setSelectedRun} />
   </div>;
 }

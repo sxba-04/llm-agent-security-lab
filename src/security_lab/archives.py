@@ -139,7 +139,7 @@ def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], 
                          or path.stem.startswith(("combined", "adjudicated")))
         try:
             value = _json(path.read_bytes())
-        except (ValueError, UnicodeError):
+        except ValueError:
             raise ValueError(f"Unreadable campaign JSON: {path.relative_to(directory).as_posix()}; restore the original JSON before archiving") from None
         recognizable = isinstance(value, dict) and bool({"review_version", "judgments", "previous_version_sha256"} & value.keys())
         if not named_version and not recognizable:
