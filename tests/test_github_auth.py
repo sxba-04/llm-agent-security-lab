@@ -149,8 +149,9 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(raised.exception.status, 429)
         for index in range(15):
             self.sessions.start(pkce_challenge(VERIFIER), f"other-{index}")
+        challenge = pkce_challenge(VERIFIER)
         with self.assertRaises(LoginError):
-            self.sessions.start(pkce_challenge(VERIFIER), "yet-another")
+            self.sessions.start(challenge, "yet-another")
         self.now += 61
         self.assertIn("state", self.start())
         self.assertLess(len(self.sessions.attempts), 10)
@@ -223,10 +224,10 @@ class HTTPLoginTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/health").status_code, 401)
         self.assertEqual(self.client.get("/api/auth/sessions").status_code, 401)
         fallback = {"Authorization": "Bearer " + ACCESS}
-        self.assertEqual(self.client.get("/api/health", headers=fallback).json()["user"], None)
+        self.assertIsNone(self.client.get("/api/health", headers=fallback).json()["user"])
         app = create_app(self.workspace, CASES, hosted_settings=hosted_settings(False))
         with TestClient(app, base_url=PUBLIC) as client:
-            self.assertEqual(client.get("/api/auth/config").json()["github_enabled"], False)
+            self.assertFalse(client.get("/api/auth/config").json()["github_enabled"])
             self.assertEqual(client.post("/api/auth/github/start", json={}, headers=self.origin).status_code, 401)
             csrf = client.get("/api/health", headers=fallback).json()["csrf_token"]
             self.assertEqual(client.post("/api/auth/logout", headers={**fallback, "X-Lab-Token": csrf}).json(), {"revoked": False})
@@ -328,6 +329,7 @@ class GitHubConfigurationTests(unittest.TestCase):
                "LAB_GITHUB_REDIRECT_URI": CALLBACK, "LAB_GITHUB_ALLOWED_USER_IDS": "123, 456"}
         self.assertEqual(configuration(env)[0].github.allowed_user_ids, (123, 456))
         for key, value in (("LAB_GITHUB_ALLOWED_USER_IDS", "author-one"), ("LAB_GITHUB_ALLOWED_USER_IDS", "123,123"),
+                           ("LAB_GITHUB_ALLOWED_USER_IDS", "1\u0662\u0663"),
                            ("LAB_GITHUB_CLIENT_SECRET", "short"), ("LAB_GITHUB_REDIRECT_URI", "https://evil.test/callback")):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 configuration({**env, key: value})
@@ -397,6 +399,8 @@ class ProviderTransportTests(unittest.TestCase):
         with self.assertRaises(LoginError) as raised:
             self.client.identity(CODE, VERIFIER)
         self.assertEqual(raised.exception.status, 401)
-        self.client.opener.open.return_value = self.response({"access_token": "a" * 30, "token_type": None})
-        with self.assertRaises(LoginError):
-            self.client.identity(CODE, VERIFIER)
+        for token, token_type in (("a" * 30, None), ("a" * 29 + "\u00e9", "bearer")):
+            self.client.opener.open.return_value = self.response({"access_token": token, "token_type": token_type})
+            with self.subTest(token_type=token_type), self.assertRaises(LoginError) as raised:
+                self.client.identity(CODE, VERIFIER)
+            self.assertEqual(raised.exception.status, 401)

@@ -73,7 +73,7 @@ class GitHubSettings:
         if not all(values):
             raise ValueError("Die GitHub-Anmeldung benötigt alle vier LAB_GITHUB-Einstellungen.")
         ids = values[3].split(",")
-        if any(not re.fullmatch(r"[1-9][0-9]{0,15}", value.strip()) for value in ids):
+        if any(not re.fullmatch(r"[1-9]\d{0,15}", value.strip(), re.ASCII) for value in ids):
             raise ValueError("LAB_GITHUB_ALLOWED_USER_IDS muss numerische GitHub-Konto-IDs enthalten.")
         return cls(values[0], values[1], values[2], tuple(int(value) for value in ids))
 
@@ -126,7 +126,7 @@ class GitHubIdentityClient:
                                     "Content-Type": "application/x-www-form-urlencoded"}, method="POST"))
         access_token = token_data.get("access_token")
         token_type = token_data.get("token_type")
-        if (not isinstance(access_token, str) or not re.fullmatch(r"[A-Za-z0-9_]{20,4096}", access_token)
+        if (not isinstance(access_token, str) or not re.fullmatch(r"\w{20,4096}", access_token, re.ASCII)
                 or not isinstance(token_type, str) or token_type.lower() != "bearer"):
             raise LoginError(401, INVALID_LOGIN)
         # No repo/email scope is requested. The token is used once and discarded.
@@ -175,12 +175,10 @@ class GitHubSessions:
     def _prune(self, now: float) -> None:
         self.pending = {key: value for key, value in self.pending.items() if value.expires_at > now}
         self.sessions = {key: value for key, value in self.sessions.items() if value.expires_at > now}
-        for key in list(self.attempts):
-            queue = self.attempts[key]
+        for queue in self.attempts.values():
             while queue and queue[0] <= now - 60:
                 queue.popleft()
-            if not queue:
-                del self.attempts[key]
+        self.attempts = {key: queue for key, queue in self.attempts.items() if queue}
 
     def _rate_limit(self, operation: str, client: str) -> float:
         now = self.clock()

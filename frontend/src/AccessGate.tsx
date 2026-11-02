@@ -14,7 +14,14 @@ export function AccessGate({ children }: Readonly<{ children: ReactNode }>) {
   const [optionsError, setOptionsError] = useState('');
   const [optionsRevision, setOptionsRevision] = useState(0);
   useEffect(() => {
-    if (!hosted || connected) return;
+    if (!hosted) return;
+    if (connected) {
+      // Authentication can clean up the callback effect before its finally runs.
+      // Only the current authenticated transition clears this state; cancelled
+      // callback effects still cannot unlock a newer pending login.
+      setBusy(false);
+      return;
+    }
     let active = true;
     const callback = finishGitHubReturn();
     if (callback) {
@@ -47,7 +54,7 @@ export function AccessGate({ children }: Readonly<{ children: ReactNode }>) {
       <h1 id="access-title">Willkommen im Labor.</h1>
       <p>Melde dich an, um die gemeinsamen Versuche, PDF-Quellen und Bewertungen zu öffnen.</p>
       {githubEnabled && <div className="github-login"><button className="button primary full-width" type="button" onClick={() => { void githubLogin(); }} disabled={busy}><LogIn size={18} />{busy ? 'Anmeldung wird geprüft …' : 'Mit GitHub anmelden'}</button><p className="muted small-text">Nur die freigegebenen GitHub-Konten des Projektteams erhalten Zugang.</p><div className="access-divider">oder mit Zugangscode</div></div>}
-      {optionsError && <div className="small-text muted" role="status">{optionsError} <button className="text-button" type="button" onClick={() => setOptionsRevision(value => value + 1)}>Erneut prüfen</button></div>}
+      {optionsError && <div className="small-text muted"><output>{optionsError}</output> <button className="text-button" type="button" onClick={() => setOptionsRevision(value => value + 1)}>Erneut prüfen</button></div>}
       <form onSubmit={event => { event.preventDefault(); void login(); }}>
         <label className="field"><span>Zugangscode</span><input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" value={code} onChange={event => setCode(event.target.value)} disabled={busy} required aria-describedby="access-help" /></label>
         <p id="access-help" className="muted small-text">Verwende deinen Labor-Zugangscode. Ein Modell-API-Schlüssel wird hier nicht benötigt.</p>

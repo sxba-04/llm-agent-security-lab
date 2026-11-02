@@ -32,7 +32,7 @@ describe('GitHub OAuth browser boundary', () => {
     expect(pending.verifier).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(target.origin).toBe('https://github.com');
     expect(target.searchParams.get('code_challenge')).not.toBe(pending.verifier);
-    expect(window.localStorage.length).toBe(0);
+    expect(window.localStorage).toHaveLength(0);
     expect(new Headers(fetch.mock.calls[0][1].headers).has('Authorization')).toBe(false);
     expect(fetch.mock.calls[0][1]).toMatchObject({ method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store' });
   });
@@ -74,7 +74,7 @@ describe('GitHub OAuth browser boundary', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(api.sessionIdentity()).toEqual(user); expect(api.sessionIsAuthenticated()).toBe(true);
     expect(window.location.href).not.toContain(token);
-    expect(window.sessionStorage.length).toBe(0); expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage).toHaveLength(0); expect(window.localStorage).toHaveLength(0);
   });
   it.each([
     ['code=github-code&state=wrong', 'nicht zugeordnet'],
@@ -85,7 +85,7 @@ describe('GitHub OAuth browser boundary', () => {
     pendingReturn(query); const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
     const { finishGitHubReturn } = await import('./github-auth');
     await expect(finishGitHubReturn()).rejects.toThrow(text);
-    expect(window.location.search).toBe(''); expect(window.sessionStorage.length).toBe(0); expect(fetch).not.toHaveBeenCalled();
+    expect(window.location.search).toBe(''); expect(window.sessionStorage).toHaveLength(0); expect(fetch).not.toHaveBeenCalled();
   });
   it.each(['missing', 'expired'])('rejects %s browser state before exchange', async status => {
     pendingReturn(undefined, status === 'expired' ? Date.now() - 1 : undefined);
@@ -161,6 +161,27 @@ describe('GitHub login and session controls', () => {
 });
 
 describe('GitHub recovery feedback', () => {
+  it('enables login controls after a successful OAuth callback and logout, then accepts a fresh code login', async () => {
+    pendingReturn();
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/complete')) return json({ access_token: token, user });
+      if (url.endsWith('/config')) return json({ github_enabled: true });
+      if (url.endsWith('/logout')) return json({ revoked: true });
+      return json({ csrf_token: 'csrf', user });
+    }));
+    const api = await import('./api');
+    const { AccessGate } = await import('./AccessGate');
+    render(<AccessGate><button type="button" onClick={() => { void api.signOut(); }}>Abmelden</button></AccessGate>);
+    const actor = userEvent.setup();
+    await actor.click(await screen.findByRole('button', { name: 'Abmelden' }));
+    expect(await screen.findByLabelText('Zugangscode')).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Mit GitHub anmelden' })).toBeEnabled();
+    await actor.type(screen.getByLabelText('Zugangscode'), code);
+    await actor.click(screen.getByRole('button', { name: 'Werkbank öffnen' }));
+    expect(await screen.findByRole('button', { name: 'Abmelden' })).toBeVisible();
+    expect(api.sessionIsAuthenticated()).toBe(true);
+    expect(api.sessionIdentity()).toBeNull();
+  });
   it('shows login-start failure and re-enables the alternative code form', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/config') ? json({ github_enabled: true }) : json({ detail: 'Zu viele Anmeldeversuche.' }, 429)));
     const { AccessGate } = await import('./AccessGate'); render(<AccessGate><p>Private Werkbank</p></AccessGate>);

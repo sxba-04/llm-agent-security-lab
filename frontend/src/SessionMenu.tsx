@@ -20,7 +20,10 @@ export function SessionMenu() {
   }, [open]);
   if (!user) return null;
   async function revoke(session: OperatorSession) {
-    if (session.current) { if (confirmDiscardChanges()) void signOut(); return; }
+    if (session.current) {
+      if (confirmDiscardChanges()) void signOut();
+      return;
+    }
     setBusy(session.id); setError('');
     try { await api(`/api/auth/sessions/${encodeURIComponent(session.id)}`, { method: 'DELETE' }); sessions.refresh(); }
     catch (err) { setError(message(err)); }
@@ -33,7 +36,7 @@ export function SessionMenu() {
       <p>Angemeldet als <strong>@{user.login}</strong> · Projektmitglied</p>
       <p>Du kannst gemeinsame Versuchsdaten lesen und bearbeiten. Hier verwaltest du ausschließlich deine eigenen GitHub-Sitzungen.</p>
       {(error || sessions.error) && <p className="notice error" role="alert">{error || sessions.error}</p>}
-      {sessions.loading && <p role="status">Sitzungen werden geladen …</p>}
+      {sessions.loading && <p><output>Sitzungen werden geladen …</output></p>}
       {sessions.data && <ul className="session-list">{sessions.data.sessions.map(session => <li key={session.id}><div><strong>{session.current ? 'Diese Sitzung' : 'Weitere Sitzung'}</strong><span>Beginn: {sessionDate(session.created_at)}</span><span>Ende: {sessionDate(session.expires_at)}</span></div><button className="button secondary small" type="button" disabled={Boolean(busy)} onClick={() => { void revoke(session); }}>{session.current ? 'Hier abmelden' : 'Beenden'}</button></li>)}</ul>}
       <button className="text-button" type="button" onClick={sessions.refresh} disabled={sessions.loading}>Liste aktualisieren</button>
       <p className="muted">Nach einem Serverneustart ist eine neue Anmeldung nötig. Deine gespeicherten Versuchsdaten sind davon unabhängig.</p>

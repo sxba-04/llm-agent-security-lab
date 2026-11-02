@@ -7,7 +7,7 @@ interface LoginStart { authorization_url: string; state: string; expires_in: num
 let callbackCompletion: Promise<boolean> | undefined;
 
 function base64url(bytes: Uint8Array) {
-  return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  return btoa(String.fromCodePoint(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 function forgetPendingLogin() {
   try { window.sessionStorage.removeItem(pendingKey); } catch { /* Storage can be disabled by browser policy. */ }

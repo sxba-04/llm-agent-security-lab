@@ -74,7 +74,9 @@ test('GitHub callback, identity, own-session revocation and logout work across H
   await other.close();
   await page.screenshot({ path: testInfo.outputPath('github-sessions.png'), fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'Hier abmelden', exact: true }).click();
-  await expect(page.getByLabel('Zugangscode', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Zugangscode', { exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Mit GitHub anmelden', exact: true })).toBeEnabled();
+  await login(page);
 });
 
 test('an unapproved GitHub account stays outside the workbench with access-code recovery available', async ({ page }) => {
