@@ -6,7 +6,7 @@ Die Dokumentation gehört zum Code und wird gemeinsam mit Änderungen über Pull
 
 | Ziel | Einstieg |
 |---|---|
-| Die Anwendung online verwenden oder den Zugang erneuern | [Hosting, Anmeldung und Speicher](hosting.md) |
+| Die Anwendung online verwenden oder den Zugang erneuern | [Hosting, Anmeldung und Speicher](hosting.md), [GitHub-Login und Sitzungen](github-login.md) |
 | Die Anwendung lokal installieren und starten | [Windows-Einrichtung](setup-windows.md), [VS-Code-Aufgaben](vscode.md) |
 | Fälle, PDFs, Kampagnen und Bewertungen bedienen | [Werkbank](workbench.md), [PDF-Quellen](pdf-sources.md) |
 | Daten sichern und wiederherstellen | [Archive](archives.md) |
@@ -32,6 +32,6 @@ Ein grünes Quality Gate bewertet die konfigurierten Kriterien; es bedeutet nich
 
 Ein GitHub-Wiki eignet sich als kurze Startseite für Sebastian, Jonah und den Betreuer. Die verbindlichen technischen Anleitungen bleiben hier im Repository, damit sie mit Codeänderungen versioniert und geprüft werden. Eine zweite vollständige Kopie der Dokumentation würde leicht veralten.
 
-[Vorbereitete Wiki-Seiten](wiki/README.md) bieten eine Startseite und Navigation mit Links auf diese Dokumentation. Das Vorhandensein der Dateien hier bedeutet noch nicht, dass sie im separaten GitHub-Wiki veröffentlicht wurden. Beim späteren Veröffentlichen dieselben Quellen verwenden und Änderungen zuerst hier prüfen.
+Die Startseite und Navigation wurden am 2. November 2026 im [GitHub-Wiki](https://github.com/sxba-04/llm-agent-security-lab/wiki) veröffentlicht. Ihre [versionierten Quellen](wiki/README.md) bleiben hier. Weitere Änderungen zuerst im Repository prüfen und anschließend bewusst ins separate Wiki übernehmen; ein Repository-Merge synchronisiert es nicht automatisch.
 
 Bei fachlich relevanten Änderungen werden die betroffenen Anleitungen, der Entscheidungsstand und die Beiträge mitgepflegt. Versuchsfreigaben, menschliche Bewertungen und erfolgreiche Tests werden nur dokumentiert, wenn sie tatsächlich stattgefunden haben.

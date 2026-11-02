@@ -46,13 +46,14 @@ describe('protected online workbench', () => {
     const localWrite = vi.spyOn(Storage.prototype, 'setItem');
     render(<AccessGate><p>Private Werkbank</p></AccessGate>);
     expect(screen.queryByText('Private Werkbank')).not.toBeInTheDocument();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith('https://lab.example/api/auth/config', expect.objectContaining({ credentials: 'omit', redirect: 'error' }));
+    expect(new Headers(fetch.mock.calls[0][1].headers).has('Authorization')).toBe(false);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Zugangscode'), code);
     await user.click(screen.getByRole('button', { name: 'Werkbank öffnen' }));
     expect(await screen.findByText('Private Werkbank')).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith('https://lab.example/api/health', expect.objectContaining({ credentials: 'omit', redirect: 'error' }));
-    const options = fetch.mock.calls[0][1] as RequestInit;
+    const options = fetch.mock.calls.find(([url]) => url.endsWith('/api/health'))![1] as RequestInit;
     expect(new Headers(options.headers).get('Authorization')).toBe(`Bearer ${code}`);
     expect(localWrite).not.toHaveBeenCalled();
     expect(window.location.href).not.toContain(code);

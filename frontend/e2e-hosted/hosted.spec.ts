@@ -15,7 +15,8 @@ async function login(page: Page) {
 test('hosted access requires a token and keeps it out of browser storage', async ({ page }) => {
   const dataRequests: string[] = [];
   page.on('request', request => {
-    if (new URL(request.url()).pathname.startsWith('/api/')) dataRequests.push(request.url());
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/') && path !== '/api/auth/config') dataRequests.push(request.url());
   });
   await page.goto('./');
   await expect(page.getByLabel('Zugangscode', { exact: true })).toBeVisible();
@@ -37,6 +38,60 @@ test('hosted access requires a token and keeps it out of browser storage', async
   await login(page);
   await page.reload();
   await expect(page.getByLabel('Zugangscode', { exact: true })).toBeVisible();
+});
+
+test('GitHub callback, identity, own-session revocation and logout work across HTTPS origins', async ({ page, context }, testInfo) => {
+  await context.route('https://github.com/login/oauth/authorize?*', async route => {
+    const request = new URL(route.request().url());
+    expect(request.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(request.searchParams.get('scope')).toBe('');
+    const callback = new URL(request.searchParams.get('redirect_uri')!);
+    callback.search = new URLSearchParams({ code: 'browser-approved-code', state: request.searchParams.get('state')! }).toString();
+    await route.fulfill({ status: 302, headers: { location: callback.href } });
+  });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Mit GitHub anmelden', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
+  await expect(page).not.toHaveURL(/[?&](code|state)=/);
+  await expect(page.getByRole('button', { name: '@browser-researcher', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
+
+  const other = await context.newPage();
+  let otherAuthorization = '';
+  other.on('request', request => {
+    if (request.url() === `${API}/api/health`) otherAuthorization = request.headers()['authorization'] || '';
+  });
+  await other.goto('https://127.0.0.1:4173/llm-agent-security-lab/');
+  await other.getByRole('button', { name: 'Mit GitHub anmelden', exact: true }).click();
+  await expect(other.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toBeVisible();
+  expect(otherAuthorization).toMatch(/^Bearer [A-Za-z0-9_-]{43,128}$/);
+  await page.getByRole('button', { name: '@browser-researcher', exact: true }).click();
+  await expect(page.getByText('Weitere Sitzung', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Beenden', exact: true }).click();
+  await expect(page.getByText('Weitere Sitzung', { exact: true })).toHaveCount(0);
+  const revoked = await page.request.get(`${API}/api/cases`, { headers: { Authorization: otherAuthorization } });
+  expect(revoked.status()).toBe(401);
+  await other.close();
+  await page.screenshot({ path: testInfo.outputPath('github-sessions.png'), fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: 'Hier abmelden', exact: true }).click();
+  await expect(page.getByLabel('Zugangscode', { exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Mit GitHub anmelden', exact: true })).toBeEnabled();
+  await login(page);
+});
+
+test('an unapproved GitHub account stays outside the workbench with access-code recovery available', async ({ page }) => {
+  await page.route('https://github.com/login/oauth/authorize?*', async route => {
+    const request = new URL(route.request().url());
+    const callback = new URL(request.searchParams.get('redirect_uri')!);
+    callback.search = new URLSearchParams({ code: 'browser-unapproved-code', state: request.searchParams.get('state')! }).toString();
+    await route.fulfill({ status: 302, headers: { location: callback.href } });
+  });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Mit GitHub anmelden', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('nicht');
+  await expect(page.getByRole('heading', { name: 'Sicherheit sichtbar machen.' })).toHaveCount(0);
+  await expect(page).not.toHaveURL(/[?&](code|state)=/);
+  await login(page);
 });
 
 test('cross-origin PDFs, confirmed import, mock campaign and authenticated archive work', async ({ page }, testInfo) => {

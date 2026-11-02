@@ -15,7 +15,7 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 import uuid
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 from starlette.background import BackgroundTask
@@ -30,6 +30,8 @@ from .documents import (MAX_PDF_BYTES, DocumentError, apply_document_override, c
 from .evaluation import summarize
 from .jobs import CampaignJobs, checked_tree
 from .hosted import HostedAccessMiddleware, HostedSettings
+from .github_auth import GitHubSessions
+from .auth_routes import register_auth_routes
 
 REVIEW_ID = re.compile(r"review-[0-9a-f]{32}\Z")
 REVIEW_API_ID = re.compile(r"(?:review-[0-9a-f]{32}|review-copy-[0-9a-f]{64})\Z")
@@ -207,8 +209,11 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         app.add_middleware(LocalAccessMiddleware, token=token)
     else:
         app.router.responses[401] = {"model": APIError, "description": "A valid operator access code is required."}
+        github_sessions = GitHubSessions(hosted_settings.github) if hosted_settings.github else None
         app.add_middleware(HostedAccessMiddleware, settings=hosted_settings,
-                           token=token, max_request_bytes=MAX_REQUEST_BYTES)
+                           token=token, max_request_bytes=MAX_REQUEST_BYTES, github_sessions=github_sessions)
+        register_auth_routes(app, github_sessions)
+        app.state.github_sessions = github_sessions
     app.state.jobs = jobs
     app.state.workspace = workspace
 
@@ -352,9 +357,10 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         return _read_json(versions[-1], workspace) if versions else {"rater": "", "ratings": []}
 
     @app.get("/api/health")
-    def health():
+    def health(request: Request):
         return {"version": __version__, "mode": "mock", "csrf_token": token, "running": jobs.running,
-                "storage_mode": hosted_settings.storage_mode if hosted_settings else "local"}
+                "storage_mode": hosted_settings.storage_mode if hosted_settings else "local",
+                "user": getattr(request.state, "lab_user", None)}
 
     @app.get("/api/cases")
     def cases():

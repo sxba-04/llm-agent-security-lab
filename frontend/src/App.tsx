@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, ArrowDownToLine, ArrowRight, BookOpen, ChevronRight, CircleHelp, ClipboardCheck, FileText, FlaskConical, GitCompareArrows, LayoutDashboard, Menu, Play, ShieldCheck, X } from 'lucide-react';
 import { confirmDiscardChanges, hosted, navigate, signOut, useResource, useRoute } from './api';
 import { AccessGate } from './AccessGate';
+import { SessionMenu } from './SessionMenu';
 import { DownloadButton } from './DownloadButton';
 import type { Campaign, Health, LabCase } from './types';
 import { Empty, EngineeringNote, ErrorBox, formatDate, GoButton, goalNames, hasActiveWorker, isDamagedCampaign, Loading, PageHeader, Panel, Pill, SourceDiff, Status, Disclosure, DataFields, JsonBlock } from './ui';
@@ -49,7 +50,7 @@ function Workbench() {
       <div className="sidebar-footer"><div className="local-indicator"><span />{hosted ? 'Online-Werkbank' : 'Lokale Werkbank'}</div><p>Kontrollierte Szenarien.<br />Nachvollziehbare Entscheidungen.</p><div className="sidebar-version"><span>Entwicklungsphase</span><span>{health.data?.version ? `v${health.data.version}` : '—'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} onClick={() => setMenu(!menu)}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span>{hosted && <button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) signOut(); }}>Abmelden</button>}</div></header>
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} onClick={() => setMenu(!menu)}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span>{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
       <main id="main-content" tabIndex={-1}>
         {health.data?.storage_mode === 'ephemeral' && <aside className="notice warning" role="note" aria-label="Flüchtiger Testbetrieb"><div><strong>Testbetrieb · Daten werden nicht dauerhaft gespeichert</strong><br />Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment des Backends verloren. Benötigte Kampagnenarchive vorher herunterladen; wichtige Studienbelege außerhalb dieser Testumgebung sichern.</div></aside>}
         {health.error && <ErrorBox error={health.error} retry={health.refresh} />}

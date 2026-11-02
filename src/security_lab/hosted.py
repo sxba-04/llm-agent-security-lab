@@ -14,6 +14,8 @@ from urllib.parse import urlsplit
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse, Response
 
+from .github_auth import GitHubSessions, GitHubSettings
+
 HTTP_RESPONSE_START = "http.response.start"
 REQUEST_TOO_LARGE = "Anfrage überschreitet die Größenbegrenzung."
 
@@ -45,10 +47,15 @@ class HostedSettings:
     frontend_origin: str
     token_hashes: tuple[str, ...]
     storage_mode: str = "persistent"
+    github: GitHubSettings | None = None
 
     def __post_init__(self):
         object.__setattr__(self, "public_origin", _https_origin(self.public_origin))
         object.__setattr__(self, "frontend_origin", _https_origin(self.frontend_origin))
+        if self.github is not None:
+            redirect = urlsplit(self.github.redirect_uri)
+            if f"{redirect.scheme}://{redirect.netloc}" != self.frontend_origin:
+                raise ValueError("Die GitHub-Rückleitung muss zur konfigurierten Frontend-Origin gehören.")
         if self.storage_mode not in ("persistent", "ephemeral"):
             raise ValueError("LAB_STORAGE_MODE muss persistent oder ephemeral sein.")
         if (not isinstance(self.token_hashes, tuple) or not 1 <= len(self.token_hashes) <= 8
@@ -68,11 +75,13 @@ class HostedAccessMiddleware:
     allowed_methods = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"})
     allowed_headers = frozenset({"authorization", "content-type", "x-lab-token"})
 
-    def __init__(self, app, settings: HostedSettings, token: str, max_request_bytes: int):
+    def __init__(self, app, settings: HostedSettings, token: str, max_request_bytes: int,
+                 github_sessions: GitHubSessions | None = None):
         self.app = app
         self.settings = settings
         self.token = token
         self.max_request_bytes = max_request_bytes
+        self.github_sessions = github_sessions
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -128,26 +137,43 @@ class HostedAccessMiddleware:
         if scope["path"] == "/healthz" and scope["method"] == "GET":
             return await JSONResponse({"status": "ok"})(scope, receive, secured_send)
 
+        if scope["path"] == "/api/auth/config" and scope["method"] == "GET":
+            return await JSONResponse({"github_enabled": self.github_sessions is not None,
+                                       "access_code_enabled": True})(scope, receive, secured_send)
+
+        preauth = (self.github_sessions is not None and scope["method"] == "POST"
+                   and scope["path"] in {"/api/auth/github/start", "/api/auth/github/complete"})
+        if preauth and (not origin_allowed or origin != self.settings.frontend_origin
+                        or len(headers.getlist("content-type")) != 1
+                        or headers.get("content-type", "").split(";", 1)[0].strip() != "application/json"):
+            return await reject(403, "Die Anmeldung muss von der konfigurierten Werkbank aus gestartet werden.")
+
         authorization = headers.get("authorization", "")
         scheme, _, bearer = authorization.partition(" ")
         valid = False
+        principal = None
         if (len(headers.getlist("authorization")) == 1 and scheme.lower() == "bearer"
                 and re.fullmatch(r"[A-Za-z0-9_-]{43,128}", bearer)):
             supplied_hash = hashlib.sha256(bearer.encode("ascii")).hexdigest()
             # Evaluate every configured digest; do not identify operators by timing.
             for expected in self.settings.token_hashes:
                 valid |= secrets.compare_digest(supplied_hash, expected)
-        if not valid:
-            return await reject(401, "Bitte mit einem gültigen Labor-Zugangstoken anmelden.")
+            if self.github_sessions is not None:
+                principal = self.github_sessions.authenticate(bearer)
+                valid |= principal is not None
+        if not valid and not preauth:
+            return await reject(401, "Bitte mit GitHub oder einem gültigen Labor-Zugangscode anmelden.")
+        scope.setdefault("state", {})["lab_user"] = principal.public() if principal else None
 
-        if scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
+        if not preauth and scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = headers.get("x-lab-token", "")
             if (len(headers.getlist("x-lab-token")) != 1
                     or not secrets.compare_digest(supplied.encode("utf-8"), self.token.encode("ascii"))):
                 return await reject(403, "Das Sitzungstoken fehlt oder ist ungültig.", "csrf_token_invalid")
+        request_limit = 4096 if preauth else self.max_request_bytes
         try:
             length = int(headers.get("content-length", "0"))
-            if len(headers.getlist("content-length")) > 1 or not 0 <= length <= self.max_request_bytes:
+            if len(headers.getlist("content-length")) > 1 or not 0 <= length <= request_limit:
                 raise ValueError
         except ValueError:
             return await reject(413, REQUEST_TOO_LARGE)
@@ -165,7 +191,7 @@ class HostedAccessMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_request_bytes:
+                if received > request_limit:
                     oversized = True
                     raise TooLarge
             return message

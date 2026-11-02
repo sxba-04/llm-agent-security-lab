@@ -50,6 +50,8 @@ Die fachliche Abnahme der neuen Fälle und Bewertungsbeispiele durch Sebastian u
 
 ## Ergänzungen vom 2. November 2026
 
+Der folgende erste Stand wurde durch die weiter unten festgehaltenen Folgeentscheidungen zu Konten, Disk und Wiki ergänzt.
+
 | Entscheidung / Einordnung | Anlass, Alternative und Folge |
 |---|---|
 | Bestehender kostenpflichtiger Render-Plan | Sebastian meldete das selbst vorgenommene Upgrade; die Render-Prüfung bestätigt `0.5c-512mb` mit 0,5 CPU und 512 MB RAM. Die frühere Beschränkung auf kostenlosen Compute ist damit für diesen bestehenden Dienst überholt. Zusätzliche Ressourcen sind dadurch nicht gebucht oder freigegeben. |
@@ -62,3 +64,20 @@ Die betrieblichen Änderungen ändern weder den Variantenvergleich B/F/P/FP noch
 menschliche Bewertungsregeln. Die Oberfläche bleibt auf Mock-Versuche begrenzt.
 Ein Wechsel zu FastAPI Cloud wurde nicht vorgenommen; FastAPI bleibt das auf
 Render betriebene Webframework.
+
+
+## Weitere Entscheidungen vom 2. November 2026: Konten und Speicher
+
+Diese ausdrücklichen Folgeentscheidungen ergänzen den oben dokumentierten früheren Stand.
+
+| Entscheidung | Umsetzung und Grenze |
+|---|---|
+| Bestehenden Zugangscode behalten | Sebastian hat den Code wiedergefunden und sich erfolgreich angemeldet. Er war falsch eingegeben; eine Rotation ist nicht erforderlich. |
+| GitHub-Login für beide Autoren | Optionaler OAuth-Ablauf mit State/PKCE, unveränderlicher Konto-ID-Freigabeliste und widerrufbaren eigenen Laborsitzungen implementiert. Keine Repository-/E-Mail-Berechtigungen, öffentliche Registrierung oder Passwortdatenbank. App-Registrierung, Backend-Konfiguration und Live-Anmeldung noch offen. |
+| Dauerhaften Speicher einrichten | 1 GB am bestehenden Render-Dienst genehmigt; bei Bedarf dürfen die monatlichen Speicherkosten bis 1 USD steigen. Disk, Sicherung/Migration und kontrollierter Neustarttest noch ausstehend. Bis dahin bleibt der Workspace flüchtig. |
+| Wiki veröffentlichen | Startseite und Navigation wurden mit den versionierten Quellen veröffentlicht. Fachliche Anleitungen bleiben unter `docs/`; spätere Wiki-Aktualisierungen erfolgen bewusst und separat. |
+
+Der GitHub-Login ändert den Betreiberzugang, nicht die Versuchssitzungsrechte oder
+B/F/P/FP. Kontoidentität erzwingt weiterhin keine unabhängigen wissenschaftlichen
+Bewertungen. Die Live-Aktivierung und Speichermigration werden erst nach ihrer
+tatsächlichen Durchführung als abgeschlossen dokumentiert.
