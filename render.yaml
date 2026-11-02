@@ -1,11 +1,10 @@
-# Existing paid compute plan, upgraded by the owner on 2026-11-02.
+# Existing paid compute plan and separately authorized 1 GB disk.
 # The live service is managed directly in Render, not through Blueprint sync.
-# This file records its intended configuration; do not create a duplicate service.
-# Storage remains ephemeral. No disk or database is provisioned here.
-# Owner authorized a 1 GB disk (storage ceiling USD 1/month) on 2026-11-02.
-# Attachment, migration and restart verification remain pending: keep runtime
-# values ephemeral until completed. Optional GitHub OAuth is implemented but
-# has no live app/client-secret configuration yet. See docs/hosting.md.
+# This file records its verified configuration; do not create a duplicate service.
+# Disk persistence was checked across a controlled redeployment on 2026-11-02.
+# Storage costs USD 0.25/month; the owner-approved ceiling is USD 1/month.
+# Optional GitHub OAuth still has no live app/client-secret configuration.
+# See docs/hosting.md and docs/validation.md for evidence and operating limits.
 services:
   - type: web
     name: llm-agent-security-lab-demo-api
@@ -21,13 +20,17 @@ services:
       uv sync --locked --extra web --no-dev
     startCommand: uv run --locked --extra web --no-dev python -m security_lab.hosted_cli
     healthCheckPath: /healthz
+    disk:
+      name: disk
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: LAB_FRONTEND_ORIGIN
         value: https://sxba-04.github.io
       - key: LAB_WORKSPACE
-        value: /tmp/security-lab-demo
+        value: /var/data/security-lab
       - key: LAB_STORAGE_MODE
-        value: ephemeral
+        value: persistent
       - key: LAB_ACCESS_TOKEN_HASHES
         sync: false
       - key: PYTHONUNBUFFERED

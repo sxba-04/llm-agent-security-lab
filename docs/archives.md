@@ -2,17 +2,17 @@
 
 Eine Kampagne besteht aus Manifest, Fallsnapshot, ursprünglichen Einzelläufen und Ereignisprotokollen. Innerhalb der Kampagne abgelegte PDF-Quellen und Bewertungsdateien gehören ebenfalls dazu. `runs/` wird nicht von Git versioniert; ein Commit allein sichert daher keine Messdaten.
 
-## Regelmäßige Sicherung der kostenlosen Demo
+## Regelmäßige Sicherung der Online-Werkbank
 
-Als Sicherungsweg wurden am 1. November 2026 **lokale Archive** gewählt: versionierte ZIP-Downloads auf den eigenen Rechner mit Archivprüfung und probeweiser Wiederherstellung. Dafür wird kein zusätzlicher Dienst gebucht. Der Render-Workspace ist flüchtig: Ein Ruhezustand, Neustart oder Deployment kann seine Dateien löschen. Ein Export im selben Workspace schützt davor nicht. Die folgende manuelle Routine gilt für jede benötigte Kampagne einzeln:
+Als Sicherungsweg wurden am 1. November 2026 **lokale Archive** gewählt: versionierte ZIP-Downloads auf den eigenen Rechner mit Archivprüfung und probeweiser Wiederherstellung. Dafür wird kein zusätzlicher Dienst gebucht. Seit dem 2. November 2026 liegt der Render-Workspace auf einer [geprüften persistenten 1-GB-Disk](hosting.md). Sie erhält Dateien über Dienstneustarts, schützt aber nicht vor Löschen, Beschädigung oder Anbieterausfällen. Ein Export auf derselben Disk ist keine unabhängige Sicherung. Die folgende manuelle Routine gilt für jede benötigte Kampagne einzeln:
 
 1. Sobald ein Versuch beendet ist, unter **Versuche → Versuch öffnen → Archiv herunterladen** das ZIP in einem dauerhaft aufbewahrten lokalen Archivordner auf dem eigenen Rechner speichern. Ein abgebrochener Versuch kann ebenfalls gesichert werden; sein tatsächlicher Status bleibt erhalten.
 2. Nach gespeicherten Bewertungsentwürfen, abgeschlossenen Doppelbewertungen und Klärungen erneut exportieren. Jedes ZIP ist eine Momentaufnahme; frühere Downloads enthalten spätere Änderungen nicht. Für jeden Stand einen neuen Dateinamen verwenden, beispielsweise `kampagne-2026-11-01-v2.zip`, und ältere Belege behalten.
-3. Vor Arbeitsende und vor geplanten Backend-Updates prüfen, ob von jeder wichtigen Kampagne der letzte Stand heruntergeladen wurde. Auf einen späteren Tages- oder Wochenlauf allein lässt sich bei einem flüchtigen Dienst nicht vertrauen.
+3. Vor Arbeitsende und vor geplanten Backend-Updates prüfen, ob von jeder wichtigen Kampagne der letzte Stand heruntergeladen wurde. Ein späterer Tages- oder Wochenlauf schützt noch nicht heruntergeladene Änderungen nicht vor Verlust.
 4. Den heruntergeladenen Stand mit `verify-archive` prüfen und mindestens einmal in einen neuen Ordner wiederherstellen, wie unten gezeigt. `verified_integrity` und `evidence_complete` getrennt prüfen. Fehlende oder beschädigte Belege lassen sich durch erneuten Export oder Wiederholen eines Versuchs nicht als ursprüngliche Belege ersetzen.
 5. Die geprüften ZIP-Dateien mit ihren Versionsständen im lokalen Archivordner behalten. Separat hochgeladene, noch keiner Kampagne zugeordnete PDF-Originale und das passende Codearchiv ebenfalls außerhalb der Demo aufbewahren.
 
-Die Sicherung erfolgt durch den tatsächlichen Download und die lokale Prüfung; ein geplanter Export auf dem Render-Server würde weiterhin im flüchtigen Speicher liegen. Ein automatischer Fern-Backupdienst ist nicht eingerichtet. Zugangscodes und Modellschlüssel gehören weder in ein Exportskript noch in ein öffentliches Repository. Archivdateien können unverblindete Laufdaten, Zuordnungen und Originalbewertungen enthalten; die organisatorische Trennung der Bewertungen gilt auch für ihre lokale Ablage.
+Die externe Sicherung erfolgt durch den tatsächlichen Download und die lokale Prüfung. Ein Export auf der Render-Disk bleibt vom Zustand derselben Disk abhängig; Dateien außerhalb ihres Mountpfads sind weiterhin flüchtig. Ein automatischer Fern-Backupdienst ist nicht eingerichtet. Zugangscodes und Modellschlüssel gehören weder in ein Exportskript noch in ein öffentliches Repository. Archivdateien können unverblindete Laufdaten, Zuordnungen und Originalbewertungen enthalten; die organisatorische Trennung der Bewertungen gilt auch für ihre lokale Ablage.
 
 ## CLI
 

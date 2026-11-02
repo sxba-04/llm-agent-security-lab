@@ -15,7 +15,8 @@ gemeinsame VS-Code-Tasks siehe [README](README.md).
 4. Aktuelle CI und Reviews prüfen; Befunde nachvollziehbar bearbeiten. Updates von
    Dependabot durchlaufen denselben Prozess. Kein pauschales Auto-Merge.
 5. Nach dem Merge erfolgt die Veröffentlichung aus `main`. Wichtige Archive vor
-   einem Deployment aus der kostenlosen Testumgebung herunterladen.
+   einem Deployment aus der Online-Werkbank herunterladen; die persistente Disk
+   ersetzt keine externe Sicherung.
 
 ## Prüfungen und Coverage
 
