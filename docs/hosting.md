@@ -1,18 +1,20 @@
 # Online-Werkbank: GitHub Pages und Render
 
-Stand: 2. November 2026. Sebastian hat den bestehenden Render-Webservice selbst auf den kostenpflichtigen Compute-Plan umgestellt. Die folgende Betriebsprüfung unterscheidet diesen bestätigten Stand von noch offenen Änderungen an Anmeldung und Speicherung.
+Stand: 2. November 2026. Der bestehende Render-Webservice verwendet den kostenpflichtigen Compute-Plan. Sebastian hat anschließend den GitHub-Login für beide Autoren und eine persistente Disk genehmigt. Die folgende Übersicht unterscheidet den bekannten Betrieb von implementierten und noch nicht aktivierten Änderungen.
 
 | Geprüfter Bestandteil | Beobachtung am 2. November 2026 |
 |---|---|
 | Oberfläche | [GitHub Pages](https://sxba-04.github.io/llm-agent-security-lab/), getrennt vom Python-Dienst |
 | Render-Service | `srv-dbhmac67bikc73f0cvug`, Frankfurt, eine Instanz |
 | Compute | `0.5c-512mb` (früher Starter): 0,5 CPU, 512 MB RAM; Upgrade vom Betreiber bestätigt und im Servicezustand geprüft |
-| Deployment | `dep-dbjsr6vb9u1s73c474vg`, Status `live`, Commit `5e192a2567cc9be33219247b8b4cc9aec4324662` |
+| Deployment | Laufenden Commit im Render-Deployment und im zugehörigen CI-Lauf prüfen; frühere Prüfprotokolle sind keine fortlaufende Statusanzeige. |
 | Betriebseinstellungen | Branch `main`, Auto-Deploy `checksPass`, Health Check `/healthz`, PR-Vorschauen aus |
 | Speicherung | Startprotokoll meldet weiterhin flüchtigen Speicher; keine Disk in Serviceantwort oder Ereignishistorie nachgewiesen, keine Postgres-/Key-Value-Instanz vorhanden |
-| Fehler und Ressourcen | Keine Fehler im abgefragten Logausschnitt; ungefähr 60 MiB RAM im Leerlauf. Dies ist kein Lasttest. |
+| Zugangscode | Sebastian bestätigte seine erfolgreiche Anmeldung; der vorhandene Code war lediglich falsch eingegeben worden. Keine Rotation durchgeführt. |
+| GitHub-Login | Optional implementiert und lokal geprüft; OAuth-App, Backend-Konfiguration und echter Login noch ausstehend. |
+| Disk-Freigabe | 1 GB genehmigt, Speicherkosten bis höchstens 1 USD/Monat. Einrichtung und Persistenzprüfung noch ausstehend. |
 
-Diese Prüfung der Render-Verwaltung und Logs war lesend. Sie bestätigt weder einen neuen authentifizierten Kampagnenlauf noch eine getestete Dauerhaftigkeit gespeicherter Belege. Die frühere Live-Prüfung vom 29. Oktober umfasste PDF-Download/-Import, acht Mock-Läufe und Archivprüfung; ihr temporärer Zugangscode wurde danach absichtlich entfernt. Die [Validierungsdokumentation](validation.md) hält diese historischen Tests fest.
+Die bisherige Prüfung der Render-Verwaltung und Logs war lesend. Sie bestätigt weder einen neuen authentifizierten Kampagnenlauf noch eine getestete Dauerhaftigkeit gespeicherter Belege. Die frühere Live-Prüfung vom 29. Oktober umfasste PDF-Download/-Import, acht Mock-Läufe und Archivprüfung; ihr temporärer Zugangscode wurde danach absichtlich entfernt. Die [Validierungsdokumentation](validation.md) hält diese historischen Tests fest.
 
 ## Was das Upgrade ändert
 
@@ -22,14 +24,14 @@ FastAPI ist das Python-Webframework der Anwendung. **FastAPI Cloud** ist ein eig
 
 ## Aufbau und Funktionsumfang
 
-GitHub Pages liefert die gebaute React-Oberfläche unter `https://sxba-04.github.io/llm-agent-security-lab/`. Die Oberfläche spricht nach Eingabe eines Zugangscodes mit dem Python-Dienst unter `https://llm-agent-security-lab-demo-api.onrender.com` über HTTPS. Dort laufen derselbe Versuchskern, die PDF-Extraktion, die Archivierung und die Bewertung wie in der lokalen Werkbank. Es wird keine zweite Versuchsauswertung in JavaScript implementiert.
+GitHub Pages liefert die gebaute React-Oberfläche unter `https://sxba-04.github.io/llm-agent-security-lab/`. Die Oberfläche spricht nach Anmeldung mit dem Python-Dienst unter `https://llm-agent-security-lab-demo-api.onrender.com` über HTTPS. Dort laufen derselbe Versuchskern, die PDF-Extraktion, die Archivierung und die Bewertung wie in der lokalen Werkbank. Es wird keine zweite Versuchsauswertung in JavaScript implementiert.
 
 GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokalen Prozess braucht es deshalb **zusätzlich den laufenden Backend-Dienst**. Die bestehende Testumgebung verwendet weiterhin einen flüchtigen Workspace: **Hochgeladene PDFs, Versuche und Bewertungen gehen bei Neustart oder Deployment verloren.** Benötigte Archive vorher herunterladen und wichtige Studienbelege außerhalb dieser Umgebung sichern. Die Oberfläche bleibt im Mock-Modus; diese Veröffentlichung aktiviert weder echte Modellaufrufe noch ein API-Budget.
 
 | Bestandteil | Betrieb und Zugriff |
 |---|---|
 | GitHub Pages | Öffentlich erreichbare Anmeldeseite und statische Frontend-Dateien. Enthält keine Zugangscodes, Workspace-Dateien oder privaten Bewertungen. |
-| Python-Backend | Datenzugriff und Änderungen erst mit gültigem Bearer-Zugangscode. `/healthz` ist eine öffentliche, minimale Betriebsprüfung. |
+| Python-Backend | Datenzugriff und Änderungen erst mit gültigem Zugangscode oder, nach Aktivierung, eigener GitHub-Laborsitzung. Öffentlich sind nur `/healthz`, die Anmeldearten unter `/api/auth/config` und die begrenzten GitHub-Anmeldeendpunkte. |
 | Flüchtiger Test-Workspace | Gemeinsame Kampagnen, PDF-Originale, bestätigte Extraktionen, Bewertungen und Provenienz für beide Autoren, nur bis zum Zurücksetzen des Dienstes. Keine dauerhafte Belegablage. |
 | Lokale Werkbank | Bleibt mit dem bisherigen Startbefehl und eigenen lokalen Daten nutzbar. Lokale und gehostete Daten werden nicht automatisch synchronisiert. |
 
@@ -37,7 +39,7 @@ GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokal
 
 `render.yaml` beschreibt einen einzelnen Python-Webservice `llm-agent-security-lab-demo-api` in Frankfurt mit `plan: 0.5c-512mb`, ohne Disk, Datenbank oder zusätzlichen Worker. Der Workspace liegt unter `/tmp/security-lab-demo`; `LAB_STORAGE_MODE=ephemeral` aktiviert den Speicherhinweis. Der bestehende Dienst wurde direkt über die Render-Verwaltung eingerichtet; seine dortige Konfiguration ist die Quelle der tatsächlichen Einstellungen. Änderungen an `render.yaml` werden dadurch nicht automatisch als Infrastrukturänderungen übernommen. Eine spätere Blueprint-Verwaltung muss bewusst eingerichtet werden; keinen zweiten Dienst für dieselbe Werkbank anlegen.
 
-**Bestehenden Dienst weiterverwenden:** Der kostenpflichtige Compute-Plan ist durch die Betreiberentscheidung gedeckt. Das ist keine Freigabe für zusätzliche Dienste, größere Pläne, Disks oder Datenbanken. Solche Änderungen benötigen eine konkrete Entscheidung über Kosten, Migration und Wiederherstellung. Der aktuelle Dienst benötigt keinen Ersatz und keinen zweiten Backend-Host.
+**Bestehenden Dienst weiterverwenden:** Compute-Plan und die anschließend genehmigte 1-GB-Disk sind durch Betreiberentscheidungen gedeckt; für Speicher gilt die Obergrenze von 1 USD/Monat. Andere Dienste, größere Compute-Pläne oder Datenbanken sind davon nicht umfasst. Der aktuelle Dienst benötigt keinen Ersatz und keinen zweiten Backend-Host. Bis zur tatsächlichen Speichermigration bleiben die folgenden flüchtigen Laufzeiteinstellungen bestehen.
 
 1. Render mit dem eigenen GitHub-Konto verbinden und diesem Repository Zugriff geben. Nicht nur die öffentliche Repository-URL importieren: diese Alternative unterstützt keine automatischen Deployments.
 2. Die oben genannten Einstellungen und die Kosten-/Ressourcenübersicht des bestehenden Dienstes prüfen. Der Branch ist `main`; automatische Updates auf erfolgreiche CI-Prüfungen einstellen. Beim Blueprint entspricht dies `autoDeployTrigger: checksPass`. Zusätzliche Ressourcen erst nach einer entsprechenden Projektentscheidung einrichten.
@@ -65,7 +67,7 @@ Der Browser hält den eingegebenen Code nur im Arbeitsspeicher. Abmelden oder Ne
 
 Der persönliche Code wird durch den obigen Generator erstellt, nicht von GitHub Pages oder Render vergeben. Der Server speichert nur seinen SHA-256-Hash und kann den ursprünglichen Code daraus nicht zurückgewinnen. Der Code schützt auch Downloads und Änderungen; ohne einen solchen Zugriffsschutz wäre der öffentlich erreichbare Dienst für fremde Personen bedienbar.
 
-Ein Backend-Neustart ändert den konfigurierten persönlichen Code nicht. Er erzeugt jedoch ein neues internes Sitzungstoken für schreibende Anfragen. Bei einem als ungültig erkannten Sitzungstoken verwirft der Client nur dieses interne Token und zeigt an, dass die angeforderte Änderung nicht ausgeführt wurde. Die nächste bewusst ausgelöste Aktion lädt zuerst ein neues Sitzungstoken; sie benötigt dafür keine erneute Eingabe des weiterhin gültigen persönlichen Codes. Schreibaktionen werden nicht automatisch wiederholt. Eine echte HTTP-401-Antwort bedeutet dagegen, dass der übermittelte persönliche Code fehlt oder keinem konfigurierten Hash entspricht. Netzwerk-, TLS- und CORS-Fehler können ebenfalls die Anmeldung verhindern und sind nicht automatisch ein falscher Code.
+Ein Backend-Neustart ändert den konfigurierten persönlichen Code nicht. Er erzeugt jedoch ein neues internes Sitzungstoken für schreibende Anfragen. Bei einem als ungültig erkannten Sitzungstoken verwirft der Client nur dieses interne Token und zeigt an, dass die angeforderte Änderung nicht ausgeführt wurde. Die nächste bewusst ausgelöste Aktion lädt zuerst ein neues Sitzungstoken; sie benötigt dafür keine erneute Eingabe des weiterhin gültigen persönlichen Codes. Schreibaktionen werden nicht automatisch wiederholt. Bei Zugangscode-Anmeldung bedeutet eine echte HTTP-401-Antwort, dass der persönliche Code fehlt oder keinem konfigurierten Hash entspricht. Bei GitHub-Anmeldung kann sie eine abgelaufene oder widerrufene Laborsitzung bedeuten; dann erneut mit GitHub anmelden. Netzwerk-, TLS- und CORS-Fehler können ebenfalls die Anmeldung verhindern und sind nicht automatisch ein falscher Code.
 
 Bei verlorenem Code:
 
@@ -76,11 +78,15 @@ Bei verlorenem Code:
 
 Ein Frontend-Neubau ist für diese Rotation nicht nötig. Niemals zur Wiederherstellung den Zugriffsschutz ausschalten oder einen Klartextcode in GitHub Actions beziehungsweise Pages eintragen.
 
-### Zugangscode oder Benutzerkonto
+### GitHub-Login und Sitzungsverwaltung
 
-Für die zwei vertrauenswürdigen Autoren reichen getrennte, widerrufbare Zugangscodes zunächst aus. Sie sind jedoch keine Benutzerkonten und belegen weder die Person hinter einer Bewertung noch getrennte Rollen. Ein Konto-Login wäre ein eigenes Feature mit Sitzungsverwaltung, Abmeldung, Widerruf und klaren Berechtigungen. Für einen späteren Ausbau bietet sich ein etablierter Loginanbieter mit ausdrücklicher Freigabeliste der beiden Konten an. Öffentliche Registrierung und selbst verwaltete Passwortlisten wären für diesen Umfang unnötiger zusätzlicher Betrieb.
+Der optionale [GitHub-Login](github-login.md) ist implementiert. Der Server lässt ausschließlich konfigurierte, unveränderliche GitHub-Konto-IDs zu. Beide Autoren erhalten dieselben Rechte zum Lesen und Bearbeiten des gemeinsamen Workspace und können nur ihre eigenen GitHub-Sitzungen verwalten. Öffentliche Registrierung und eine eigene Passwortverwaltung gibt es nicht.
 
-Ein solcher Wechsel muss die bestehenden Host-/Origin-Prüfungen, den Schutz von Downloads und Änderungen sowie die Trennung zwischen Betreiberzugang und experimenteller Autorisierung P erhalten. Der aktuelle SHA-256-Vergleich ist für zufällige Codes mit 256 Bit Entropie gedacht; er darf nicht als Passwortspeicherung für kurze, selbst gewählte Kontopasswörter wiederverwendet werden.
+Die Anmeldung verwendet eine feste Pages-Rückleitung, State und PKCE. Der GitHub-Token bleibt beim Backend und wird nach der Identitätsprüfung verworfen; der Browser erhält einen eigenen zufälligen Labortoken. Er bleibt im Arbeitsspeicher. Nur der kurzlebige PKCE-Verifier mit State wird für die Rückleitung vorübergehend in `sessionStorage` gehalten und beim Callback entfernt. Sitzungen laufen spätestens nach acht Stunden ab; Neustarts widerrufen sie. Pro Konto bleiben höchstens acht aktiv, danach wird die älteste eigene Sitzung ersetzt. Der vorhandene Zugangscode bleibt ein unabhängiger Rückfallweg.
+
+**Noch nicht live aktiviert:** Die OAuth-App-Registrierung wurde vorbereitet, aber die automatische Freigabeprüfung hat das Absenden bis zu einer konkreten Aktionsbestätigung abgelehnt. Es wurde keine OAuth-App und kein Client-Secret erstellt. Die vier Backend-Einstellungen und ein tatsächlicher GitHub-Anmeldetest stehen aus. Fehlende oder teilweise gesetzte Konfiguration darf nicht durch Abschwächen der Zugriffskontrollen umgangen werden.
+
+GitHub bestätigt die verwendete Konto-ID. Das ordnet bestehende wissenschaftliche Bewertungen nicht automatisch einer Person zu und erzwingt keine unabhängigen A/B-Bewertungen. Die fachlichen Bewertungsregeln bleiben unverändert. Ebenso bleibt die experimentelle Autorisierung P vom Betreiberlogin getrennt.
 
 ### Backend-Einstellungen
 
@@ -91,9 +97,12 @@ Ein solcher Wechsel muss die bestehenden Host-/Origin-Prüfungen, den Schutz von
 | `LAB_ACCESS_TOKEN_HASHES` | Kommagetrennte SHA-256-Hashes der zufälligen Zugangscodes, im Backend-Secret-Speicher konfigurieren. |
 | `LAB_WORKSPACE` | `/tmp/security-lab-demo` für die bestehende flüchtige Testumgebung. Absoluter Pfad, keine dauerhafte Speicherung. |
 | `LAB_STORAGE_MODE` | `ephemeral` für die bestehende Testumgebung; nur `ephemeral` und `persistent` sind gültig. Ohne Angabe gilt `persistent`. Die Einstellung beschreibt den vorgesehenen Speicherlebenszyklus; sie richtet selbst keine Disk ein und löscht keine Dateien. |
+| `LAB_GITHUB_CLIENT_ID`, `LAB_GITHUB_CLIENT_SECRET` | Optionale OAuth-App-Konfiguration ausschließlich im Backend; derzeit noch nicht gesetzt. Secret niemals veröffentlichen. |
+| `LAB_GITHUB_REDIRECT_URI` | Feste Rückleitung zur Pages-Anwendung; Einrichtung siehe [GitHub-Login](github-login.md). |
+| `LAB_GITHUB_ALLOWED_USER_IDS` | Kommagetrennte, zuvor eindeutig geprüfte numerische GitHub-Konto-IDs der beiden Autoren. |
 | `PORT` | Vom Hostinganbieter bereitgestellter HTTP-Port hinter dessen HTTPS-Proxy. |
 
-Die Origin-/Hostprüfung bleibt aktiv. CORS erlaubt ausschließlich die konfigurierte Frontend-Origin; auch Fehlermeldungen und Preflight-Anfragen müssen diesen Vertrag erfüllen. Die Browser-Anmeldung verwendet keine Drittanbieter-Cookies. Der Hoster beendet TLS vor dem Python-Dienst; die öffentliche HTTPS-Origin wird explizit validiert, statt beliebigen weitergeleiteten Headern zu vertrauen.
+Die Origin-/Hostprüfung bleibt aktiv. CORS erlaubt nur die exakt konfigurierte Frontend- beziehungsweise Backend-Origin; die GitHub-Anmeldung verlangt ausschließlich die Frontend-Origin. Auch Fehlermeldungen und Preflight-Anfragen müssen diesen Vertrag erfüllen. Die Browser-Anmeldung verwendet keine Drittanbieter-Cookies. Der Hoster beendet TLS vor dem Python-Dienst; die öffentliche HTTPS-Origin wird explizit validiert, statt beliebigen weitergeleiteten Headern zu vertrauen.
 
 ## 2. GitHub Pages mit dem Backend verbinden
 
@@ -114,20 +123,20 @@ Beide Dienste veröffentlichen getrennt; sie wechseln nicht atomar im selben Mom
 
 Der aktuelle kostenpflichtige Dienst verwendet keinen Free-Ruhezustand. Ein zusätzlicher Keep-alive-Dienst ist nicht erforderlich. Nach Deployments trotzdem Health Check, Authentifizierung und den tatsächlich laufenden Commit prüfen.
 
-Bei Neustart oder Deployment gehen die Dateien des flüchtigen Workspace verloren. Das betrifft auch bestätigte PDF-Texte, Bewertungen und mögliche Unterbrechungsnachweise. Vor geplanten Updates Versuche beenden und benötigte Archive herunterladen. Die Oberfläche zeigt auf allen Arbeitsseiten einen Hinweis. Ein laufender Mock-Versuch kann abgebrochen werden und wird nicht automatisch wiederholt. Falls die Belege gelöscht wurden, kann daraus kein vollständiger Lauf rekonstruiert oder als Erfolg ausgegeben werden. Nach einem Backend-Neustart kann eine bereits geöffnete Seite noch das alte Sitzungstoken besitzen. Den entsprechenden Hinweis beachten und die gewünschte Aktion bewusst erneut auslösen; es gibt keine automatische Wiederholung von Änderungen. Ein Neuladen der Seite beendet dagegen die nur im Arbeitsspeicher gehaltene Anmeldung und erfordert den persönlichen Code erneut.
+Bei Neustart oder Deployment gehen die Dateien des flüchtigen Workspace verloren. Das betrifft auch bestätigte PDF-Texte, Bewertungen und mögliche Unterbrechungsnachweise. Vor geplanten Updates Versuche beenden und benötigte Archive herunterladen. Die Oberfläche zeigt auf allen Arbeitsseiten einen Hinweis. Ein laufender Mock-Versuch kann abgebrochen werden und wird nicht automatisch wiederholt. Falls die Belege gelöscht wurden, kann daraus kein vollständiger Lauf rekonstruiert oder als Erfolg ausgegeben werden. Nach einem Backend-Neustart kann eine bereits geöffnete Seite noch das alte Sitzungstoken besitzen. Den entsprechenden Hinweis beachten und die gewünschte Aktion bewusst erneut auslösen; es gibt keine automatische Wiederholung von Änderungen. Ein Neuladen der Seite beendet dagegen die nur im Arbeitsspeicher gehaltene Anmeldung und erfordert eine erneute Anmeldung. Für GitHub-Sitzungen ist sie zusätzlich nach einem Serverneustart nötig; der persönliche Zugangscode selbst wird durch den Neustart nicht geändert.
 
-Die konfigurierten Zugangscodes erlauben denselben gemeinsamen Arbeitsbereich. Sie sind keine Rollenverwaltung: beide Autoren können Kampagnen und Bewertungsansichten öffnen. Die bestehende Trennung in Bewertung A/B unterstützt den Arbeitsablauf, garantiert aber keine technische Geheimhaltung gegenüber dem jeweils anderen Autor. Für unabhängige Urteile die getrennten Bewertungsansichten und organisatorischen Regeln weiter einhalten.
+Zugangscodes und freigegebene GitHub-Konten erlauben denselben gemeinsamen Arbeitsbereich. Beide Autoren können Kampagnen und Bewertungsansichten öffnen; GitHub-Sitzungsverwaltung trennt nur den Zugriff auf eigene Sitzungen. Die bestehende Trennung in Bewertung A/B unterstützt den Arbeitsablauf, garantiert aber keine technische Geheimhaltung gegenüber dem jeweils anderen Autor. Für unabhängige Urteile die getrennten Bewertungsansichten und organisatorischen Regeln weiter einhalten.
 
 Nur synthetische Versuchsdaten verwenden. Benötigte vollständige Kampagnenarchive rechtzeitig exportieren und die Wiederherstellung lokal prüfen. Separat hochgeladene Quellen ohne Kampagnenzuordnung müssen zusätzlich außerhalb der Umgebung vorhanden sein. Der flüchtige Dienst darf nicht die einzige Ablage wichtiger Studienbelege sein. Beim Wechsel des Hostinganbieters PDF-Originale, Bewertungen und Provenienz gemeinsam mit den Laufdaten übernehmen.
 
-### Nächste mögliche Änderung: dauerhafte Speicherung
+### Genehmigte, noch ausstehende Änderung: dauerhafte Speicherung
 
-Die Anwendung unterstützt einen frei konfigurierten Workspace und den Modus `persistent` bereits. Für den derzeitigen Einprozessbetrieb ist eine Render-Disk eine passende, kleine Erweiterung; eine Datenbankmigration ist dafür nicht erforderlich. Die zusätzliche Disk ist ein separat berechnetes Produkt und wurde noch nicht eingerichtet.
+Die Anwendung unterstützt einen frei konfigurierten Workspace und den Modus `persistent` bereits. Für den derzeitigen Einprozessbetrieb ist eine Render-Disk eine passende, kleine Erweiterung; eine Datenbankmigration ist dafür nicht erforderlich. Die zusätzliche Disk ist ein separat berechnetes Produkt. Sebastian hat 1 GB und bei Bedarf Speicher bis höchstens 1 USD/Monat genehmigt. Sie wurde noch nicht eingerichtet; der Browserzugriff auf die erforderliche Render-Verwaltung ist noch nicht angemeldet. `LAB_WORKSPACE` und `LAB_STORAGE_MODE` bleiben deshalb unverändert.
 
 Der konkrete Umstieg besteht aus folgenden Schritten:
 
 1. Benötigte Kampagnen inklusive Quellen, Bewertungen und Provenienz exportieren, Archive prüfen und eine lokale Wiederherstellung testen. Separat hochgeladene, noch nicht verwendete Quellen zusätzlich sichern.
-2. Größe, Zusatzkosten und Mountpfad der Disk festlegen; eine neue Disk kann später vergrößert, aber nicht verkleinert werden. Nur der Mountpfad ist persistent.
+2. Mit 1 GB beginnen, den angezeigten Preis gegen die genehmigte monatliche Obergrenze prüfen und den Mountpfad festlegen; eine neue Disk kann später vergrößert, aber nicht verkleinert werden. Nur der Mountpfad ist persistent.
 3. Die genehmigte Disk am bestehenden Dienst beispielsweise unter `/var/data` anlegen. Dieser Vorgang löst ein Deployment aus; die alten `/tmp`-Dateien werden dadurch nicht automatisch übernommen.
 4. `LAB_WORKSPACE=/var/data/security-lab` und erst zusammen mit der tatsächlichen Disk `LAB_STORAGE_MODE=persistent` setzen. Bei einer bereits befüllten Umgebung die gesicherten Archive kontrolliert wiederherstellen.
 5. Einen synthetischen Testbeleg anlegen, einen kontrollierten Neustart durchführen und den unveränderten Beleg anschließend prüfen. Erst dann die Persistenz als verifiziert dokumentieren.

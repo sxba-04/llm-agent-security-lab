@@ -2,6 +2,14 @@
 
 Diese Prüfungen betreffen die Implementierung. Sie sind keine empirischen Ergebnisse über die Angreifbarkeit eines Sprachmodells.
 
+## GitHub-Anmeldung und Betrieb: lokale Vorprüfung vom 2. November 2026
+
+Auf Basis von `956e87b` wurde die optionale GitHub-Anmeldung mit eigener Sitzungsverwaltung unter Linux geprüft. Die vollständige Python-Suite umfasst 327 Tests mit einem plattformspezifischen Skip. Die 21 neuen Authentifizierungstests prüfen unter anderem PKCE, Zustandsbindung, Wiederholungsversuche, abgelaufene Anmeldungen, Kontofreigaben, Sitzungswiderruf, fremde Sitzungen und Kapazitätsgrenzen. 75 Frontend-Tests und beide Produktionsbuilds (lokal und Hosted) waren erfolgreich. Die lokale Frontend-Coverage beträgt 93,14 % Zeilen und 82,45 % Zweige.
+
+Ein unabhängiger technischer Sicherheitsreview prüfte zusätzlich die Vertrauensgrenzen und fehlerhafte HTTP-Eingaben ohne blockierenden Befund. Die neuen HTTPS-Browsertests verwenden einen synthetischen Identitätsanbieter ausschließlich in der Test-Fixture; Anwendungssitzungen, PKCE und API-Prüfungen bleiben echt. Lokal konnte Chromium wegen ungültiger ZIP-Antworten des Downloadservers nicht installiert werden. Die vier Hosted-Browsertests scheiterten vor dem Browserstart; daraus folgt kein bestandener Browsernachweis. Aktuelle GitHub-CI und externe Code-/Security-Reviews sind vor einem Merge am endgültigen PR-Head gesondert zu prüfen.
+
+Wiki-Startseite und Navigation wurden veröffentlicht. Die produktive OAuth-Registrierung, Jonahs bestätigte GitHub-Konto-ID, die Render-Disk sowie der Neustart-/Wiederherstellungstest sind noch offen. Es wurden weder echte Modellaufrufe noch menschliche Bewertungen erzeugt. Siehe [Anmeldung](github-login.md), [Hosting](hosting.md) und [Beiträge](contributions.md).
+
 ## Actions und Abnahmeanleitung vom 29. Oktober 2026
 
 Sebastian hat zurückgemeldet, dass der aktuelle `main`-Stand nach Synchronisation der Abhängigkeiten und erneutem Frontend-Build auf seinem LUBW-Windows-Laptop funktioniert. Das ist eine bestätigte Einrichtung, keine bereits erledigte gemeinsame fachliche Abnahme.

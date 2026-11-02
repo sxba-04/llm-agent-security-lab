@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Health } from './types';
+import type { Health, SessionUser } from './types';
 
 export const hosted = import.meta.env.VITE_HOSTED === 'true';
 const apiBase = hosted ? import.meta.env.VITE_API_BASE_URL : '';
@@ -8,33 +8,70 @@ let accessToken = '';
 let authenticated = false;
 let sessionRevision = 0;
 let sessionNotice = '';
+let sessionUser: SessionUser | null = null;
+let authenticationMethod: 'access-code' | 'github' = 'access-code';
 const sessionListeners = new Set<() => void>();
 export const subscribeSession = (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; };
 export const sessionIsAuthenticated = () => authenticated;
 export const sessionMessage = () => sessionNotice;
+export const sessionIdentity = () => sessionUser;
+export const sessionGeneration = () => sessionRevision;
 function notifySession() { for (const listener of sessionListeners) listener(); }
 function clearSession(notice = '') {
   sessionRevision += 1;
-  accessToken = ''; csrfToken = ''; authenticated = false; sessionNotice = notice; notifySession();
+  accessToken = ''; csrfToken = ''; authenticated = false; sessionUser = null; sessionNotice = notice; notifySession();
 }
-export function signOut() { clearSession(); }
+export async function signOut() {
+  const token = accessToken;
+  const csrf = csrfToken;
+  const revoke = authenticationMethod === 'github' && Boolean(token);
+  clearSession();
+  authenticationMethod = 'access-code';
+  const revision = sessionRevision;
+  if (!revoke) return;
+  try {
+    const response = await fetchResponse('/api/auth/logout', { method: 'POST' }, requestHeaders({}, true, token, csrf));
+    if (!response.ok && response.status !== 401) throw new ApiError('Abmeldung fehlgeschlagen.', response.status);
+  } catch {
+    if (revision === sessionRevision) {
+      sessionNotice = 'Du bist auf diesem Gerät abgemeldet. Der Server konnte die Sitzung nicht bestätigen; sie läuft spätestens nach acht Stunden ab. Du kannst sie nach erneuter Anmeldung unter „Deine Sitzungen“ beenden.';
+      notifySession();
+    }
+  }
+}
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); } }
 export async function signIn(value: string) {
   const candidate = value.trim();
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(candidate)) throw new ApiError('Bitte den vollständigen Zugangscode eingeben.', 401);
+  return establishSession(candidate, 'access-code');
+}
+export async function signInWithGitHubSession(token: string, expectedGeneration: number) {
+  if (sessionRevision !== expectedGeneration) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
+  if (!/^[A-Za-z0-9_-]{43,128}$/.test(token)) throw new ApiError('Der Server liefert keine gültige GitHub-Sitzung.', 0);
+  return establishSession(token, 'github');
+}
+async function establishSession(candidate: string, method: 'access-code' | 'github') {
   const attempt = ++sessionRevision;
-  accessToken = candidate; csrfToken = ''; authenticated = false; sessionNotice = ''; notifySession();
+  accessToken = candidate; csrfToken = ''; authenticated = false; sessionNotice = ''; sessionUser = null; authenticationMethod = method; notifySession();
   try {
     const health = await api<Health>('/api/health');
     if (typeof health.csrf_token !== 'string' || !health.csrf_token) throw new ApiError('Der Server liefert keine gültige Werkbank-Sitzung.', 0);
     if (sessionRevision !== attempt) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
+    if (method === 'github' && !validSessionUser(health.user)) throw new ApiError('Der Server liefert keine gültige GitHub-Identität.', 0);
+    sessionUser = method === 'github' ? health.user! : null;
     authenticated = true; notifySession();
   } catch (error) {
     if (sessionRevision === attempt) {
-      signOut();
+      void signOut();
     }
     throw error;
   }
+}
+function validSessionUser(value: unknown): value is SessionUser {
+  if (!value || typeof value !== 'object') return false;
+  const user = value as SessionUser;
+  return Number.isSafeInteger(user.id) && user.id > 0 && typeof user.login === 'string' && /^[A-Za-z0-9-]{1,39}$/.test(user.login)
+    && user.role === 'researcher' && Array.isArray(user.permissions) && user.permissions.every(permission => typeof permission === 'string');
 }
 function endpoint(path: string) {
   // Only application paths may receive the private authorization header.
@@ -60,6 +97,14 @@ async function fetchResponse(path: string, options: RequestInit, headers: Header
     throw new ApiError(hosted ? 'Die Online-Werkbank ist nicht erreichbar. Bitte Verbindung und Serverstatus prüfen.' : 'Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
   }
 }
+export async function publicAuthRequest<T>(path: '/api/auth/config' | '/api/auth/github/start' | '/api/auth/github/complete', body?: unknown): Promise<T> {
+  const options: RequestInit = body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) };
+  const headers = new Headers(body === undefined ? undefined : { 'Content-Type': 'application/json' });
+  const response = await fetchResponse(path, { ...options, cache: 'no-store' }, headers);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new ApiError(responseErrorMessage(result.detail, response.status), response.status);
+  return result as T;
+}
 function responseErrorMessage(detail: unknown, status: number): string {
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
@@ -69,13 +114,15 @@ function responseErrorMessage(detail: unknown, status: number): string {
 }
 async function rejectResponse(response: Response, mutating: boolean, requestSession: number, requestCsrf: string): Promise<never> {
   if (hosted && response.status === 401 && sessionRevision === requestSession) {
-    clearSession('Der Server akzeptiert deinen Zugangscode nicht mehr. Bitte erneut anmelden oder einen neuen Code beim Betreiber anfordern.');
+    clearSession(authenticationMethod === 'github'
+      ? 'Deine GitHub-Sitzung ist abgelaufen oder wurde beendet. Bitte erneut mit GitHub anmelden.'
+      : 'Der Server akzeptiert deinen Zugangscode nicht mehr. Bitte erneut anmelden oder einen neuen Code beim Betreiber anfordern.');
   }
   const body = await response.json().catch(() => ({}));
   if (mutating && response.status === 403 && body.code === 'csrf_token_invalid') {
     if (sessionRevision === requestSession && csrfToken === requestCsrf) csrfToken = '';
     // Never replay a write automatically, even when middleware rejected it.
-    throw new ApiError('Die Serversitzung wurde erneuert. Die Aktion wurde nicht ausgeführt. Bitte die Aktion erneut ausführen; dein Zugangscode bleibt gültig.', 403);
+    throw new ApiError('Die Serversitzung wurde erneuert. Die Aktion wurde nicht ausgeführt. Bitte die Aktion erneut ausführen.', 403);
   }
   throw new ApiError(responseErrorMessage(body.detail, response.status), response.status);
 }

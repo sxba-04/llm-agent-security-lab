@@ -49,4 +49,6 @@ export interface Judgment extends Rating {
   status: string; original_ratings: (Rating & {rater: string})[]; adjudication: Data | null;
 }
 export interface Combined { n_reviews: number; n_disagreements: number; raters: string[]; judgments: Judgment[] }
-export interface Health { version: string; mode: 'mock'; csrf_token: string; running: boolean; storage_mode: 'local' | 'persistent' | 'ephemeral' }
+export interface SessionUser { id: number; login: string; role: 'researcher'; permissions: string[] }
+export interface OperatorSession { id: string; created_at: string; expires_at: string; current: boolean }
+export interface Health { version: string; mode: 'mock'; csrf_token: string; running: boolean; storage_mode: 'local' | 'persistent' | 'ephemeral'; user?: SessionUser | null }

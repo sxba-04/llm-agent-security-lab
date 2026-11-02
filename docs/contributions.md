@@ -105,6 +105,8 @@ und der fachliche Autorenbeitrag bleiben Aufgaben des Teams.
 
 ## Ergänzung vom 2. November 2026: Betrieb und Dokumentationsstruktur
 
+Dieser erste Arbeitsschritt ging der anschließenden Freigabe von GitHub-Login, Disk und Wiki-Veröffentlichung voraus.
+
 Sebastian meldete das selbst vorgenommene Upgrade des bestehenden Render-Dienstes.
 ChatGPT/Codex prüfte getrennt davon die erreichbaren Betriebsdaten und stellte die
 Dokumentation auf den bestätigten kostenpflichtigen Compute-Plan bei weiterhin
@@ -123,3 +125,25 @@ wurden technisch geprüft. Fachliche Autorenabnahme, echte Modellversuche und
 menschliche Bewertungen werden dadurch nicht ersetzt. Weitere Codeänderungen,
 Tests und Gegenprüfungen dieses Arbeitsschritts sind am zugehörigen PR und in der
 Validierungsdokumentation festzuhalten.
+
+
+## Ergänzung vom 2. November 2026: GitHub-Anmeldung und freigegebener Speicher
+
+Sebastian bestätigte den funktionierenden Zugangscode und beauftragte GitHub-Login,
+Wiki-Veröffentlichung sowie eine persistente Disk mit zunächst 1 GB und höchstens
+1 USD monatlichen Speicherkosten. ChatGPT/Codex implementierte den optionalen
+OAuth-Ablauf und die Oberfläche in getrennten Teilaufgaben. Eine unabhängige
+technische Sicherheitsprüfung prüfte State/PKCE, Konto-ID-Freigaben, Sitzungswiderruf,
+Fehlerfälle und den Erhalt der Zugangscode-Anmeldung; die lokalen Testbelege stehen
+am zugehörigen PR und in der Validierungsdokumentation.
+
+Wiki-Startseite und Navigation wurden veröffentlicht. OAuth-App-Registrierung und
+Render-Disk sind noch nicht abgeschlossen: Die automatische Freigabeprüfung hielt
+das Absenden der vorbereiteten OAuth-Registrierung für eine konkrete
+Aktionsbestätigung an; die Render-Verwaltung benötigt noch eine Browseranmeldung.
+Es wurden dabei weder OAuth-App/Secret noch Disk angelegt. Die bestehende flüchtige
+Laufzeitkonfiguration bleibt erhalten. Das ist kein Nachweis einer bereits
+aktivierten GitHub-Anmeldung oder dauerhaften Speicherung.
+
+Die Beiträge enthalten keine echten Modellaufrufe oder menschlichen Bewertungen.
+Fachliche Autorenabnahme und unabhängige Bewertung bleiben Aufgaben des Teams.

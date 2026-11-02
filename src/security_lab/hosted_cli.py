@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .hosted import HostedSettings
+from .github_auth import GitHubSettings
 
 
 def configuration(environment: Mapping[str, str]) -> tuple[HostedSettings, Path, int]:
@@ -16,6 +17,7 @@ def configuration(environment: Mapping[str, str]) -> tuple[HostedSettings, Path,
         token_hashes=tuple(value.strip() for value in environment.get("LAB_ACCESS_TOKEN_HASHES", "").split(",")
                            if value.strip()),
         storage_mode=environment.get("LAB_STORAGE_MODE", "persistent"),
+        github=GitHubSettings.from_environment(environment),
     )
     workspace_value = environment.get("LAB_WORKSPACE", "")
     workspace = Path(workspace_value)

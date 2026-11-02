@@ -24,6 +24,15 @@ BASE_PATH = "/llm-agent-security-lab/"
 TEST_TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 
+class SyntheticGitHubIdentity:
+    """Replace only the external provider; all app auth boundaries stay real."""
+
+    def identity(self, code, verifier):
+        if code == "browser-approved-code":
+            return {"id": 12345, "login": "browser-researcher"}
+        return {"id": 99999, "login": "unapproved-researcher"}
+
+
 class StaticHandler(SimpleHTTPRequestHandler):
     def log_message(self, _format, *args):
         pass
@@ -55,13 +64,18 @@ def main() -> None:
         if args.mode == "api":
             import uvicorn
             from security_lab.hosted import HostedSettings
+            from security_lab.github_auth import GitHubSettings
             from security_lab.server import create_app
 
             settings = HostedSettings(API_ORIGIN, FRONTEND_ORIGIN,
                                       (hashlib.sha256(TEST_TOKEN.encode("ascii")).hexdigest(),),
-                                      storage_mode="ephemeral")
+                                      storage_mode="ephemeral",
+                                      github=GitHubSettings("synthetic-browser-client",
+                                                            "synthetic-browser-secret-only",
+                                                            FRONTEND_ORIGIN + BASE_PATH, (12345,)))
             app = create_app(directory / "workspace", ROOT / "cases" / "dev",
                              hosted_settings=settings)
+            app.state.github_sessions.identity_client = SyntheticGitHubIdentity()
             uvicorn.run(app, host="127.0.0.1", port=8876, workers=1,
                         ssl_keyfile=str(key), ssl_certfile=str(cert),
                         proxy_headers=False, access_log=False)
