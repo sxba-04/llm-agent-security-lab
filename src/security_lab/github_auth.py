@@ -114,7 +114,7 @@ class GitHubIdentityClient:
                 if not isinstance(value, dict):
                     raise ValueError("Invalid identity response")
                 return value
-        except (OSError, ValueError, HTTPException):
+        except (OSError, ValueError, HTTPException, RecursionError):
             # Never propagate provider bodies/URLs: they can contain credentials.
             raise LoginError(502, "GitHub ist für die Anmeldung derzeit nicht erreichbar. Bitte erneut versuchen.") from None
 

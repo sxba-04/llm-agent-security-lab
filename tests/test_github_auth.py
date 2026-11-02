@@ -256,6 +256,19 @@ class HTTPLoginTests(unittest.TestCase):
         self.assertNotIn("not-json-secret", response.text)
         self.provider.identity.assert_not_called()
 
+    def test_excessive_json_nesting_is_sanitized_without_provider_calls(self):
+        headers = {**self.origin, "Content-Type": "application/json"}
+        response = self.client.post("/api/auth/github/complete", headers=headers,
+                                    content="[" * 1500 + "0" + "]" * 1500)
+        self.assertEqual(response.status_code, 400)
+        # Parser depth limits differ across supported Python/platform builds.
+        # Exercise the error boundary explicitly where this small body parses.
+        with patch("security_lab.auth_routes.Request.json", side_effect=RecursionError("private-code")):
+            response = self.client.post("/api/auth/github/complete", headers=headers, content="{}")
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("private-code", response.text)
+        self.provider.identity.assert_not_called()
+
     def test_login_csrf_download_session_revoke_logout_and_fallback(self):
         login = self.login()
         self.assertEqual(login.status_code, 200, login.text)
@@ -308,8 +321,9 @@ class GitHubConfigurationTests(unittest.TestCase):
         self.assertIsNone(GitHubSettings.from_environment({}))
         with self.assertRaises(ValueError):
             GitHubSettings.from_environment({"LAB_GITHUB_CLIENT_ID": "synthetic_client_id"})
+        workspace = self.enterContext(tempfile.TemporaryDirectory())
         env = {"LAB_PUBLIC_ORIGIN": PUBLIC, "LAB_FRONTEND_ORIGIN": FRONTEND,
-               "LAB_ACCESS_TOKEN_HASHES": hashlib.sha256(ACCESS.encode()).hexdigest(), "LAB_WORKSPACE": "/tmp/test-lab",
+               "LAB_ACCESS_TOKEN_HASHES": hashlib.sha256(ACCESS.encode()).hexdigest(), "LAB_WORKSPACE": workspace,
                "LAB_GITHUB_CLIENT_ID": "synthetic_client_id", "LAB_GITHUB_CLIENT_SECRET": CLIENT_SECRET,
                "LAB_GITHUB_REDIRECT_URI": CALLBACK, "LAB_GITHUB_ALLOWED_USER_IDS": "123, 456"}
         self.assertEqual(configuration(env)[0].github.allowed_user_ids, (123, 456))
@@ -375,7 +389,7 @@ class ProviderTransportTests(unittest.TestCase):
             self.assertEqual(raised.exception.status, 502)
             self.assertNotIn("secret", str(raised.exception))
         self.client.opener.open.side_effect = None
-        for body in (b"x" * 65537, b"not-json-secret", b"[]"):
+        for body in (b"x" * 65537, b"not-json-secret", b"[]", b"[" * 10000 + b"0" + b"]" * 10000):
             self.client.opener.open.return_value = io.BytesIO(body)
             with self.assertRaises(LoginError):
                 self.client.identity(CODE, VERIFIER)

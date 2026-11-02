@@ -18,7 +18,7 @@ def _bearer(request: Request) -> str:
 async def _body(request: Request, fields: set[str]) -> dict:
     try:
         value = await request.json()
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
         raise LoginError(400, INVALID_LOGIN) from None
     if not isinstance(value, dict) or set(value) != fields:
         raise LoginError(400, INVALID_LOGIN)
