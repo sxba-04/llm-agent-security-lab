@@ -32,10 +32,10 @@ jobs:
       PYTHONPATH: src
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Install locked Python environment including local web tools
@@ -70,7 +70,7 @@ jobs:
           uv run --locked --no-sync --no-build --extra web coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve Python coverage for Sonar and review
         if: ${{ always() && runner.os == 'Linux' && steps.python_coverage.outcome == 'success' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-coverage
           path: coverage/python/
@@ -80,7 +80,7 @@ jobs:
         id: mock_campaign
         run: uv run --locked --no-sync --no-build --extra web python scripts/ci_mock_campaign.py --preset catalog96 --repeats 1 --output runs/ci
       - name: Preserve synthetic campaign evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: mock-evidence-${{ runner.os }}
@@ -94,7 +94,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Preserve incomplete mock evidence for diagnosis
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() && (steps.mock_campaign.outcome == 'failure' || steps.mock_campaign.outcome == 'cancelled') }}
         with:
           name: unverified-mock-diagnostics-${{ runner.os }}
@@ -134,7 +134,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -154,7 +154,7 @@ jobs:
           fi
       - name: Preserve frontend coverage for Sonar and review
         if: ${{ always() && runner.os == 'Linux' && steps.react_tests.outcome == 'success' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -162,7 +162,7 @@ jobs:
           retention-days: 14
       - run: npm run build
         id: frontend_build
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Install backend for browser integration
@@ -178,7 +178,7 @@ jobs:
           UV_NO_SYNC: 'true'
           UV_NO_BUILD: 'true'
         run: npm run test:e2e
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: browser-evidence-${{ runner.os }}
@@ -188,7 +188,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Preserve the frontend build
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ success() && runner.os == 'Linux' }}
         with:
           name: frontend-build
