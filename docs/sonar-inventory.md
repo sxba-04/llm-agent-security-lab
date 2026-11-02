@@ -1,5 +1,11 @@
 # Sonar-Befunde einzeln prüfen
 
+Nach einer erfolgreichen Sonar-Analyse eines Pushs auf `main` legt die reguläre
+CI zusätzlich automatisch das unten beschriebene Befundinventar als Artefakt ab.
+Es verwendet denselben lesenden, begrenzten Export wie der manuelle Workflow.
+PR-Läufe führen diesen Export nicht aus. Bei fehlgeschlagener Analyse oder
+fehlgeschlagenem Quality Gate bleibt der manuelle Workflow zur Diagnose verfügbar.
+
 Unter **Actions → Read-only Sonar issue inventory → Run workflow → main** lässt
 sich der aktuelle offene Befundbestand abholen. Der Workflow analysiert keinen
 Code neu und ändert keine Einstellungen, Befunde oder Quality Gates. Er nutzt

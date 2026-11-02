@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { downloadFile, message } from './api';
 
-export function DownloadButton({ path, filename, className, children }: { path: string; filename: string; className: string; children: ReactNode }) {
+export function DownloadButton({ path, filename, className, children }: Readonly<{ path: string; filename: string; className: string; children: ReactNode }>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function download() {

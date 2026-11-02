@@ -20,6 +20,7 @@ from .contracts import Model
 
 VARIANTS = ("B", "F", "P", "FP")
 SOURCES = ("clean", "attack")
+MANIFEST_FILE = "manifest.json"
 
 
 def digest(value: Any) -> str:
@@ -161,12 +162,12 @@ def run_batch(cases: list[dict], output: Path, factory: Callable[[dict, str], Mo
                            "timeout_seconds": timeout_seconds}, "provider_config": provider_config,
                 "schedule": order, "runs": [], "completed_runs": 0, "planned_runs": len(order)}
     write_json(output / "cases.snapshot.json", cases)
-    write_json(output / "manifest.json", manifest)
+    write_json(output / MANIFEST_FILE, manifest)
     by_id = {case["case_id"]: case for case in cases}
     results = []
 
     def progress() -> None:
-        write_json(output / "manifest.json", manifest)
+        write_json(output / MANIFEST_FILE, manifest)
         if on_progress is not None:
             on_progress(copy.deepcopy(manifest))
 
@@ -203,7 +204,7 @@ def run_batch(cases: list[dict], output: Path, factory: Callable[[dict, str], Mo
             manifest["runs"].append(item)
             results.append(result)
             manifest["completed_runs"] = len(results)
-            write_json(output / "manifest.json", manifest)
+            write_json(output / MANIFEST_FILE, manifest)
             try:
                 _atomic_bytes(output / event_relative, event_bytes)
             except BaseException:
@@ -222,7 +223,7 @@ def run_batch(cases: list[dict], output: Path, factory: Callable[[dict, str], Mo
     except BaseException:
         manifest["state"] = "interrupted"
         manifest["completed_runs"] = len(results)
-        write_json(output / "manifest.json", manifest)
+        write_json(output / MANIFEST_FILE, manifest)
         finish_report()
         raise
     finish_report()
@@ -341,7 +342,7 @@ def load_results(directory: Path) -> list[dict]:
     retained in its verified record and the manifest exposes the incomplete view.
     """
     directory = Path(directory)
-    manifest = _json_read(_campaign_path(directory, "manifest.json"))
+    manifest = _json_read(_campaign_path(directory, MANIFEST_FILE))
     cases = _json_read(_campaign_path(directory, "cases.snapshot.json"))
     if digest(cases) != manifest["cases_sha256"]:
         raise ValueError("Case snapshot hash mismatch")

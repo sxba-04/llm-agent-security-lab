@@ -1,6 +1,72 @@
-# Sonar-Einzelprüfung vom 1. November 2026
+# Sonar-Inventuren und Einzelprüfungen
 
-Die Prüfung umfasst **alle 230 offenen Befunde** der Inventur aus
+## Belegter Snapshot vom 2. November 2026
+
+Die erneute schreibgeschützte Inventur meldet **177 offene Befunde** für `main`.
+Sie wurde am **02.11.2026 um 01:07:27 MEZ** (00:07:27 UTC) erhoben:
+[Workflow-Lauf 41260073281, Versuch 2](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/41260073281/attempts/2),
+Artefakt `sonar-main-inventory`, ID `13107111361`, ZIP-SHA-256
+`b557aef35278e2e96caa4926ac515545c17d29902465daa7b49613f8b82ea14d`.
+Das Artefakt wird nach 14 Tagen gelöscht; diese Angaben sichern seine Herkunft,
+ersetzen aber keinen aufbewahrten Export.
+
+Die enthaltene Sonar-Analyse `66c95360-ccb2-43be-a05d-760a1c64c865` bezieht sich
+auf **`5e192a2567cc9be33219247b8b4cc9aec4324662`**, analysiert am
+01.11.2026 um 23:32:58 UTC. Der erneut gestartete Inventur-Workflow selbst stammt
+von einem älteren Checkout; maßgeblich ist ausdrücklich die Analyse-Revision im
+JSON. Spätere Änderungen sind nicht in diesen 177 Befunden enthalten.
+
+| Messwert aus diesem Snapshot | Wert |
+|---|---:|
+| Offene Befunde (`resolved=false`) | 177 |
+| Scanner-Typ `CODE_SMELL` | 158 |
+| Scanner-Typ `VULNERABILITY` | 18 |
+| Scanner-Typ `BUG` | 1 |
+| Quality Gate | OK |
+| Gesamte Sonar-Coverage | 85,4 % |
+| Zeilenabdeckung | 89,3 % |
+| Zweigabdeckung | 78,2 % |
+| Coverage des neuen Codes | 96,8 % |
+
+Scanner-Typen sind keine bestätigten Sicherheitsurteile. Von den 177 IDs sind
+175 im historischen Ledger enthalten: 152 dort als Wartbarkeitsschuld, 21 als
+False Positive und zwei als beabsichtigte Verwendung bewertet. Keine damals als
+`addressed` bewertete ID ist noch offen. Die zwei neuen IDs sind
+`AaGZev26WV1cgC4s9_Ep` (`mock-campaign.yml:91`) und
+`AaGZev2nWV1cgC4s9_Eo` (`tests.yml:124`), jeweils `githubactions:S7689`.
+Sie betreffen Markdown-Backticks in Python-Strings und sind nach Quellprüfung
+False-Positive-Kandidaten; die korrigierte Regelbedeutung steht im [CI-Bericht](ci.md).
+Sie werden nicht in die historische 230er-Inventur eingefügt.
+
+### Nachprüfung der 18 Vulnerability- und einer Bug-Markierung
+
+Die gemeldeten Datenflüsse wurden am 02.11.2026 erneut am Quellcode geprüft.
+Die 14 S8707-Flows erhielten zusätzlich eine unabhängige Agenten-Gegenprüfung.
+Dabei wurde in diesen konkreten Traces keine bestätigte Schwachstelle gefunden;
+das ist keine Aussage über eine vollständig sichere Anwendung und kein
+Remote-Abschluss der Scannerbefunde.
+
+| Regel / Anzahl | Quellbefund und Einordnung |
+|---|---|
+| `pythonsecurity:S8707` / 14 | `archives.py`, `batch.py`, `cases.py` und `review.py`: Die jeweils gemeldeten äußeren Lese-/Schreibpfade kommen aus ausdrücklichen CLI-Operatorargumenten. Artikel, Modellantworten oder ZIP-/CSV-/JSON-Inhalte bestimmen diese Argumente nicht. Beleg-Unterpfade werden zusätzlich begrenzt; der Webpfad bildet seine Ziele separat im verwalteten Workspace. Die dokumentierte False-Positive-Einordnung gilt für genau diese Flows. |
+| `python:S5332` / 1 | `server.py`: `http://` wird nur für `urlsplit` des Host-Headers verwendet. Der Parser öffnet keine Netzwerkverbindung. Kontextueller False Positive; Host-/Origin-Prüfungen bleiben erforderlich. |
+| `python:S4830` / 1 | `providers.py`: Der tatsächlich an `HTTPSHandler` übergebene Kontext stammt aus `ssl.create_default_context()`; Zertifikats- und Hostnamenprüfung werden nicht deaktiviert. Kontextueller False Positive. |
+| `python:S8392` / 1 | `hosted_cli.py`: `0.0.0.0` ist die bewusste Bindung des separat aktivierten, authentifizierten Hosted-Modus hinter dem HTTPS-Proxy. Beabsichtigte Verwendung unter diesen Betriebsannahmen; der lokale Launcher bleibt auf Loopback. |
+| `python:S2245` / 1 | `batch.py`: `random.Random(seed).shuffle` randomisiert reproduzierbar die Versuchsreihenfolge. Es erzeugt weder Zugangstoken noch kryptographische Schlüssel. Beabsichtigte Verwendung. |
+| `python:S2201` / 1 Bug | `batch.py`: Der ungenutzte Rückgabewert von `extracted.decode("utf-8")` ist beabsichtigt; die Operation validiert gespeicherte Bytes und muss bei ungültigem UTF-8 scheitern. Originalbytes und Hashes bleiben erhalten. Kontextueller False Positive. |
+
+Diese Nachprüfung umfasst Quellcode und Aufrufgrenzen, keine neu ausgeführten
+Laufzeittests und keine vollständige Prüfung aller möglichen Helfer-Nutzungen
+oder lokalen Dateisystemrennen. Die Herkunftsdateien `archives.py`, `batch.py`,
+`cases.py`, `review.py`, `cli.py`, `providers.py` und `hosted_cli.py` waren dabei
+gegenüber dem Analyse-Commit unverändert; bei `server.py` wurde zusätzlich der
+aktuelle, verhaltensbewahrend ausgelagerte Host-Parser geprüft. Neue Codeänderungen
+benötigen ihre eigene CI und Sonar-Analyse. Kein Befundstatus wurde durch diese
+Nachprüfung in Sonar geändert.
+
+## Historische Einzelprüfung vom 1. November 2026
+
+Die damalige Prüfung umfasst **alle 230 offenen Befunde** der Inventur aus
 [Workflow-Lauf 41257152584](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/41257152584).
 Die Sonar-Analyse bezieht sich auf Commit
 `12db393771b70f05f12f947fe213c43084a0fce5`; die Quellprüfung erfolgte zunächst
@@ -13,7 +79,7 @@ von Kennung, Regel, Datei und ursprünglicher Zeile ergab 230 Übereinstimmungen
 keine fehlenden und keine doppelten Kennungen. Die ursprünglichen Positionen
 werden als Herkunftsnachweis bewahrt; nach Änderungen können sich Zeilen ändern.
 
-| Ergebnis der Einzelprüfung | Anzahl | Bedeutung |
+| Ursprüngliches Ergebnis vom 01.11.2026 | Anzahl | Bedeutung |
 |---|---:|---|
 | Durch Änderungen adressiert | 49 | Fehlerkorrekturen, gezielte Härtungen und klarere Tests; endgültigen Scannerstatus der neuen Analyse entnehmen |
 | Kontextuelle Fehlalarme | 26 | Konkrete Datenflüsse, vorhandene Schutzprüfungen oder tatsächlich funktionierende UI-Semantik dokumentiert |
@@ -21,8 +87,13 @@ werden als Herkunftsnachweis bewahrt; nach Änderungen können sich Zeilen ände
 | Verbleibende Wartbarkeitshinweise | 153 | Unter anderem Komplexität, verschachtelte Ausdrücke, readonly-Props, wiederholte Literale und interne API-Fehlerdokumentation |
 | **Gesamt** | **230** | Vollständiger abgeglichener Inventurbestand |
 
-Diese Zahlen sind Bewertungen des angegebenen Ausgangsbestands, keine aktuelle
-Anzeige der Sonar-Oberfläche. Eine Korrektur kann mehrere Meldungen adressieren;
+Diese Zahlen und [summary.json](summary.json) bewahren die ursprüngliche
+Zusammenführung vom 01.11.2026 vor der datierten S7689-Korrektur im [CI-Bericht](ci.md).
+Zwei damals als adressiert eingeordnete Meldungen wurden dort als kontextuelle
+False Positives neu bewertet; die alten Bewertungen bleiben in `ci.json` erhalten.
+Die historischen Zahlen werden nicht mit dem neuen 177er-Snapshot vermischt und
+sind keine aktuelle Anzeige der Sonar-Oberfläche. Eine Korrektur kann mehrere
+Meldungen adressieren;
 ein Befund kann eine sinnvolle Härtung beschreiben, ohne einen beobachteten
 Angriff nachzuweisen. Es wurden keine Sonar-Befunde per API geschlossen oder als
 akzeptiert markiert. Die neue Analyse entscheidet, welche Befunde automatisch

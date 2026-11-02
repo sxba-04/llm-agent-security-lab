@@ -1,10 +1,11 @@
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { hosted, message, sessionIsAuthenticated, signIn, subscribeSession } from './api';
+import { hosted, message, sessionIsAuthenticated, sessionMessage, signIn, subscribeSession } from './api';
 
-export function AccessGate({ children }: { children: ReactNode }) {
+export function AccessGate({ children }: Readonly<{ children: ReactNode }>) {
   const connected = useSyncExternalStore(subscribeSession, sessionIsAuthenticated);
+  const notice = useSyncExternalStore(subscribeSession, sessionMessage);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,11 +26,11 @@ export function AccessGate({ children }: { children: ReactNode }) {
       <form onSubmit={event => { event.preventDefault(); void login(); }}>
         <label className="field"><span>Zugangscode</span><input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" value={code} onChange={event => setCode(event.target.value)} disabled={busy} required aria-describedby="access-help" /></label>
         <p id="access-help" className="muted small-text">Verwende deinen Labor-Zugangscode. Ein Modell-API-Schlüssel wird hier nicht benötigt.</p>
-        {error && <p className="notice error" role="alert">{error}</p>}
+        {(error || notice) && <p className="notice error" role="alert">{error || notice}</p>}
         <button className="button primary" type="submit" disabled={!code.trim() || busy}>{busy ? 'Verbindung wird geprüft …' : 'Werkbank öffnen'}<ArrowRight size={17} /></button>
       </form>
       <div className="access-note"><ShieldCheck size={18} /><span>Der Zugangscode bleibt nur für diese Sitzung im Arbeitsspeicher. Nach dem Neuladen meldest du dich erneut an.</span></div>
-      <p className="muted small-text">Ein kostenloses Backend kann nach einer Pause schlafen. Die erste Verbindung dauert dann ungefähr eine Minute; bei einem Verbindungsfehler anschließend erneut anmelden.</p>
+      <details className="muted small-text"><summary>Zugangscode verloren oder Anmeldung fehlgeschlagen?</summary><p>Prüfe zuerst deinen Passwortmanager und kopiere den vollständigen Code. Ein verlorener Code kann nicht wiederhergestellt werden; der Betreiber kann einen neuen ausstellen und den alten sperren.</p><p>Ein Verbindungsfehler bedeutet nicht, dass dein Code falsch ist. Warte kurz und versuche es erneut. Ein Serverneustart allein ändert deinen Zugangscode nicht.</p></details>
       <footer>Synthetische Daten · Kontrollierte Mock-Versuche</footer>
     </section>
   </main>;

@@ -6,24 +6,30 @@ const apiBase = hosted ? import.meta.env.VITE_API_BASE_URL : '';
 let csrfToken = '';
 let accessToken = '';
 let authenticated = false;
+let sessionRevision = 0;
+let sessionNotice = '';
 const sessionListeners = new Set<() => void>();
 export const subscribeSession = (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener); }; };
 export const sessionIsAuthenticated = () => authenticated;
+export const sessionMessage = () => sessionNotice;
 function notifySession() { for (const listener of sessionListeners) listener(); }
-export function signOut() {
-  accessToken = ''; csrfToken = ''; authenticated = false; notifySession();
+function clearSession(notice = '') {
+  sessionRevision += 1;
+  accessToken = ''; csrfToken = ''; authenticated = false; sessionNotice = notice; notifySession();
 }
+export function signOut() { clearSession(); }
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); } }
 export async function signIn(value: string) {
   const candidate = value.trim();
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(candidate)) throw new ApiError('Bitte den vollständigen Zugangscode eingeben.', 401);
-  accessToken = candidate; csrfToken = '';
+  const attempt = ++sessionRevision;
+  accessToken = candidate; csrfToken = ''; authenticated = false; sessionNotice = ''; notifySession();
   try {
     const health = await api<Health>('/api/health');
     if (typeof health.csrf_token !== 'string' || !health.csrf_token) throw new ApiError('Der Server liefert keine gültige Werkbank-Sitzung.', 0);
-    if (accessToken !== candidate) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
+    if (sessionRevision !== attempt) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
     authenticated = true; notifySession();
-  } catch (error) { if (accessToken === candidate) signOut(); throw error; }
+  } catch (error) { if (sessionRevision === attempt) signOut(); throw error; }
 }
 function endpoint(path: string) {
   // Only application paths may receive the private authorization header.
@@ -35,14 +41,17 @@ function endpoint(path: string) {
 async function checkedResponse(path: string, options: RequestInit = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const mutating = !['GET', 'HEAD'].includes(method);
+  const requestSession = sessionRevision;
   if (mutating && !csrfToken) await api<Health>('/api/health');
+  if (requestSession !== sessionRevision) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
   const headers = new Headers(options.headers);
   const requestToken = accessToken;
+  const requestCsrf = csrfToken;
   if (hosted) {
     if (!requestToken) throw new ApiError('Bitte zuerst anmelden.', 401);
     headers.set('Authorization', `Bearer ${requestToken}`);
   }
-  if (mutating) headers.set('X-Lab-Token', csrfToken);
+  if (mutating) headers.set('X-Lab-Token', requestCsrf);
   if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   let response: Response;
   try { response = await fetch(endpoint(path), { ...options, headers, credentials: hosted ? 'omit' : 'same-origin', redirect: 'error' }); }
@@ -51,20 +60,27 @@ async function checkedResponse(path: string, options: RequestInit = {}) {
     throw new ApiError(hosted ? 'Die Online-Werkbank ist nicht erreichbar. Bitte Verbindung und Serverstatus prüfen.' : 'Die lokale Werkbank ist nicht erreichbar. Prüfe, ob der Python-Prozess noch läuft.', 0);
   }
   if (!response.ok) {
-    if (hosted && response.status === 401 && accessToken === requestToken) signOut();
+    if (hosted && response.status === 401 && sessionRevision === requestSession) {
+      clearSession('Der Server akzeptiert deinen Zugangscode nicht mehr. Bitte erneut anmelden oder einen neuen Code beim Betreiber anfordern.');
+    }
     const body = await response.json().catch(() => ({}));
+    if (mutating && response.status === 403 && body.code === 'csrf_token_invalid') {
+      if (sessionRevision === requestSession && csrfToken === requestCsrf) csrfToken = '';
+      // Never replay a write automatically, even when middleware rejected it.
+      throw new ApiError('Die Serversitzung wurde erneuert. Die Aktion wurde nicht ausgeführt. Bitte die Aktion erneut ausführen; dein Zugangscode bleibt gültig.', 403);
+    }
     const detail = body.detail;
     const message = typeof detail === 'string' ? detail : Array.isArray(detail)
       ? detail.map((item: { loc?: string[]; msg?: string }) => `${item.loc?.slice(1).join('.') || 'Eingabe'}: ${item.msg || 'ungültig'}`).join(' · ')
       : `Die Anfrage konnte nicht verarbeitet werden (${response.status}).`;
     throw new ApiError(message, response.status);
   }
-  return { response, requestToken };
+  return { response, requestSession };
 }
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const { response, requestToken } = await checkedResponse(path, options);
+  const { response, requestSession } = await checkedResponse(path, options);
   const body = await response.json().catch(() => ({}));
-  if (path === '/api/health' && body.csrf_token && (!hosted || requestToken === accessToken)) csrfToken = body.csrf_token;
+  if (path === '/api/health' && typeof body.csrf_token === 'string' && sessionRevision === requestSession) csrfToken = body.csrf_token;
   return body as T;
 }
 export async function downloadFile(path: string, filename: string) {

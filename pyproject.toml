@@ -17,7 +17,7 @@ security-lab-web = "security_lab.web_cli:main"
 [project.optional-dependencies]
 web = [
     "fastapi>=0.161.1",
-    "pypdf>=6.21.2",
+    "pypdf>=6.21.4",
     "python-multipart>=0.0.32",
     "uvicorn>=0.54.0",
 ]

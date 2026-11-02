@@ -185,6 +185,20 @@ class HostedTests(unittest.TestCase):
             self.assertNotEqual(client.get("/api/health", headers=headers).json()["csrf_token"], self.mutations["X-Lab-Token"])
             self.assertEqual(len(client.get("/api/documents", headers=headers).json()["documents"]), 1)
 
+    def test_restart_keeps_access_code_valid_but_rejects_stale_mutation_token(self):
+        replacement = create_app(self.workspace, CASES,
+                                 hosted_settings=HostedSettings(PUBLIC, FRONTEND, (fingerprint(ACCESS_A),)))
+        with TestClient(replacement, base_url=PUBLIC) as client:
+            health = client.get("/api/health", headers=self.headers)
+            self.assertEqual(health.status_code, 200)
+            stale = client.post("/api/campaigns", json={}, headers=self.mutations)
+            self.assertEqual(stale.status_code, 403)
+            self.assertEqual(stale.json()["code"], "csrf_token_invalid")
+            self.assertEqual(client.get("/api/campaigns", headers=self.headers).json()["campaigns"], [])
+            refreshed = {**self.headers, "X-Lab-Token": health.json()["csrf_token"]}
+            # The refreshed request reaches validation; no campaign is started.
+            self.assertEqual(client.post("/api/campaigns", json={}, headers=refreshed).status_code, 422)
+
     def test_streamed_body_cannot_bypass_declared_length(self):
         async def app(scope, receive, send):
             while (await receive()).get("more_body"):

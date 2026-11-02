@@ -1,22 +1,30 @@
-# Kostenlose Testwerkbank im Browser
+# Online-Werkbank: GitHub Pages und Render
 
-Stand: 30. Oktober 2026. Die kostenlose Testumgebung ist auf GitHub Pages und Render veröffentlicht. Das Team hat ausdrücklich einen Betrieb ohne Kosten oder Buchungen gewählt. Die folgende Bestandsprüfung beschreibt den tatsächlich beobachteten Stand; sie ist keine Zusage dauerhafter Verfügbarkeit oder ein Ersatz für weitere Funktionstests nach Änderungen.
+Stand: 2. November 2026. Sebastian hat den bestehenden Render-Webservice selbst auf den kostenpflichtigen Compute-Plan umgestellt. Die folgende Betriebsprüfung unterscheidet diesen bestätigten Stand von noch offenen Änderungen an Anmeldung und Speicherung.
 
-| Geprüfter Bestandteil | Beobachtung am 30. Oktober 2026 |
+| Geprüfter Bestandteil | Beobachtung am 2. November 2026 |
 |---|---|
-| [Online-Werkbank](https://sxba-04.github.io/llm-agent-security-lab/) | Öffentliches Frontend mit HTTP 200 erreichbar. |
-| [Backend-Betriebsprüfung](https://llm-agent-security-lab-demo-api.onrender.com/healthz) | HTTP 200 mit ausschließlich `{"status":"ok"}`; die erste Anfrage benötigte beim Aufwecken rund 42 Sekunden. |
-| Geschützte Backend-API | `/api/health` antwortete ohne Zugangscode mit HTTP 401 und Bearer-Anforderung. CORS erlaubte die konfigurierte Origin `https://sxba-04.github.io`. |
-| Render-Konfiguration | Free-Plan, Frankfurt, eine Instanz, Vorschauinstanzen aus, Health Check `/healthz`, Branch `main`, Auto-Deploy `checksPass`. |
-| Bereitgestellter Backend-Stand | Commit `5a8652901f51ee8aa4d7780ec7e8e5d422201241`, Deployment `dep-dbhme0i9lscs739uu920` mit Status `live`. |
+| Oberfläche | [GitHub Pages](https://sxba-04.github.io/llm-agent-security-lab/), getrennt vom Python-Dienst |
+| Render-Service | `srv-dbhmac67bikc73f0cvug`, Frankfurt, eine Instanz |
+| Compute | `0.5c-512mb` (früher Starter): 0,5 CPU, 512 MB RAM; Upgrade vom Betreiber bestätigt und im Servicezustand geprüft |
+| Deployment | `dep-dbjsr6vb9u1s73c474vg`, Status `live`, Commit `5e192a2567cc9be33219247b8b4cc9aec4324662` |
+| Betriebseinstellungen | Branch `main`, Auto-Deploy `checksPass`, Health Check `/healthz`, PR-Vorschauen aus |
+| Speicherung | Startprotokoll meldet weiterhin flüchtigen Speicher; keine Disk in Serviceantwort oder Ereignishistorie nachgewiesen, keine Postgres-/Key-Value-Instanz vorhanden |
+| Fehler und Ressourcen | Keine Fehler im abgefragten Logausschnitt; ungefähr 60 MiB RAM im Leerlauf. Dies ist kein Lasttest. |
 
-Diese erneute Prüfung war lesend und ohne Zugangscode. Sie bestätigt keinen neuen authentifizierten Kampagnenlauf; der vollständige Live-Test vom 29. Oktober umfasste PDF-Download und -Import, acht Mock-Läufe sowie Archivprüfung. Der dafür verwendete temporäre Zugang wurde anschließend entfernt und seine Sperrung geprüft.
+Diese Prüfung der Render-Verwaltung und Logs war lesend. Sie bestätigt weder einen neuen authentifizierten Kampagnenlauf noch eine getestete Dauerhaftigkeit gespeicherter Belege. Die frühere Live-Prüfung vom 29. Oktober umfasste PDF-Download/-Import, acht Mock-Läufe und Archivprüfung; ihr temporärer Zugangscode wurde danach absichtlich entfernt. Die [Validierungsdokumentation](validation.md) hält diese historischen Tests fest.
+
+## Was das Upgrade ändert
+
+Der kostenpflichtige Compute-Plan bietet 0,5 statt 0,1 CPU; der Arbeitsspeicher bleibt bei 512 MB. Der Free-Ruhezustand nach Inaktivität entfällt. Das Upgrade richtet **keine persistente Disk und keine Datenbank** ein. Ohne eine solche Einrichtung gehen Dateien weiterhin bei Neustart oder Deployment verloren. Für diesen Wechsel ist kein Umbau des Versuchskerns nötig.
+
+FastAPI ist das Python-Webframework der Anwendung. **FastAPI Cloud** ist ein eigenständiger Hostinganbieter; die Nutzung von FastAPI verpflichtet nicht zu dessen Verwendung. Der bestehende Backend-Dienst läuft weiter auf Render. Eine zweite Bereitstellung bei FastAPI Cloud würde eine eigene Betriebs- und Migrationsentscheidung benötigen.
 
 ## Aufbau und Funktionsumfang
 
 GitHub Pages liefert die gebaute React-Oberfläche unter `https://sxba-04.github.io/llm-agent-security-lab/`. Die Oberfläche spricht nach Eingabe eines Zugangscodes mit dem Python-Dienst unter `https://llm-agent-security-lab-demo-api.onrender.com` über HTTPS. Dort laufen derselbe Versuchskern, die PDF-Extraktion, die Archivierung und die Bewertung wie in der lokalen Werkbank. Es wird keine zweite Versuchsauswertung in JavaScript implementiert.
 
-GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokalen Prozess braucht es deshalb **zusätzlich den laufenden Backend-Dienst**. Die gewählte kostenlose Testumgebung verwendet einen flüchtigen Workspace: **Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment verloren.** Benötigte Archive vorher herunterladen und wichtige Studienbelege außerhalb dieser Umgebung sichern. Die Oberfläche bleibt im Mock-Modus; diese Veröffentlichung aktiviert weder echte Modellaufrufe noch ein API-Budget.
+GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokalen Prozess braucht es deshalb **zusätzlich den laufenden Backend-Dienst**. Die bestehende Testumgebung verwendet weiterhin einen flüchtigen Workspace: **Hochgeladene PDFs, Versuche und Bewertungen gehen bei Neustart oder Deployment verloren.** Benötigte Archive vorher herunterladen und wichtige Studienbelege außerhalb dieser Umgebung sichern. Die Oberfläche bleibt im Mock-Modus; diese Veröffentlichung aktiviert weder echte Modellaufrufe noch ein API-Budget.
 
 | Bestandteil | Betrieb und Zugriff |
 |---|---|
@@ -27,19 +35,19 @@ GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokal
 
 ## 1. Backend bereitstellen
 
-`render.yaml` beschreibt einen einzelnen Python-Webservice `llm-agent-security-lab-demo-api` in Frankfurt mit `plan: free`, ohne Disk, Datenbank oder zusätzlichen Worker. Der Workspace liegt unter `/tmp/security-lab-demo`; `LAB_STORAGE_MODE=ephemeral` aktiviert den Speicherhinweis. Der bestehende Dienst wurde direkt über die Render-Verwaltung eingerichtet; seine dortige Konfiguration ist die Quelle der tatsächlichen Einstellungen. Änderungen an `render.yaml` werden dadurch nicht automatisch als Infrastrukturänderungen übernommen. Eine spätere Blueprint-Verwaltung muss bewusst eingerichtet werden; keinen zweiten Dienst für dieselbe Werkbank anlegen.
+`render.yaml` beschreibt einen einzelnen Python-Webservice `llm-agent-security-lab-demo-api` in Frankfurt mit `plan: 0.5c-512mb`, ohne Disk, Datenbank oder zusätzlichen Worker. Der Workspace liegt unter `/tmp/security-lab-demo`; `LAB_STORAGE_MODE=ephemeral` aktiviert den Speicherhinweis. Der bestehende Dienst wurde direkt über die Render-Verwaltung eingerichtet; seine dortige Konfiguration ist die Quelle der tatsächlichen Einstellungen. Änderungen an `render.yaml` werden dadurch nicht automatisch als Infrastrukturänderungen übernommen. Eine spätere Blueprint-Verwaltung muss bewusst eingerichtet werden; keinen zweiten Dienst für dieselbe Werkbank anlegen.
 
-**Kostenfreiheit vor Erstellung prüfen:** Den vom Nutzer bestätigten Render-Workspace verwenden, den Hobby-Workspace und den Free-Compute-Plan kontrollieren und sicherstellen, dass kein Zahlungsmittel hinterlegt ist. Der Hobby-Workspace allein macht kostenpflichtige Serverressourcen nicht kostenlos. Bei einer Zahlungsaufforderung, kostenpflichtigen Ressource oder unklarer Abrechnung anhalten; nichts buchen oder automatisch hochstufen. Ohne Zahlungsmittel pausiert Render beim Überschreiten der kostenlosen Transfergrenze den Dienst und beim Ausschöpfen der Build-Minuten weitere Builds. Die Freikontingente sind kein Auftrag, anschließend Ressourcen zuzukaufen.
+**Bestehenden Dienst weiterverwenden:** Der kostenpflichtige Compute-Plan ist durch die Betreiberentscheidung gedeckt. Das ist keine Freigabe für zusätzliche Dienste, größere Pläne, Disks oder Datenbanken. Solche Änderungen benötigen eine konkrete Entscheidung über Kosten, Migration und Wiederherstellung. Der aktuelle Dienst benötigt keinen Ersatz und keinen zweiten Backend-Host.
 
 1. Render mit dem eigenen GitHub-Konto verbinden und diesem Repository Zugriff geben. Nicht nur die öffentliche Repository-URL importieren: diese Alternative unterstützt keine automatischen Deployments.
-2. Die oben genannten Free-Einstellungen und die Kosten-/Ressourcenübersicht prüfen. Der Branch ist `main`; automatische Updates auf erfolgreiche CI-Prüfungen einstellen. Beim Blueprint entspricht dies `autoDeployTrigger: checksPass`. Keine Disk, Datenbank, kostenpflichtigen Zusatzdienste oder Vorschauumgebungen anlegen.
+2. Die oben genannten Einstellungen und die Kosten-/Ressourcenübersicht des bestehenden Dienstes prüfen. Der Branch ist `main`; automatische Updates auf erfolgreiche CI-Prüfungen einstellen. Beim Blueprint entspricht dies `autoDeployTrigger: checksPass`. Zusätzliche Ressourcen erst nach einer entsprechenden Projektentscheidung einrichten.
 3. Für jeden Autor einen unabhängigen Zugangscode lokal erzeugen und dessen SHA-256-Hash als `LAB_ACCESS_TOKEN_HASHES` konfigurieren. Ein erster Code genügt zur Einrichtung; weitere Hashes können später kommagetrennt ergänzt werden. Die echten Codes gehören ausschließlich zu den jeweiligen Autoren.
 4. `LAB_WORKSPACE=/tmp/security-lab-demo` und `LAB_STORAGE_MODE=ephemeral` setzen. Der Dienst erstellt seine Arbeitsverzeichnisse selbst; es wird keine persistente Disk eingehängt.
 5. Nach erfolgreichem Backend-Deployment dessen HTTPS-Adresse übernehmen. `/healthz` muss erreichbar sein; `/api/cases` muss ohne Zugangscode mit HTTP 401 antworten. Die authentifizierte `/api/health`-Antwort muss `storage_mode: ephemeral` und `mode: mock` enthalten. Anschließend die Pages-Verbindung und den Speicherhinweis tatsächlich im Browser prüfen.
 
 Die Vorlage verwendet das unveränderte Python-Lockfile. Der Hosting-Start erfolgt durch `python -m security_lab.hosted_cli`; der übliche lokale Launcher wird nicht für eine öffentliche Freigabe umkonfiguriert. Es bleibt bei einer Instanz und einem Worker. Mehrere Worker oder horizontale Skalierung sind mit den vorhandenen In-Process-Sperren und der dateibasierten Speicherung nicht unterstützt.
 
-Die Free-Instanz stellt 512 MB RAM bereit. Das Labor lädt keine Modellgewichte; ein gewöhnlicher Mock-Ablauf ist deshalb ein sinnvoller Test für diese kleine Instanz. Das ist noch kein Nachweis, dass beliebig große oder parallele PDF-Importe unter dieser Speichergrenze gelingen. Die tatsächliche Ressourcennutzung nach Bereitstellung prüfen und Fehler offen ausweisen; keine automatische kostenpflichtige Vergrößerung.
+Der aktuelle Plan stellt 512 MB RAM bereit. Das Labor lädt keine Modellgewichte; ein gewöhnlicher Mock-Ablauf ist deshalb ein sinnvoller Test für diese kleine Instanz. Das ist noch kein Nachweis, dass beliebig große oder parallele PDF-Importe unter dieser Speichergrenze gelingen. Die tatsächliche Ressourcennutzung nach Bereitstellung prüfen und Fehler offen ausweisen; zusätzliche Ressourcen nicht allein aufgrund des kostenpflichtigen Plans aktivieren.
 
 ### Zugangscodes ohne Speicherung im Repository erzeugen
 
@@ -53,7 +61,26 @@ Den Code unmittelbar in einem Passwortmanager speichern; nur den Server-Hash zur
 
 Der Browser hält den eingegebenen Code nur im Arbeitsspeicher. Abmelden oder Neuladen erfordert eine erneute Eingabe; es gibt keine Speicherung in `localStorage` oder `sessionStorage`. PDF- und Archivdownloads übertragen die Authentifizierung als Header, niemals als URL-Parameter.
 
-Bei Verlust oder vermuteter Offenlegung einen neuen Code erzeugen, den alten Hash aus `LAB_ACCESS_TOKEN_HASHES` entfernen und die Backend-Konfiguration neu bereitstellen. Ein Frontend-Neubau ist für die Rotation nicht nötig.
+### Verlorener Code und ungültige Sitzung
+
+Der persönliche Code wird durch den obigen Generator erstellt, nicht von GitHub Pages oder Render vergeben. Der Server speichert nur seinen SHA-256-Hash und kann den ursprünglichen Code daraus nicht zurückgewinnen. Der Code schützt auch Downloads und Änderungen; ohne einen solchen Zugriffsschutz wäre der öffentlich erreichbare Dienst für fremde Personen bedienbar.
+
+Ein Backend-Neustart ändert den konfigurierten persönlichen Code nicht. Er erzeugt jedoch ein neues internes Sitzungstoken für schreibende Anfragen. Bei einem als ungültig erkannten Sitzungstoken verwirft der Client nur dieses interne Token und zeigt an, dass die angeforderte Änderung nicht ausgeführt wurde. Die nächste bewusst ausgelöste Aktion lädt zuerst ein neues Sitzungstoken; sie benötigt dafür keine erneute Eingabe des weiterhin gültigen persönlichen Codes. Schreibaktionen werden nicht automatisch wiederholt. Eine echte HTTP-401-Antwort bedeutet dagegen, dass der übermittelte persönliche Code fehlt oder keinem konfigurierten Hash entspricht. Netzwerk-, TLS- und CORS-Fehler können ebenfalls die Anmeldung verhindern und sind nicht automatisch ein falscher Code.
+
+Bei verlorenem Code:
+
+1. Einen neuen Code lokal erzeugen und im Passwortmanager sichern.
+2. Die vorhandenen `LAB_ACCESS_TOKEN_HASHES` im Render-Dienst prüfen. Den Hash von Jonahs weiterhin gültigem Zugang erhalten. Nur den eindeutig zugeordneten verlorenen oder kompromittierten Hash ersetzen; bei unklarer Zuordnung beide Zugänge gemeinsam erneuern.
+3. Nur die Hashliste in der Backend-Konfiguration aktualisieren und den Deploymentabschluss abwarten. Vor dem dadurch ausgelösten Neustart wichtige Belege exportieren.
+4. Mit dem neuen Code anmelden und geschützte Lese-/Schreibfunktionen prüfen. Wenn der alte Code noch verfügbar ist, seine Ablehnung kontrollieren.
+
+Ein Frontend-Neubau ist für diese Rotation nicht nötig. Niemals zur Wiederherstellung den Zugriffsschutz ausschalten oder einen Klartextcode in GitHub Actions beziehungsweise Pages eintragen.
+
+### Zugangscode oder Benutzerkonto
+
+Für die zwei vertrauenswürdigen Autoren reichen getrennte, widerrufbare Zugangscodes zunächst aus. Sie sind jedoch keine Benutzerkonten und belegen weder die Person hinter einer Bewertung noch getrennte Rollen. Ein Konto-Login wäre ein eigenes Feature mit Sitzungsverwaltung, Abmeldung, Widerruf und klaren Berechtigungen. Für einen späteren Ausbau bietet sich ein etablierter Loginanbieter mit ausdrücklicher Freigabeliste der beiden Konten an. Öffentliche Registrierung und selbst verwaltete Passwortlisten wären für diesen Umfang unnötiger zusätzlicher Betrieb.
+
+Ein solcher Wechsel muss die bestehenden Host-/Origin-Prüfungen, den Schutz von Downloads und Änderungen sowie die Trennung zwischen Betreiberzugang und experimenteller Autorisierung P erhalten. Der aktuelle SHA-256-Vergleich ist für zufällige Codes mit 256 Bit Entropie gedacht; er darf nicht als Passwortspeicherung für kurze, selbst gewählte Kontopasswörter wiederverwendet werden.
 
 ### Backend-Einstellungen
 
@@ -62,8 +89,8 @@ Bei Verlust oder vermuteter Offenlegung einen neuen Code erzeugen, den alten Has
 | `LAB_PUBLIC_ORIGIN` | Eigene HTTPS-Origin ohne Pfad. Auf Render kann sie entfallen; dann wird `RENDER_EXTERNAL_URL` verwendet. Bei eigener Domain explizit setzen. |
 | `LAB_FRONTEND_ORIGIN` | `https://sxba-04.github.io` – ohne Repository-Pfad und ohne abschließenden Slash. |
 | `LAB_ACCESS_TOKEN_HASHES` | Kommagetrennte SHA-256-Hashes der zufälligen Zugangscodes, im Backend-Secret-Speicher konfigurieren. |
-| `LAB_WORKSPACE` | `/tmp/security-lab-demo` für die gewählte kostenlose Testumgebung. Absoluter Pfad, keine dauerhafte Speicherung. |
-| `LAB_STORAGE_MODE` | `ephemeral` für die kostenlose Testumgebung; nur `ephemeral` und `persistent` sind gültig. Ohne Angabe gilt `persistent`. Die Einstellung beschreibt den vorgesehenen Speicherlebenszyklus; sie richtet selbst keine Disk ein und löscht keine Dateien. |
+| `LAB_WORKSPACE` | `/tmp/security-lab-demo` für die bestehende flüchtige Testumgebung. Absoluter Pfad, keine dauerhafte Speicherung. |
+| `LAB_STORAGE_MODE` | `ephemeral` für die bestehende Testumgebung; nur `ephemeral` und `persistent` sind gültig. Ohne Angabe gilt `persistent`. Die Einstellung beschreibt den vorgesehenen Speicherlebenszyklus; sie richtet selbst keine Disk ein und löscht keine Dateien. |
 | `PORT` | Vom Hostinganbieter bereitgestellter HTTP-Port hinter dessen HTTPS-Proxy. |
 
 Die Origin-/Hostprüfung bleibt aktiv. CORS erlaubt ausschließlich die konfigurierte Frontend-Origin; auch Fehlermeldungen und Preflight-Anfragen müssen diesen Vertrag erfüllen. Die Browser-Anmeldung verwendet keine Drittanbieter-Cookies. Der Hoster beendet TLS vor dem Python-Dienst; die öffentliche HTTPS-Origin wird explizit validiert, statt beliebigen weitergeleiteten Headern zu vertrauen.
@@ -85,23 +112,33 @@ Neue Änderungen auf `main` lösen den Frontend-Workflow aus. GitHub Pages verö
 
 Beide Dienste veröffentlichen getrennt; sie wechseln nicht atomar im selben Moment. API-Änderungen müssen deshalb während der Übergangsphase mit der jeweils anderen Version kompatibel bleiben. Nach Änderungen an CI oder API den veröffentlichten Pages-Stand und das Render-Deployment desselben `main`-Commits kontrollieren. Die obige Bestandsprüfung hält einen Zeitpunkt fest und aktualisiert sich nicht automatisch.
 
-Der kostenlose Dienst schläft nach 15 Minuten ohne eingehenden Verkehr ein; die nächste Verbindung kann etwa eine Minute zum Aufwecken benötigen. Ein offen benutzter Browser erzeugt reguläre Anfragen. Es wird kein zusätzlicher Keep-alive-Dienst eingerichtet, um die Free-Grenzen zu umgehen.
+Der aktuelle kostenpflichtige Dienst verwendet keinen Free-Ruhezustand. Ein zusätzlicher Keep-alive-Dienst ist nicht erforderlich. Nach Deployments trotzdem Health Check, Authentifizierung und den tatsächlich laufenden Commit prüfen.
 
-Bei Ruhezustand, Neustart oder Deployment gehen die Dateien des flüchtigen Workspace verloren. Das betrifft auch bestätigte PDF-Texte, Bewertungen und mögliche Unterbrechungsnachweise. Vor geplanten Updates Versuche beenden und benötigte Archive herunterladen. Die Oberfläche zeigt auf allen Arbeitsseiten einen Hinweis. Ein laufender Mock-Versuch kann abgebrochen werden und wird nicht automatisch wiederholt. Falls die Belege gelöscht wurden, kann daraus kein vollständiger Lauf rekonstruiert oder als Erfolg ausgegeben werden. Nach einem Backend-Neustart die Seite neu laden und erneut anmelden, wenn das Sitzungstoken nicht mehr gültig ist.
+Bei Neustart oder Deployment gehen die Dateien des flüchtigen Workspace verloren. Das betrifft auch bestätigte PDF-Texte, Bewertungen und mögliche Unterbrechungsnachweise. Vor geplanten Updates Versuche beenden und benötigte Archive herunterladen. Die Oberfläche zeigt auf allen Arbeitsseiten einen Hinweis. Ein laufender Mock-Versuch kann abgebrochen werden und wird nicht automatisch wiederholt. Falls die Belege gelöscht wurden, kann daraus kein vollständiger Lauf rekonstruiert oder als Erfolg ausgegeben werden. Nach einem Backend-Neustart kann eine bereits geöffnete Seite noch das alte Sitzungstoken besitzen. Den entsprechenden Hinweis beachten und die gewünschte Aktion bewusst erneut auslösen; es gibt keine automatische Wiederholung von Änderungen. Ein Neuladen der Seite beendet dagegen die nur im Arbeitsspeicher gehaltene Anmeldung und erfordert den persönlichen Code erneut.
 
 Die konfigurierten Zugangscodes erlauben denselben gemeinsamen Arbeitsbereich. Sie sind keine Rollenverwaltung: beide Autoren können Kampagnen und Bewertungsansichten öffnen. Die bestehende Trennung in Bewertung A/B unterstützt den Arbeitsablauf, garantiert aber keine technische Geheimhaltung gegenüber dem jeweils anderen Autor. Für unabhängige Urteile die getrennten Bewertungsansichten und organisatorischen Regeln weiter einhalten.
 
-Nur synthetische Versuchsdaten verwenden. Benötigte vollständige Kampagnenarchive rechtzeitig exportieren und die Wiederherstellung lokal prüfen. Separat hochgeladene Quellen ohne Kampagnenzuordnung müssen zusätzlich außerhalb der Umgebung vorhanden sein. Der kostenlose Dienst darf nicht die einzige Ablage wichtiger Studienbelege sein. Beim Wechsel des Hostinganbieters PDF-Originale, Bewertungen und Provenienz gemeinsam mit den Laufdaten übernehmen.
+Nur synthetische Versuchsdaten verwenden. Benötigte vollständige Kampagnenarchive rechtzeitig exportieren und die Wiederherstellung lokal prüfen. Separat hochgeladene Quellen ohne Kampagnenzuordnung müssen zusätzlich außerhalb der Umgebung vorhanden sein. Der flüchtige Dienst darf nicht die einzige Ablage wichtiger Studienbelege sein. Beim Wechsel des Hostinganbieters PDF-Originale, Bewertungen und Provenienz gemeinsam mit den Laufdaten übernehmen.
 
-### Optional später: dauerhafte Speicherung
+### Nächste mögliche Änderung: dauerhafte Speicherung
 
-Dauerhafte gemeinsame Belege können mit einer separat freigegebenen kostenpflichtigen Instanz und Disk oder mit einer gesondert implementierten externen Speicherung betrieben werden. Dafür sind Kosten, Datenmigration und Wiederherstellung neu zu prüfen. Bei einer Render-Disk könnte der Workspace beispielsweise unter `/var/data/security-lab` liegen und `LAB_STORAGE_MODE=persistent` gelten. Die bloße Umschaltung der Variablen macht den Speicher nicht dauerhaft. Eine frühere 2-GB-Vorlage war eine Leistungsreserve, keine nachgewiesene technische Mindestanforderung. Sie ist nicht mehr die Standardvorlage und wird nicht bereitgestellt.
+Die Anwendung unterstützt einen frei konfigurierten Workspace und den Modus `persistent` bereits. Für den derzeitigen Einprozessbetrieb ist eine Render-Disk eine passende, kleine Erweiterung; eine Datenbankmigration ist dafür nicht erforderlich. Die zusätzliche Disk ist ein separat berechnetes Produkt und wurde noch nicht eingerichtet.
+
+Der konkrete Umstieg besteht aus folgenden Schritten:
+
+1. Benötigte Kampagnen inklusive Quellen, Bewertungen und Provenienz exportieren, Archive prüfen und eine lokale Wiederherstellung testen. Separat hochgeladene, noch nicht verwendete Quellen zusätzlich sichern.
+2. Größe, Zusatzkosten und Mountpfad der Disk festlegen; eine neue Disk kann später vergrößert, aber nicht verkleinert werden. Nur der Mountpfad ist persistent.
+3. Die genehmigte Disk am bestehenden Dienst beispielsweise unter `/var/data` anlegen. Dieser Vorgang löst ein Deployment aus; die alten `/tmp`-Dateien werden dadurch nicht automatisch übernommen.
+4. `LAB_WORKSPACE=/var/data/security-lab` und erst zusammen mit der tatsächlichen Disk `LAB_STORAGE_MODE=persistent` setzen. Bei einer bereits befüllten Umgebung die gesicherten Archive kontrolliert wiederherstellen.
+5. Einen synthetischen Testbeleg anlegen, einen kontrollierten Neustart durchführen und den unveränderten Beleg anschließend prüfen. Erst dann die Persistenz als verifiziert dokumentieren.
+
+Die bloße Umschaltung der Variablen macht den Speicher nicht dauerhaft. Eine Disk erlaubt nur eine Instanz und bringt kurze Unterbrechungen bei Deployments mit sich; dies passt zur bestehenden Architektur, muss aber in der Versuchsplanung berücksichtigt werden. Render-Snapshots ersetzen keine externen, geprüften Kampagnenarchive. Eine spätere Mehrbenutzer- oder Mehrinstanzarchitektur würde zusätzlich gemeinsame Sperren, Jobs und Datenhaltung benötigen.
 
 ## Sprachmodell und Anwendungskern
 
 Für echte Versuche kann das Modell bei einem API-Anbieter wie OpenAI laufen. Der eigene Python-Dienst erstellt den Modellkontext, übermittelt die Anfrage, verarbeitet vorgeschlagene Toolaufrufe über das Gateway und protokolliert sowie bewertet die beobachteten synthetischen Wirkungen. Das Modell führt die Ticketoperationen nicht eigenständig beim Anbieter aus: Der Anwendungskern kontrolliert sie und gibt die Toolergebnisse als Kontext zurück. Dafür ist kein selbst gehostetes LLM und keine eigene GPU erforderlich.
 
-Die eigene Anwendung benötigt weiterhin CPU und Arbeitsspeicher für HTTP-Anfragen, PDFs, Versuchssteuerung, Dateien und Auswertung. API-Nutzung kann zusätzlich beim Modellanbieter kostenpflichtig sein, unabhängig vom kostenlosen Render-Betrieb. Die jetzige Oberfläche startet ausschließlich Mock-Läufe. Echte Modellaufrufe bleiben dem separat freizugebenden Pilot mit Anbieter-Konfiguration, Budgetkontrolle und nachgewiesener äußerer Isolation vorbehalten. Modellschlüssel gehören ausschließlich ins Backend, niemals in GitHub Pages, Browsercode oder den Labor-Zugangscode.
+Die eigene Anwendung benötigt weiterhin CPU und Arbeitsspeicher für HTTP-Anfragen, PDFs, Versuchssteuerung, Dateien und Auswertung. API-Nutzung kann zusätzlich beim Modellanbieter kostenpflichtig sein, unabhängig von den Render-Hostingkosten. Die jetzige Oberfläche startet ausschließlich Mock-Läufe. Echte Modellaufrufe bleiben dem separat freizugebenden Pilot mit Anbieter-Konfiguration, Budgetkontrolle und nachgewiesener äußerer Isolation vorbehalten. Modellschlüssel gehören ausschließlich ins Backend, niemals in GitHub Pages, Browsercode oder den Labor-Zugangscode.
 
 ## Prüfung der Hosting-Variante
 
@@ -131,7 +168,8 @@ Der Testbuild liegt separat in `frontend/dist-hosted`; ein vorhandener lokaler B
 - [GitHub Pages mit eigenen Workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 - [Render-Webservices und Git-Anbindung](https://render.com/docs/web-services)
 - [Render-Deployments und erfolgreiche CI-Prüfungen](https://render.com/docs/deploys)
-- [Render Free: Ruhezustand, Datenverlust und Kontingente](https://render.com/docs/free)
+- [Render Compute: CPU und RAM je Plan](https://render.com/docs/compute-plans)
+- [Render Free: früherer Ruhezustand und Kontingente](https://render.com/docs/free)
 - [Render-Preise: Workspace und Compute getrennt](https://render.com/pricing)
 - [Persistente Disks und Deploymentgrenzen](https://render.com/docs/disks)
 - [Render-Blueprint-Spezifikation](https://render.com/docs/blueprint-spec)

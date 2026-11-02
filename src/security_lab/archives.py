@@ -17,9 +17,11 @@ import tempfile
 from typing import Any
 import zipfile
 
-from .batch import digest, evidence_completeness, load_results, verify_document_sources
+from .batch import MANIFEST_FILE, digest, evidence_completeness, load_results, verify_document_sources
 
 INDEX_NAME = "archive-index.json"
+UNSAFE_ARCHIVE_PATH = "Unsafe archive path"
+CAMPAIGN_CHANGED_DURING_EXPORT = "Campaign changed during export"
 MAX_FILES = 10000
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
@@ -29,13 +31,13 @@ MAX_COMPRESSION_RATIO = 1000
 
 def _safe_name(name: str) -> str:
     if not isinstance(name, str) or not name or len(name) > 500 or "\\" in name or ":" in name:
-        raise ValueError("Unsafe archive path")
+        raise ValueError(UNSAFE_ARCHIVE_PATH)
     parts = name.split("/")
     if PurePosixPath(name).is_absolute() or any(part in {"", ".", ".."} for part in parts):
-        raise ValueError("Unsafe archive path")
+        raise ValueError(UNSAFE_ARCHIVE_PATH)
     for part in parts:
         if any(ord(char) < 32 for char in part) or part.endswith((" ", ".")):
-            raise ValueError("Unsafe archive path")
+            raise ValueError(UNSAFE_ARCHIVE_PATH)
         # Reject Windows device names and case-insensitive path collisions.
         if part.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}:
             raise ValueError("Unsafe Windows archive path")
@@ -69,7 +71,7 @@ def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[t
     relative = path.relative_to(directory)
     # These reserved files were already verified against the campaign manifest
     # and source hashes before reviewing supplementary artifacts.
-    if relative.as_posix() in {"manifest.json", "cases.snapshot.json"}:
+    if relative.as_posix() in {MANIFEST_FILE, "cases.snapshot.json"}:
         return True
     if relative.as_posix() in verified_paths:
         return True
@@ -124,7 +126,7 @@ def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], 
     from .review import adjudicate_review, combine_reviews, validate_combined
 
     files = [path for path in directory.rglob("*") if path.is_file()]
-    manifest = _json((directory / "manifest.json").read_bytes())
+    manifest = _json((directory / MANIFEST_FILE).read_bytes())
     verified_paths = {item["path"] for item in manifest["runs"]}
     verified_paths.update(f"sources/{identifier}/{name}" for identifier in document_ids
                           for name in ("document.json", "confirmation.json"))
@@ -214,7 +216,7 @@ def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], 
 
 def _campaign_check(directory: Path) -> dict[str, Any]:
     results = load_results(directory)
-    manifest = _json((directory / "manifest.json").read_bytes())
+    manifest = _json((directory / MANIFEST_FILE).read_bytes())
     if manifest["state"] == "running":
         raise ValueError("An active or unclosed campaign cannot be archived")
     cases = _json((directory / "cases.snapshot.json").read_bytes())
@@ -376,20 +378,20 @@ def export_campaign(directory: str | Path, output_path: str | Path) -> dict[str,
             for name, path, original_stat in files:
                 current = path.stat()
                 if (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat or path.is_symlink():
-                    raise ValueError("Campaign changed during export")
+                    raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
                 data = path.read_bytes()
                 if len(data) > MAX_FILE_BYTES:
-                    raise ValueError("Campaign changed during export")
+                    raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
                 index["files"][name] = {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
                 archive.writestr(name, data)
             archive.writestr(INDEX_NAME, json.dumps(index, ensure_ascii=True, indent=2, allow_nan=False).encode("utf-8"))
         current_files = {p.relative_to(directory).as_posix() for p in directory.rglob("*") if not p.is_dir()}
         if current_files != {name for name, _, _ in files}:
-            raise ValueError("Campaign changed during export")
+            raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
         for _, path, original_stat in files:
             current = path.stat()
             if path.is_symlink() or (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat:
-                raise ValueError("Campaign changed during export")
+                raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
         report = verify_archive(temp_path)
         # Publish only complete, synced bytes. Like write_json_new, a
         # same-directory hard link is atomic and never replaces a rival output.

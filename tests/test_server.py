@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 try:
     from fastapi.testclient import TestClient
     import pypdf
+    from security_lab.hosted import HostedSettings
     from security_lab.server import create_app
 except ImportError:
     TestClient = None
@@ -90,6 +91,60 @@ class ServerTests(unittest.TestCase):
                 self.assertEqual(response.json()["detail"], "Lokales Sitzungstoken fehlt oder ist ungültig.")
                 self.assertFalse(self.app.state.jobs.running)
                 self.assertEqual(self.app.state.jobs.list(), [])
+
+    def test_local_host_parsing_preserves_authority_boundary(self):
+        for host in ("localhost:8080", "127.0.0.1:8080", "[::1]:8080"):
+            with self.subTest(allowed_host=host):
+                response = self.client.get("/api/health", headers={"Host": host, "Origin": "http://" + host})
+                self.assertEqual(response.status_code, 200, response.text)
+        for host in ("user@localhost", "localhost/path", "localhost?next=evil", "localhost#fragment",
+                     "localhost:invalid", "localhost:65536", "[::1", "localhost.evil.example"):
+            with self.subTest(rejected_host=host):
+                response = self.client.get("/api/health", headers={"Host": host})
+                self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(self.client.get("/api/health", headers=[("Host", "localhost"),
+                                                               ("Host", "127.0.0.1")]).status_code, 403)
+        self.assertEqual(self.client.get("/api/health", headers={"Sec-Fetch-Site": "cross-site"}).status_code, 403)
+        for declared_length in ("-1", "not-a-number"):
+            with self.subTest(content_length=declared_length):
+                response = self.client.post("/api/campaigns", json=self.body,
+                                            headers={**self.headers, "Content-Length": declared_length})
+                self.assertEqual(response.status_code, 413, response.text)
+        self.assertEqual(self.app.state.jobs.list(), [])
+
+    def test_api_error_contract_keeps_docs_private_and_existing_statuses(self):
+        schema = self.app.openapi()
+        paths = schema["paths"]
+        invalid = self.client.post("/api/campaigns", json={**self.body, "case_ids": ["missing"]},
+                                   headers=self.headers)
+        missing = self.client.get("/api/campaigns/not-a-path")
+        for response, route, method in ((invalid, "/api/campaigns", "post"),
+                                         (missing, "/api/campaigns/{campaign_id}", "get")):
+            with self.subTest(route=route, status=response.status_code):
+                self.assertIn(response.status_code, (400, 404))
+                contract = paths[route][method]["responses"][str(response.status_code)]
+                self.assertEqual(contract["content"]["application/json"]["schema"]["$ref"],
+                                 "#/components/schemas/APIError")
+                self.assertIsInstance(response.json()["detail"], str)
+        # Shared state conflicts are declared only for the operations that can
+        # reject active work, simultaneous extraction or frozen review drafts.
+        for route, method in (("/api/campaigns", "post"),
+                              ("/api/campaigns/{campaign_id}/archive", "get"),
+                              ("/api/campaigns/{campaign_id}/review-export", "post"),
+                              ("/api/documents", "post"),
+                              ("/api/reviews/{review_set_id}/ratings/{slot}", "put"),
+                              ("/api/reviews/{review_set_id}/combine", "post")):
+            self.assertIn("409", paths[route][method]["responses"])
+        self.assertNotIn("401", paths["/api/health"]["get"]["responses"])
+        for route in ("/docs", "/redoc", "/openapi.json"):
+            self.assertEqual(self.client.get(route).status_code, 404)
+        hosted_settings = HostedSettings("https://api.example.test", "https://pages.example.test", ("0" * 64,))
+        hosted_app = create_app(Path(self.temp.name) / "hosted", CASES, hosted_settings=hosted_settings)
+        self.addCleanup(hosted_app.state.jobs.shutdown)
+        self.assertIn("401", hosted_app.openapi()["paths"]["/api/health"]["get"]["responses"])
+        local_app = create_app(Path(self.temp.name) / "local-after-hosted", CASES)
+        self.addCleanup(local_app.state.jobs.shutdown)
+        self.assertNotIn("401", local_app.openapi()["paths"]["/api/health"]["get"]["responses"])
 
     def test_frontend_paths_cannot_escape_build(self):
         frontend = Path(self.temp.name) / "frontend"

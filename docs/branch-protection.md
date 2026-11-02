@@ -2,6 +2,8 @@
 
 Am **29. Oktober 2026** wurde [Protect main, Ruleset 26123924](https://github.com/sxba-04/llm-agent-security-lab/rules/26123924) tatsächlich aktiviert. Anschließend wurden die gespeicherte Regel samt Ziel `refs/heads/main`, allen vier Checks und leerer Bypass-Liste sowie `protected: true` über GitHub geprüft. `current_user_can_bypass` lautet `never`.
 
+Am **2. November 2026** wurde das weiterhin aktive Ruleset erneut gelesen: Es verlangt inzwischen sieben Pflichtprüfungen und weiterhin einen aktuellen Basisstand. Die folgende Tabelle beschreibt diese erneute Prüfung; die vier Checks oben gehören zum historischen Einrichtungsstand.
+
 Die Konfiguration ist als [importierbares Ruleset](../configs/github-main-ruleset.json) versioniert. **Eine JSON-Datei im Repository aktiviert allein keinen Schutz.** Die folgenden Einrichtungsschritte dienen der nachvollziehbaren Wiederherstellung; die bereits aktive Regel nicht doppelt anlegen.
 
 ## Aktivierter Zustand
@@ -11,8 +13,8 @@ Die Konfiguration ist als [importierbares Ruleset](../configs/github-main-rulese
 | Ziel | Ausschließlich `refs/heads/main` |
 | Enforcement | Active |
 | Änderungen | Pull Request erforderlich |
-| Pflichtprüfungen | `test (ubuntu-latest)`, `test (windows-latest)`, `frontend (ubuntu-latest)`, `frontend (windows-latest)` |
-| Herkunft der Checks | GitHub Actions, App-ID 15368; im Repository tatsächlich geprüft |
+| Pflichtprüfungen | `test (ubuntu-latest)`, `test (windows-latest)`, `frontend (ubuntu-latest)`, `frontend (windows-latest)`, `Dependency review`, `build`, `CodeQL` |
+| Herkunft der Checks | Im Ruleset festgelegte Integrationen; bei einer Wiederherstellung die Herkunft je Check aus der versionierten Konfiguration übernehmen |
 | Aktueller Basisstand | Vor dem Merge erforderlich |
 | Offene Review-Gespräche | Müssen erledigt sein |
 | Force-Push und Löschen | Verboten |
@@ -55,7 +57,7 @@ Der Erstellungsaufruf erfordert `Administration: write`. Eine erfolgreiche GitHu
 
 ## Zusammenarbeit danach
 
-Weiterhin auf Aufgabenbranches arbeiten. Vor dem Merge müssen die vier CI-Jobs erfolgreich und der Branch aktuell sein. Dazu kommen die dokumentierten Codex-Reviews. Bei geändertem Basisstand den Aufgabenbranch regulär aktualisieren, erneut prüfen lassen und dann über den PR mergen. Kein Force-Push auf `main` und keine Abschaltung der Regel für einen bequemen Merge.
+Weiterhin auf Aufgabenbranches arbeiten. Vor dem Merge müssen die konfigurierten Pflichtprüfungen erfüllt und der Branch aktuell sein. `neutral` oder `skipped` sind als solche auszuweisen und nicht als ausgeführte erfolgreiche Analyse zu beschreiben. Dazu kommen die dokumentierten Codex-Reviews. Bei geändertem Basisstand den Aufgabenbranch regulär aktualisieren, erneut prüfen lassen und dann über den PR mergen. Kein Force-Push auf `main` und keine Abschaltung der Regel für einen bequemen Merge.
 
 ## Offizielle Referenzen
 
