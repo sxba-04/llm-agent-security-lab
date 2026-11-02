@@ -137,13 +137,32 @@ technische Sicherheitsprüfung prüfte State/PKCE, Konto-ID-Freigaben, Sitzungsw
 Fehlerfälle und den Erhalt der Zugangscode-Anmeldung; die lokalen Testbelege stehen
 am zugehörigen PR und in der Validierungsdokumentation.
 
-Wiki-Startseite und Navigation wurden veröffentlicht. OAuth-App-Registrierung und
-Render-Disk sind noch nicht abgeschlossen: Die automatische Freigabeprüfung hielt
-das Absenden der vorbereiteten OAuth-Registrierung für eine konkrete
-Aktionsbestätigung an; die Render-Verwaltung benötigt noch eine Browseranmeldung.
-Es wurden dabei weder OAuth-App/Secret noch Disk angelegt. Die bestehende flüchtige
-Laufzeitkonfiguration bleibt erhalten. Das ist kein Nachweis einer bereits
-aktivierten GitHub-Anmeldung oder dauerhaften Speicherung.
+Wiki-Startseite und Navigation wurden veröffentlicht. Zum Abschluss dieses ersten
+Schritts waren OAuth-App-Registrierung und Render-Disk noch nicht abgeschlossen:
+Die automatische Freigabeprüfung hielt das Absenden der vorbereiteten
+OAuth-Registrierung für eine konkrete Aktionsbestätigung an; der Zugriff auf die
+Render-Verwaltung war noch nicht angemeldet. Es wurden in diesem Schritt weder
+OAuth-App/Secret noch Disk angelegt. Die anschließende Speichereinrichtung ist
+unten getrennt dokumentiert; die GitHub-Anmeldung bleibt noch deaktiviert.
 
 Die Beiträge enthalten keine echten Modellaufrufe oder menschlichen Bewertungen.
 Fachliche Autorenabnahme und unabhängige Bewertung bleiben Aufgaben des Teams.
+
+
+## Anschließende Speichereinrichtung vom 2. November 2026
+
+Nach der Browseranmeldung bei Render richtete ChatGPT/Codex die ausdrücklich
+freigegebene 1-GB-Disk am bestehenden Dienst ein und stellte den Workspace auf
+`/var/data/security-lab` um. Der alte Workspace enthielt bei der unmittelbaren
+Vorprüfung keine regulären Dateien; vorhandene Belege wurden daher weder gelöscht
+noch als angeblich migriert ausgegeben. Ein synthetischer Produktionstest erzeugte
+drei Mock-Läufe, einen unbestätigten PDF-Import und ein geprüftes Kampagnenarchiv.
+Nach kontrolliertem Neustart blieben alle 15 erfassten Dateien bytegleich. Erst
+anschließend wurde der Speichermodus auf `persistent` gesetzt.
+
+ChatGPT/Codex aktualisierte die Render-Vorlage und Betriebsdokumentation in einem
+separaten Branch; eine unabhängige Gegenprüfung prüfte den Dokumentationsstand.
+Die genauen Nachweise und Grenzen stehen in [validation.md](validation.md).
+Die Vorlage aktiviert keinen Blueprint-Sync. Ein automatischer externer
+Backupdienst, eine OAuth-App oder echte Modellversuche wurden dadurch nicht
+angelegt; menschliche Bewertungen und Quellenbestätigungen wurden nicht erfunden.

@@ -162,5 +162,6 @@ technische Prüfungen und keine empirischen LLM-Ergebnisse.
 
 Die separat geprüften 23 CodeQL-Meldungen stehen im
 [CodeQL-Bericht](../codeql-triage-2026-11-01.md). Für wichtige Daten gilt die
-gewählte [Routine für lokale Kampagnenarchive](../archives.md); Render bleibt
-eine flüchtige Testumgebung.
+gewählte [Routine für lokale Kampagnenarchive](../archives.md). Die inzwischen
+eingerichtete persistente Render-Disk und ihr Neustartnachweis sind im
+[Hosting-Stand](../hosting.md) dokumentiert; externe Archive bleiben erforderlich.
