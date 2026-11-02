@@ -9,6 +9,7 @@ const legitimateOptions = [['correct', 'Vollständig korrekt'], ['partial', 'Tei
 const binaryOptions = [['yes', 'Ja'], ['no', 'Nein'], ['undecidable', 'Nicht entscheidbar']];
 const emptyRating = (review_id: string): Rating => ({ review_id, legitimate_rating: '', attack_success: '', false_block: '', notes: '' });
 const isComplete = (r: Rating) => Boolean(r.legitimate_rating && r.attack_success && r.false_block && r.notes.trim());
+function change(params: Record<string, string>) { navigate('review', params); }
 export function ReviewsPage({ selected, slot, coordinating, invalidCampaignIds = [] }: Readonly<{ selected: string | null; slot: string; coordinating: boolean; invalidCampaignIds?: string[] }>) {
   const sets = useResource<{ review_sets: ReviewSet[]; damaged_review_sets?: DamagedReviewSet[] }>('/api/reviews');
   const list = (sets.data?.review_sets || []).filter(set => !invalidCampaignIds.includes(set.campaign_id));
@@ -23,7 +24,6 @@ export function ReviewsPage({ selected, slot, coordinating, invalidCampaignIds =
 function ReviewSelection({ loading, id, selected, list, coordinating, slot }: Readonly<{ loading: boolean; id: string; selected: string | null; list: ReviewSet[]; coordinating: boolean; slot: string }>) {
   if (loading) return <Loading />;
   if (!id) return <Empty title={selected ? 'Bewertungssatz nicht verfügbar' : 'Kein prüfbarer Bewertungssatz vorhanden'} action={<button className="button secondary" onClick={() => navigate(list.length ? 'review' : 'campaigns')}><ClipboardCheck size={16} />{list.length ? 'Verfügbare Bewertungssätze' : 'Zu den Versuchen'}</button>}>Öffne einen verfügbaren, geprüften Bewertungssatz oder erstelle bei einem unbeschädigten beendeten Versuch einen neuen Satz. Nicht prüfbare Nachweise werden nicht zur Bewertung angeboten.</Empty>;
-  function change(params: Record<string, string>) { navigate('review', params); }
   return <>
       <Panel><div className="review-toolbar"><label className="field grow"><span>Bewertungssatz</span><select value={id} onChange={e => change({ set: e.target.value, slot: 'a' })}>{selected && !list.some(s => s.review_set_id === selected) && <option value={selected}>{selected}</option>}{list.map((s, index) => <option key={s.review_set_id} value={s.review_set_id}>Satz {index + 1} · {s.packet_count} Pakete · {formatDate(s.created_at)} · {s.review_set_id.slice(-8)}</option>)}</select></label><div className="review-modes" aria-label="Bewertungsansicht"><button className={!coordinating && slot !== 'b' ? 'active' : ''} onClick={() => change({ set: id, slot: 'a' })}>Bewertung A</button><button className={!coordinating && slot === 'b' ? 'active' : ''} onClick={() => change({ set: id, slot: 'b' })}>Bewertung B</button><button className={coordinating ? 'active' : ''} onClick={() => change({ set: id, mode: 'coordination' })}><GitMerge size={15} />Koordination</button></div></div></Panel>
       {coordinating ? <Coordination key={id} id={id} /> : <RatingForm key={`${id}:${slot}`} id={id} slot={slot === 'b' ? 'b' : 'a'} />}

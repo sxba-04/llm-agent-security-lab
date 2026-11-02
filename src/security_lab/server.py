@@ -44,7 +44,7 @@ def _valid_local_host(headers: Headers) -> bool:
         return False
     try:
         # URL parsing only; local access never opens a connection here.
-        parsed = urlsplit("http://" + headers.get("host", ""))
+        parsed = urlsplit("//" + headers.get("host", ""))
         valid = (parsed.hostname in {"127.0.0.1", "localhost", "::1"}
                  and parsed.username is None and parsed.path == ""
                  and not parsed.query and not parsed.fragment)

@@ -29,7 +29,12 @@ export async function signIn(value: string) {
     if (typeof health.csrf_token !== 'string' || !health.csrf_token) throw new ApiError('Der Server liefert keine gültige Werkbank-Sitzung.', 0);
     if (sessionRevision !== attempt) throw new ApiError('Die Anmeldung wurde beendet. Bitte erneut anmelden.', 401);
     authenticated = true; notifySession();
-  } catch (error) { if (sessionRevision === attempt) signOut(); throw error; }
+  } catch (error) {
+    if (sessionRevision === attempt) {
+      signOut();
+    }
+    throw error;
+  }
 }
 function endpoint(path: string) {
   // Only application paths may receive the private authorization header.
