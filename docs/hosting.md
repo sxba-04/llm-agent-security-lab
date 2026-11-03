@@ -1,8 +1,8 @@
 # Online-Werkbank: GitHub Pages und Render
 
-Stand: 2. November 2026. Der bestehende Render-Webservice verwendet den kostenpflichtigen Compute-Plan und eine separat eingerichtete persistente 1-GB-Disk. Die Speicherung wurde mit synthetischen Belegen über einen kontrollierten Neustart geprüft. Der optionale GitHub-Login ist implementiert, aber noch nicht live aktiviert.
+Stand: 3. November 2026. Der bestehende Render-Webservice verwendet den kostenpflichtigen Compute-Plan und eine separat eingerichtete persistente 1-GB-Disk. Die Speicherung wurde über kontrollierte Neustarts und nach dem Merge von PR #27 erneut geprüft. Der GitHub-Login ist für beide bestätigten Konto-IDs konfiguriert; die echte Anmeldung mit `sxba-04` ist geprüft. Jonahs tatsächliche Anmeldung bleibt offen.
 
-| Geprüfter Bestandteil | Beobachtung am 2. November 2026 |
+| Geprüfter Bestandteil | Stand nach den Prüfungen vom 2. und 3. November 2026 |
 |---|---|
 | Oberfläche | [GitHub Pages](https://sxba-04.github.io/llm-agent-security-lab/), getrennt vom Python-Dienst |
 | Render-Service | `srv-dbhmac67bikc73f0cvug`, Frankfurt, eine Instanz |
@@ -11,10 +11,10 @@ Stand: 2. November 2026. Der bestehende Render-Webservice verwendet den kostenpf
 | Betriebseinstellungen | Branch `main`, Auto-Deploy `checksPass`, Health Check `/healthz`, PR-Vorschauen aus |
 | Speicherung | Disk `dsk-dbkgiibbc2fs73et1fdg`, Name `disk`, 1 GB unter `/var/data`; Workspace `/var/data/security-lab`, `LAB_STORAGE_MODE=persistent`. Neustartnachweis siehe [Prüfstand](validation.md). Keine zusätzliche Datenbank. |
 | Zugangscode | Sebastian bestätigte seine erfolgreiche Anmeldung; der vorhandene Code war lediglich falsch eingegeben worden. Keine Rotation durchgeführt. |
-| GitHub-Login | Optional implementiert und lokal geprüft; OAuth-App, Backend-Konfiguration und echter Login noch ausstehend. |
+| GitHub-Login | OAuth App registriert, vier Backend-Werte gemeinsam gesetzt; `sxba-04` (`157503913`) und `Jonah199` (`195916117`) freigegeben. Echter Login mit `sxba-04` geprüft; Jonah-Login noch offen. |
 | Disk-Kosten und Freigabe | Eingerichtete 1 GB: 0,25 USD/Monat laut Render bei Einrichtung. Genehmigte Obergrenze für Speicher: 1 USD/Monat. |
 
-Die Speicherprüfung lief über die Render-Shell auf dem tatsächlichen Produktionsdienst: drei abgeschlossene Mock-Läufe, ein unbestätigter PDF-Import und ein geprüftes Kampagnenarchiv blieben nach kontrolliertem Neustart unverändert. Die Prüfung ersetzte keine Browseranmeldung mit dem persönlichen Code und keinen echten GitHub-Login. Die frühere Live-Prüfung vom 29. Oktober umfasste PDF-Download/-Import, acht Mock-Läufe und Archivprüfung; ihr temporärer Zugangscode wurde danach absichtlich entfernt. Die [Validierungsdokumentation](validation.md) trennt die jeweiligen Nachweise.
+Die Speicherprüfung lief über die Render-Shell auf dem tatsächlichen Produktionsdienst: drei abgeschlossene Mock-Läufe, ein unbestätigter PDF-Import und ein geprüftes Kampagnenarchiv blieben nach kontrolliertem Neustart unverändert. Diese Speicherprüfung war keine Browseranmeldung mit dem persönlichen Code und kein GitHub-Login; die spätere echte GitHub-Anmeldung vom 3. November ist separat dokumentiert. Die frühere Live-Prüfung vom 29. Oktober umfasste PDF-Download/-Import, acht Mock-Läufe und Archivprüfung; ihr temporärer Zugangscode wurde danach absichtlich entfernt. Die [Validierungsdokumentation](validation.md) trennt die jeweiligen Nachweise.
 
 ## Was das Upgrade ändert
 
@@ -31,7 +31,7 @@ GitHub Pages führt selbst keinen Python-Server aus. Für die Nutzung ohne lokal
 | Bestandteil | Betrieb und Zugriff |
 |---|---|
 | GitHub Pages | Öffentlich erreichbare Anmeldeseite und statische Frontend-Dateien. Enthält keine Zugangscodes, Workspace-Dateien oder privaten Bewertungen. |
-| Python-Backend | Datenzugriff und Änderungen erst mit gültigem Zugangscode oder, nach Aktivierung, eigener GitHub-Laborsitzung. Öffentlich sind nur `/healthz`, die Anmeldearten unter `/api/auth/config` und die begrenzten GitHub-Anmeldeendpunkte. |
+| Python-Backend | Datenzugriff und Änderungen erst mit gültigem Zugangscode oder eigener GitHub-Laborsitzung. Öffentlich sind nur `/healthz`, die Anmeldearten unter `/api/auth/config` und die begrenzten GitHub-Anmeldeendpunkte. |
 | Persistenter Workspace | Gemeinsame Kampagnen, PDF-Originale, bestätigte Extraktionen, Bewertungen und Provenienz für beide Autoren unter `/var/data/security-lab`. Dateien bleiben bei Dienstneustarts erhalten; externe Sicherungen bleiben erforderlich. |
 | Lokale Werkbank | Bleibt mit dem bisherigen Startbefehl und eigenen lokalen Daten nutzbar. Lokale und gehostete Daten werden nicht automatisch synchronisiert. |
 
@@ -80,11 +80,11 @@ Ein Frontend-Neubau ist für diese Rotation nicht nötig. Niemals zur Wiederhers
 
 ### GitHub-Login und Sitzungsverwaltung
 
-Der optionale [GitHub-Login](github-login.md) ist implementiert. Der Server lässt ausschließlich konfigurierte, unveränderliche GitHub-Konto-IDs zu. Beide Autoren erhalten dieselben Rechte zum Lesen und Bearbeiten des gemeinsamen Workspace und können nur ihre eigenen GitHub-Sitzungen verwalten. Öffentliche Registrierung und eine eigene Passwortverwaltung gibt es nicht.
+Der optionale [GitHub-Login](github-login.md) ist seit dem 3. November 2026 auf dem bestehenden Dienst aktiviert. Der Server lässt ausschließlich konfigurierte, unveränderliche GitHub-Konto-IDs zu. Beide Autoren erhalten dieselben Rechte zum Lesen und Bearbeiten des gemeinsamen Workspace und können nur ihre eigenen GitHub-Sitzungen verwalten. Öffentliche Registrierung und eine eigene Passwortverwaltung gibt es nicht.
 
 Die Anmeldung verwendet eine feste Pages-Rückleitung, State und PKCE. Der GitHub-Token bleibt beim Backend und wird nach der Identitätsprüfung verworfen; der Browser erhält einen eigenen zufälligen Labortoken. Er bleibt im Arbeitsspeicher. Nur der kurzlebige PKCE-Verifier mit State wird für die Rückleitung vorübergehend in `sessionStorage` gehalten und beim Callback entfernt. Sitzungen laufen spätestens nach acht Stunden ab; Neustarts widerrufen sie. Pro Konto bleiben höchstens acht aktiv, danach wird die älteste eigene Sitzung ersetzt. Der vorhandene Zugangscode bleibt ein unabhängiger Rückfallweg.
 
-**Noch nicht live aktiviert:** Die OAuth-App-Registrierung wurde vorbereitet, aber die automatische Freigabeprüfung hat das Absenden bis zu einer konkreten Aktionsbestätigung abgelehnt. Es wurde keine OAuth-App und kein Client-Secret erstellt. Die vier Backend-Einstellungen und ein tatsächlicher GitHub-Anmeldetest stehen aus. Fehlende oder teilweise gesetzte Konfiguration darf nicht durch Abschwächen der Zugriffskontrollen umgangen werden.
+**Live eingerichtet:** Nach der ausdrücklichen Aktionsfreigabe wurden die OAuth App und die vollständige Backend-Konfiguration eingerichtet. Das vorher ungenutzte Client Secret wurde widerrufen; nur das Ersatz-Secret ist im geschützten Render-Konfigurationsspeicher hinterlegt. Das Deployment auf `6fcc07b` wurde erfolgreich abgeschlossen. Eine echte Anmeldung mit `sxba-04` führte über die feste Pages-Rückleitung zur geschützten Werkbank. Jonahs bestätigtes Konto ist freigegeben, sein eigener Login wurde noch nicht geprüft. Die [Validierungsdokumentation](validation.md) trennt diese tatsächlichen Nachweise von synthetischen Tests. Fehlende oder teilweise gesetzte Konfiguration darf weiterhin nicht durch Abschwächen der Zugriffskontrollen umgangen werden.
 
 GitHub bestätigt die verwendete Konto-ID. Das ordnet bestehende wissenschaftliche Bewertungen nicht automatisch einer Person zu und erzwingt keine unabhängigen A/B-Bewertungen. Die fachlichen Bewertungsregeln bleiben unverändert. Ebenso bleibt die experimentelle Autorisierung P vom Betreiberlogin getrennt.
 
@@ -97,9 +97,9 @@ GitHub bestätigt die verwendete Konto-ID. Das ordnet bestehende wissenschaftlic
 | `LAB_ACCESS_TOKEN_HASHES` | Kommagetrennte SHA-256-Hashes der zufälligen Zugangscodes, im Backend-Secret-Speicher konfigurieren. |
 | `LAB_WORKSPACE` | `/var/data/security-lab` auf der tatsächlich unter `/var/data` eingehängten 1-GB-Disk. Nur Dateien unter dem Mountpfad sind persistent. |
 | `LAB_STORAGE_MODE` | `persistent` nach der erfolgreichen Disk-/Neustartprüfung; nur `ephemeral` und `persistent` sind gültig. Ohne Angabe gilt `persistent`. Die Einstellung beschreibt den Speicherlebenszyklus; sie richtet selbst keine Disk ein und löscht keine Dateien. Ohne nachgewiesenen persistenten Speicher ausdrücklich `ephemeral` verwenden. |
-| `LAB_GITHUB_CLIENT_ID`, `LAB_GITHUB_CLIENT_SECRET` | Optionale OAuth-App-Konfiguration ausschließlich im Backend; derzeit noch nicht gesetzt. Secret niemals veröffentlichen. |
+| `LAB_GITHUB_CLIENT_ID`, `LAB_GITHUB_CLIENT_SECRET` | OAuth-App-Konfiguration ausschließlich im Backend gesetzt. Client Secret niemals veröffentlichen; keine Werte in Repository oder Frontend-Build übernehmen. |
 | `LAB_GITHUB_REDIRECT_URI` | Feste Rückleitung zur Pages-Anwendung; Einrichtung siehe [GitHub-Login](github-login.md). |
-| `LAB_GITHUB_ALLOWED_USER_IDS` | Kommagetrennte, zuvor eindeutig geprüfte numerische GitHub-Konto-IDs der beiden Autoren. |
+| `LAB_GITHUB_ALLOWED_USER_IDS` | `157503913,195916117` — eindeutig geprüfte Konto-IDs von `sxba-04` und `Jonah199`; Benutzernamen dienen nur der Anzeige. |
 | `PORT` | Vom Hostinganbieter bereitgestellter HTTP-Port hinter dessen HTTPS-Proxy. |
 
 Die Origin-/Hostprüfung bleibt aktiv. CORS erlaubt nur die exakt konfigurierte Frontend- beziehungsweise Backend-Origin; die GitHub-Anmeldung verlangt ausschließlich die Frontend-Origin. Auch Fehlermeldungen und Preflight-Anfragen müssen diesen Vertrag erfüllen. Die Browser-Anmeldung verwendet keine Drittanbieter-Cookies. Der Hoster beendet TLS vor dem Python-Dienst; die öffentliche HTTPS-Origin wird explizit validiert, statt beliebigen weitergeleiteten Headern zu vertrauen.

@@ -1,12 +1,13 @@
 # GitHub-Anmeldung und Sitzungen
 
-Stand: 2. November 2026. Die optionale Anmeldung ist im Anwendungscode implementiert
-und mit synthetischen GitHub-Antworten getestet. **Sie ist damit noch nicht auf dem
-öffentlichen Dienst aktiviert.** Dazu fehlen die Registrierung einer eigenen
-GitHub OAuth App und die vollständige Betreiberkonfiguration. Die Registrierung
-wurde in dieser Sitzung durch die automatische Freigabeprüfung angehalten, weil
-sie eine Bestätigung unmittelbar vor dieser Kontoaktion verlangt. Der bisherige
-Zugangscode bleibt nutzbar.
+Stand: 3. November 2026. Die GitHub-Anmeldung ist auf dem öffentlichen Dienst
+aktiviert. Die OAuth App ist registriert, die vier Backend-Einstellungen sind
+gemeinsam am bestehenden Render-Dienst gesetzt. Die echte Anmeldung mit `sxba-04`
+wurde über GitHub und die Pages-Rückleitung geprüft. `Jonah199` ist über seine
+bestätigte numerische Konto-ID freigegeben; eine tatsächliche Anmeldung mit
+diesem Konto wurde noch nicht geprüft. Der bisherige Zugangscode bleibt als
+unabhängiger Anmeldeweg erhalten. Die einzelnen Live-Nachweise stehen in
+[validation.md](validation.md).
 
 ## Welche Konten Zugriff erhalten
 
@@ -18,15 +19,16 @@ aktuelle Benutzername wird nur zur Anzeige verwendet.
 
 | Konto | Numerische GitHub-ID | Einrichtungsstand |
 |---|---:|---|
-| `sxba-04` | `157503913` | Über das verbundene GitHub-Konto bestätigt |
-| Jonah | Noch zu bestätigen | GitHub-Benutzername und zugehörige ID fehlen |
+| `sxba-04` | `157503913` | Konto-ID bestätigt; echte OAuth-Anmeldung am 3. November 2026 geprüft |
+| `Jonah199` | `195916117` | Benutzername bestätigt, Konto-ID geprüft und freigegeben; echte Anmeldung noch offen |
 
-Jonahs ID erst nach eindeutiger Zuordnung seines tatsächlichen GitHub-Kontos
-aufnehmen. GitHub stellt die öffentliche ID beispielsweise unter
-`https://api.github.com/users/GENAUER_BENUTZERNAME` im Feld `id` bereit. Ein Name aus
-einem Commit oder ein ähnlich benanntes Suchergebnis ist kein hinreichender
-Nachweis der gewünschten Person. Die Einrichtung erfordert keine Weitergabe von
-GitHub-Passwörtern oder persönlichen Zugriffstoken.
+Sebastian hat `Jonah199` als Jonahs Konto bestätigt; die öffentliche GitHub-ID
+`195916117` wurde für genau dieses Konto geprüft. Die Freigabeliste enthält nur
+`157503913,195916117`. Eine Kontofreigabe ist noch kein Nachweis einer tatsächlichen
+Anmeldung dieses Kontos. Bei späteren Änderungen die Zuordnung erneut eindeutig
+prüfen; ein Name aus einem Commit oder ein ähnlich benanntes Suchergebnis genügt
+nicht. Die Einrichtung erfordert keine Weitergabe von GitHub-Passwörtern oder
+persönlichen Zugriffstoken.
 
 Beide Autoren erhalten die Rolle `researcher`: gemeinsame Versuchsdaten lesen,
 Mock-Versuche und Quellen bearbeiten, Bewertungen bearbeiten sowie die eigenen
@@ -43,9 +45,11 @@ B/F/P/FP und keinen fachlichen Bewertungsmaßstab.
 
 ## OAuth App einrichten
 
-Eine eigene, ausschließlich für diese Anmeldung genutzte GitHub OAuth App im
-verifizierten Betreiberkonto registrieren. Das ist ein anderes Objekt als die
-bereits installierten GitHub-Integrationen für Codex, Sonar oder Render.
+Die eigene OAuth App ist im verifizierten Betreiberkonto registriert und wird
+ausschließlich für diese Anmeldung genutzt. Sie ist ein anderes Objekt als die
+bereits installierten GitHub-Integrationen für Codex, Sonar oder Render. Die
+folgenden Einstellungen beschreiben die eingerichtete App; keine zweite App
+für denselben Dienst anlegen.
 
 - Homepage: `https://sxba-04.github.io/llm-agent-security-lab/`
 - **Authorization callback URL:** `https://sxba-04.github.io/llm-agent-security-lab/`
@@ -64,14 +68,19 @@ beim Python-Dienst liegt.
 
 ## Backend konfigurieren
 
-Diese vier Einstellungen gemeinsam am **bestehenden** Render-Dienst setzen:
+Diese vier Einstellungen sind gemeinsam am **bestehenden** Render-Dienst
+konfiguriert. Bei Änderungen den vollständigen Konfigurationssatz erhalten:
 
 | Variable | Bedeutung |
 |---|---|
 | `LAB_GITHUB_CLIENT_ID` | Client ID der eigenen OAuth App |
 | `LAB_GITHUB_CLIENT_SECRET` | Client Secret im geschützten Render-Konfigurationsspeicher |
 | `LAB_GITHUB_REDIRECT_URI` | Exakt `https://sxba-04.github.io/llm-agent-security-lab/` |
-| `LAB_GITHUB_ALLOWED_USER_IDS` | Kommagetrennte bestätigte numerische Konto-IDs beider Autoren |
+| `LAB_GITHUB_ALLOWED_USER_IDS` | `157503913,195916117` — bestätigte numerische Konto-IDs beider Autoren |
+
+Vor der Inbetriebnahme wurde das zuvor ungenutzte Client Secret widerrufen und
+ausschließlich das Ersatz-Secret in der geschützten Backend-Konfiguration
+hinterlegt. Geheimniswerte werden weder hier noch im PR dokumentiert.
 
 Der bisherige Wert von `LAB_ACCESS_TOKEN_HASHES` bleibt erhalten. Dieser Ausbau
 rotiert keinen bestehenden Zugangscode. `LAB_FRONTEND_ORIGIN` bleibt
@@ -100,7 +109,7 @@ Anmeldefunktionen, keine Freigabe der Werkbankdaten.
    Challenge und liefert eine feste GitHub-Autorisierungsadresse. Der Browser
    hält ausschließlich den vorübergehenden Verifier, `state` und Ablaufzeit in
    `sessionStorage`, damit sie die vollständige Weiterleitung überstehen.
-3. Nach der Rückkehr entfernt der Browser die OAuth-Parameter aus der sichtbaren
+3. Nach der Rückkehr entfernt der Browser `code` und `state` aus der sichtbaren
    Adresse, prüft den einmaligen lokalen Zustand und übermittelt Code, `state`
    und Verifier an `/api/auth/github/complete`. Er entfernt den vorübergehenden
    Anmeldeeintrag auch bei Fehlern. Eine Referrer-Regel verhindert die Weitergabe
@@ -165,15 +174,26 @@ Sie prüfen unter anderem PKCE, falschen oder wiederverwendeten Zustand,
 Zeitablauf, unerlaubte Konto-ID, Kontoumbenennung, Origin, Größenbegrenzung,
 Providerfehler, Sitzungswiderruf, kontoübergreifende Zugriffsversuche und die
 unveränderte Zugangscode-Anmeldung. Die Frontend-Prüfung kontrolliert den
-Weiterleitungs- und Rückkehrablauf einschließlich Löschung der Callback-Parameter
-und temporären Zustandsdaten. Dies sind keine behaupteten erfolgreichen
+Weiterleitungs- und Rückkehrablauf einschließlich Löschung von `code` und `state`
+sowie der temporären Zustandsdaten. Dies sind keine behaupteten erfolgreichen
 Anmeldungen mit den echten Konten.
 
-Nach vollständiger Konfiguration sind zusätzlich die echte Anmeldung beider
-Autoren, die Ablehnung eines nicht freigegebenen Kontos, Abmeldung/Widerruf sowie
-Zugriff auf geschützte Daten zu prüfen. Ein erfolgreich gebautes Frontend oder
-`github_enabled: true` allein ersetzt diese Prüfung nicht. Die Registrierung und
-Live-Aktivierung sind im vorliegenden Stand noch offen.
+Am 3. November 2026 wurden die echte GitHub-Anmeldung mit `sxba-04`, die feste
+Pages-Rückleitung ohne verbleibende `code`-/`state`-Parameter und der Zugriff auf die
+geschützte Werkbank tatsächlich geprüft. GitHub zeigte ausschließlich Zugriff
+auf öffentliche Kontodaten an. `/api/auth/config` meldete beide Anmeldewege aktiv;
+Daten- und Sitzungsendpunkte antworteten ohne Anmeldung weiterhin mit HTTP 401.
+Ein erfolgreich gebautes Frontend oder `github_enabled: true` allein wäre kein
+Ersatz für diese Prüfung. Jonahs echte Anmeldung und die Ablehnung eines
+nicht freigegebenen echten GitHub-Kontos bleiben gesondert zu prüfen; die
+synthetischen Negativtests sind dafür kein Live-Nachweis.
+
+Abmeldung und erneute Anmeldung ohne Neuladen wurden ebenfalls live geprüft.
+Eine zusätzliche eigene Sitzung aus einem zweiten Tab ließ sich gezielt
+beenden; ihre nächste geschützte Anfrage wurde anschließend abgelehnt und
+führte zur Anmeldemaske zurück. Die erste Sitzung blieb gültig und als einzige
+eigene Sitzung sichtbar. Die einzelnen Beobachtungen stehen im
+[technischen Prüfstand](validation.md).
 
 Die Implementierung und ihre synthetischen Tests wurden mit Codex unterstützt.
 Die wissenschaftliche Autorenabnahme und reale unabhängige Bewertungen werden

@@ -15,7 +15,9 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 ## Online-Werkbank
 
-Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und mit dem persönlichen Labor-Zugangscode anmelden. Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Der bestehende Render-Dienst verwendet seit dem 2. November 2026 den kostenpflichtigen Plan mit 0,5 CPU und 512 MB RAM und eine separat eingerichtete persistente 1-GB-Disk. Einrichtung, Neustartnachweis und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
+Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und **Mit GitHub anmelden** wählen. Freigegeben sind die bestätigten Konten `sxba-04` und `Jonah199`; der persönliche Labor-Zugangscode bleibt ebenfalls nutzbar. Konten, Sitzungen und Prüfgrenzen sind unter [GitHub-Anmeldung](docs/github-login.md) beschrieben.
+
+Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Der bestehende Render-Dienst verwendet seit dem 2. November 2026 den kostenpflichtigen Plan mit 0,5 CPU und 512 MB RAM und eine separat eingerichtete persistente 1-GB-Disk. Einrichtung, Neustartnachweis und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
 
 **Der Workspace unter `/var/data/security-lab` bleibt bei Neustarts und Deployments erhalten; dies wurde mit synthetischen Belegen nach einem kontrollierten Neustart geprüft.** Die Disk kostet zusätzlich 0,25 USD pro Monat. Wichtige Studienbelege weiterhin als geprüfte Archive herunterladen: Die Disk ersetzt keine externe Sicherung. Laufende Versuche können bei Deployments unterbrochen werden; GitHub-Sitzungen werden bei einem Serverneustart widerrufen. Die Oberfläche bleibt im Mock-Betrieb.
 

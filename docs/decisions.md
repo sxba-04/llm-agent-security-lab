@@ -73,12 +73,28 @@ Diese ausdrücklichen Folgeentscheidungen ergänzen den oben dokumentierten frü
 | Entscheidung | Umsetzung und Grenze |
 |---|---|
 | Bestehenden Zugangscode behalten | Sebastian hat den Code wiedergefunden und sich erfolgreich angemeldet. Er war falsch eingegeben; eine Rotation ist nicht erforderlich. |
-| GitHub-Login für beide Autoren | Optionaler OAuth-Ablauf mit State/PKCE, unveränderlicher Konto-ID-Freigabeliste und widerrufbaren eigenen Laborsitzungen implementiert. Keine Repository-/E-Mail-Berechtigungen, öffentliche Registrierung oder Passwortdatenbank. App-Registrierung, Backend-Konfiguration und Live-Anmeldung noch offen. |
+| GitHub-Login für beide Autoren | Optionaler OAuth-Ablauf mit State/PKCE, unveränderlicher Konto-ID-Freigabeliste und widerrufbaren eigenen Laborsitzungen implementiert. Keine Repository-/E-Mail-Berechtigungen, öffentliche Registrierung oder Passwortdatenbank. Am Ende dieses Schritts waren App-Registrierung, Backend-Konfiguration und Live-Anmeldung noch offen; die Folgeentscheidung vom 3. November steht unten. |
 | Dauerhaften Speicher einrichten | 1-GB-Disk am bestehenden Render-Dienst unter `/var/data` eingerichtet; Workspace `/var/data/security-lab`, nach erfolgreichem Neustartnachweis `persistent`. Kosten bei Einrichtung: 0,25 USD/Monat, genehmigte Obergrenze weiterhin 1 USD/Monat. Der alte Workspace enthielt keine regulären Dateien zur Migration. [Prüfstand](validation.md). |
 | Wiki veröffentlichen | Startseite und Navigation wurden mit den versionierten Quellen veröffentlicht. Fachliche Anleitungen bleiben unter `docs/`; spätere Wiki-Aktualisierungen erfolgen bewusst und separat. |
 
 Der GitHub-Login ändert den Betreiberzugang, nicht die Versuchssitzungsrechte oder
 B/F/P/FP. Kontoidentität erzwingt weiterhin keine unabhängigen wissenschaftlichen
 Bewertungen. Die Disk-Einrichtung und Neustartprüfung sind abgeschlossen; externe
-Archivkopien bleiben erforderlich. Die produktive OAuth-Registrierung und echte
-GitHub-Anmeldung stehen weiterhin aus.
+Archivkopien bleiben erforderlich. Zum Abschluss des 2. November standen die
+produktive OAuth-Registrierung und echte GitHub-Anmeldung noch aus.
+
+
+## Folgeentscheidung vom 3. November 2026: GitHub-Anmeldung aktivieren
+
+Sebastian bestätigte `Jonah199` als Jonahs GitHub-Konto und gab die konkrete
+OAuth-Einrichtung einschließlich Ersatz-Secret, Widerruf des vorher ungenutzten
+Secrets und Konfiguration am bestehenden Render-Dienst ausdrücklich frei.
+Die Freigabeliste enthält ausschließlich die geprüften Konto-IDs `157503913`
+und `195916117`. Alle vier OAuth-Werte wurden gemeinsam gespeichert und
+bereitgestellt; der Zugangscode bleibt unverändert als Rückfallweg erhalten.
+
+Die echte Anmeldung mit `sxba-04` und der Zugriff auf die geschützte Werkbank
+wurden geprüft. Jonahs Konto ist freigegeben, seine tatsächliche Anmeldung
+bleibt offen. Diese Betreiberkonten ändern weder wissenschaftliche Bewertungen
+noch die experimentelle Autorisierung P. Die getrennten Betriebsnachweise stehen
+in [validation.md](validation.md).
