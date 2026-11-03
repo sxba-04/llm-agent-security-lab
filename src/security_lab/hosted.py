@@ -185,14 +185,14 @@ class _HostedRequest:
                 valid |= principal is not None
         return valid, principal
 
-    def _authentication_error(self, preauth: bool) -> tuple | None:
+    def _authentication_error(self, preauth: bool) -> tuple[int, str, str | None] | None:
         if preauth and (not self.origin_allowed or self.origin != self.middleware.settings.frontend_origin
                         or len(self.headers.getlist("content-type")) != 1
                         or self.headers.get("content-type", "").split(";", 1)[0].strip() != "application/json"):
-            return 403, "Die Anmeldung muss von der konfigurierten Werkbank aus gestartet werden."
+            return 403, "Die Anmeldung muss von der konfigurierten Werkbank aus gestartet werden.", None
         valid, principal = self._credentials()
         if not valid and not preauth:
-            return 401, "Bitte mit GitHub oder einem gültigen Labor-Zugangscode anmelden."
+            return 401, "Bitte mit GitHub oder einem gültigen Labor-Zugangscode anmelden.", None
         self.scope.setdefault("state", {})["lab_user"] = principal.public() if principal else None
         if not preauth and self.scope["method"] in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = self.headers.get("x-lab-token", "")

@@ -49,17 +49,25 @@ it('retains each comparison disclosure identity when filtering out another goal'
   expect(container.querySelectorAll('.pair-card')).toHaveLength(1);
 });
 
-it('exposes the nested case label as the checkbox accessible name and toggles that control', async () => {
+it('names the checkbox from its case and describes it with the visible goal and scenario', async () => {
   const user = userEvent.setup();
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ documents: [] }), {
     headers: { 'Content-Type': 'application/json' },
   })));
   render(<LaunchForm cases={[labCase]} active={false} onChange={vi.fn()} />);
-  const checkbox = screen.getByRole('checkbox', { name: 'synthetic-caseG1 · synthetic-scenario' });
+  const checkbox = screen.getByRole('checkbox', { name: 'synthetic-case' });
+  expect(checkbox).toHaveAccessibleDescription('G1 · synthetic-scenario');
   expect(checkbox).toBeChecked();
   await user.click(screen.getByText('synthetic-case', { exact: true }));
   expect(checkbox).not.toBeChecked();
   expect(screen.getByRole('button', { name: 'Mock-Versuch starten' })).toBeDisabled();
+  await user.click(screen.getByText('G1 · synthetic-scenario'));
+  expect(checkbox).toBeChecked();
+  await user.click(checkbox.closest('label')!);
+  expect(checkbox).not.toBeChecked();
+  checkbox.focus();
+  await user.keyboard(' ');
+  expect(checkbox).toBeChecked();
 });
 
 it('associates case labels with distinct controls when two launch forms are rendered', async () => {
@@ -68,8 +76,11 @@ it('associates case labels with distinct controls when two launch forms are rend
     headers: { 'Content-Type': 'application/json' },
   })));
   render(<><LaunchForm cases={[labCase]} active={false} onChange={vi.fn()} /><LaunchForm cases={[labCase]} active={false} onChange={vi.fn()} /></>);
-  const controls = screen.getAllByRole<HTMLInputElement>('checkbox', { name: 'synthetic-caseG1 · synthetic-scenario' });
+  const controls = screen.getAllByRole<HTMLInputElement>('checkbox', { name: 'synthetic-case' });
   expect(controls[0].id).not.toBe(controls[1].id);
+  expect(controls[0].getAttribute('aria-labelledby')).not.toBe(controls[1].getAttribute('aria-labelledby'));
+  expect(controls[0].getAttribute('aria-describedby')).not.toBe(controls[1].getAttribute('aria-describedby'));
+  controls.forEach(control => expect(control).toHaveAccessibleDescription('G1 · synthetic-scenario'));
   expect(controls[0].labels?.[0].control).toBe(controls[0]);
   expect(controls[1].labels?.[0].control).toBe(controls[1]);
   await user.click(screen.getAllByText('synthetic-case', { exact: true })[1]);

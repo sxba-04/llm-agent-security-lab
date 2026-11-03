@@ -24,7 +24,7 @@ weitere kostenpflichtige Dienste werden in dieser Änderung nicht eingeführt.
 | API-Antwortdokumentation S8415 (11 Bestandsmeldungen) | Handler aus der großen App-Closure in eine pro App erzeugte Klasse überführt; alle vier OpenAPI-Schemata bleiben identisch. Die bereits vorhandene globale Fehlerdokumentation wird nicht als neue Laufzeitvalidierung dargestellt |
 | CI-Summaries S7689 (2) | Eingebettetes Python aus YAML-Shellblöcken in einen separat getesteten Python-Helfer verschoben; Ausgabe bleibt gleich |
 | React S6479 (2) | Stabile inhaltsbasierte Schlüssel mit Duplikatzähler; wiederholte Evidenz und Leerzeilen bleiben vollständig erhalten |
-| Formular S6853 (1) | Explizite eindeutige Label-/Checkbox-Verknüpfung mit React useId |
+| Formular S6853 (1) | Eindeutige Label-/Checkbox-Verknüpfung mit React useId; flache Beschriftung mit Fallkennung als Name und Ziel/Szenario als Beschreibung |
 | Originprüfung S6353 (1) | Kürzere Ziffernklasse mit explizitem ASCII-Modus; Unicode-Ziffern bleiben abgelehnt |
 | Cachebereinigung S7504 (1) | Veraltete Schlüssel zuerst sammeln, anschließend entfernen; keine Mutation der iterierten Ansicht |
 
@@ -108,3 +108,20 @@ bleiben erhalten. Es wurden keine Modellaufrufe durchgeführt, menschlichen
 Bewertungen erfunden oder vorhandenen Studienbelege umgeschrieben.
 Der Umbau verbessert Wartbarkeit; er ist kein empirisches Ergebnis zur
 Wirksamkeit einer Schutzvariante.
+
+## Nachprüfung der ersten PR-Analyse
+
+Die erste Sonar-PR-Analyse von `d8e72556886e5b9828e2d485bbabef923288368f`
+bestand das Gate mit 91,9 % New-Code-Coverage und ohne neue Security Hotspots,
+zeigte aber zwei Hinweise. Vor dem Merge wurden beide nachbearbeitet:
+
+- Der neue Authentifizierungshelfer liefert jetzt einheitlich ein typisiertes
+  Dreiertupel oder `None`. Ein explizites `None` entspricht exakt dem bisherigen
+  Standardargument von `reject`; HTTP-Status, JSON und Reihenfolge bleiben gleich.
+- Die Fallkarte verwendet eine flachere native Beschriftung. Die Fallkennung
+  benennt die Checkbox, Ziel und Szenario bilden ihre Beschreibung. Die ganze
+  Karte bleibt anklickbar; das lokale Layout wurde darauf abgestimmt.
+
+Die vorherigen grünen Reviews und Checks gelten nicht automatisch für diesen
+Nachtrag. Der zugehörige PR dokumentiert die erneute Prüfung des aktuellen
+Heads und später das tatsächlich exportierte Main-Inventar.
