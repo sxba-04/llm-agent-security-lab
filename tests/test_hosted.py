@@ -219,6 +219,59 @@ class HostedTests(unittest.TestCase):
         asyncio.run(middleware(scope, receive, send))
         self.assertEqual(sent[0]["status"], 413)
 
+    def test_interleaved_requests_do_not_share_stream_limits_or_response_state(self):
+        async def app(scope, receive, send):
+            body = bytearray()
+            while True:
+                message = await receive()
+                body.extend(message.get("body", b""))
+                if not message.get("more_body"):
+                    break
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": bytes(body)})
+
+        middleware = HostedAccessMiddleware(app, settings(), "csrf", max_request_bytes=4)
+
+        async def exercise():
+            ready = asyncio.Event()
+            receivers = 0
+
+            async def request(chunks):
+                nonlocal receivers
+                scope = {"type": "http", "method": "POST", "path": "/api/documents", "headers": [
+                    (b"host", b"lab-api.example.test"), (b"origin", FRONTEND.encode()),
+                    (b"authorization", ("Bearer " + ACCESS_A).encode()), (b"x-lab-token", b"csrf")]}
+                messages = iter(chunks)
+                sent = []
+
+                async def receive():
+                    nonlocal receivers
+                    receivers += 1
+                    if receivers == 2:
+                        ready.set()
+                    await ready.wait()
+                    return next(messages)
+
+                async def send(message):
+                    sent.append(message)
+
+                await middleware(scope, receive, send)
+                return sent
+
+            return await asyncio.gather(
+                request([{"type": "http.request", "body": b"12345", "more_body": False}]),
+                request([{"type": "http.request", "body": b"ok", "more_body": False}]),
+            )
+
+        oversized, valid = asyncio.run(exercise())
+        self.assertEqual([message["status"] for message in oversized if "status" in message], [413])
+        self.assertEqual([message["status"] for message in valid if "status" in message], [200])
+        self.assertEqual(valid[-1]["body"], b"ok")
+        for messages in (oversized, valid):
+            headers = dict(messages[0]["headers"])
+            self.assertEqual(headers[b"access-control-allow-origin"], FRONTEND.encode())
+            self.assertEqual(headers[b"cache-control"], b"no-store")
+
 
 @unittest.skipUnless(TestClient, "Install the web and dev extras for hosted tests")
 class HostedConfigurationTests(unittest.TestCase):
@@ -231,6 +284,15 @@ class HostedConfigurationTests(unittest.TestCase):
         for hashes in ((), ("short",), ("A" * 64,), (fingerprint(ACCESS_A), fingerprint(ACCESS_A)), [fingerprint(ACCESS_A)]):
             with self.subTest(hashes=hashes), self.assertRaises(ValueError):
                 HostedSettings(PUBLIC, FRONTEND, hashes)
+
+    def test_origin_port_grammar_remains_ascii_only(self):
+        valid_hashes = (fingerprint(ACCESS_A),)
+        for port in ("443", "00443", "65535"):
+            origin = "https://example.test:" + port
+            self.assertEqual(HostedSettings(origin, FRONTEND, valid_hashes).public_origin, origin)
+        for port in ("٤٤٣", "４４３", "4٤3"):
+            with self.subTest(port=port), self.assertRaises(ValueError):
+                HostedSettings("https://example.test:" + port, FRONTEND, valid_hashes)
 
     def test_launcher_requires_explicit_workspace_and_safe_port(self):
         with tempfile.TemporaryDirectory() as temporary:

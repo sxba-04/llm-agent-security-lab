@@ -160,10 +160,7 @@ def import_document(storage: Path, filename: str, content: bytes) -> dict[str, A
     return load_document(storage, document_id)
 
 
-def load_document(storage: Path, document_id: str) -> dict[str, Any]:
-    directory = _managed(Path(storage), document_id)
-    for name in (DOCUMENT_METADATA_FILE, ORIGINAL_PDF_FILE, EXTRACTED_TEXT_FILE, CONFIRMATION_FILE):
-        reject_symlinks(directory / name, Path(storage))
+def _read_document_evidence(directory: Path) -> tuple[dict[str, Any], bytes, bytes]:
     try:
         if (directory / DOCUMENT_METADATA_FILE).stat().st_size > 16384 or (directory / ORIGINAL_PDF_FILE).stat().st_size > MAX_PDF_BYTES or (directory / EXTRACTED_TEXT_FILE).stat().st_size > MAX_TEXT_CHARS * 4:
             raise DocumentError("Gespeicherte Dokumentdaten überschreiten die Größenbegrenzung.")
@@ -178,23 +175,41 @@ def load_document(storage: Path, document_id: str) -> dict[str, Any]:
         raise
     except (OSError, ValueError) as exc:
         raise DocumentError("Dokumentdaten können nicht geprüft werden.") from exc
-    if (metadata.get("document_id") != document_id or _sha(original) != metadata.get("sha256")
-            or _sha(text_bytes) != metadata.get("text_sha256")):
-        raise DocumentError("Dokumentintegrität verletzt: Original oder Extraktion wurde verändert.")
+    return metadata, original, text_bytes
+
+
+def _decode_extraction(text_bytes: bytes) -> str:
     try:
         text = text_bytes.decode("utf-8")
         if not text.strip() or len(text) > MAX_TEXT_CHARS:
             raise DocumentError("Ungültiger gespeicherter Extraktionstext.")
     except UnicodeError as exc:
         raise DocumentError("Extraktion ist kein gültiger UTF-8-Text.") from exc
-    confirmed = False
-    if (directory / CONFIRMATION_FILE).exists():
-        if (directory / CONFIRMATION_FILE).stat().st_size > 2048:
-            raise DocumentError("Ungültige Bestätigungsdaten.")
-        confirmation = json.loads((directory / CONFIRMATION_FILE).read_text(encoding="utf-8"))
-        if not isinstance(confirmation, dict) or confirmation.get("text_sha256") != metadata["text_sha256"]:
-            raise DocumentError("Bestätigung gehört zu einer anderen Extraktion.")
-        confirmed = True
+    return text
+
+
+def _document_confirmed(directory: Path, text_sha256: str) -> bool:
+    path = directory / CONFIRMATION_FILE
+    if not path.exists():
+        return False
+    if path.stat().st_size > 2048:
+        raise DocumentError("Ungültige Bestätigungsdaten.")
+    confirmation = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(confirmation, dict) or confirmation.get("text_sha256") != text_sha256:
+        raise DocumentError("Bestätigung gehört zu einer anderen Extraktion.")
+    return True
+
+
+def load_document(storage: Path, document_id: str) -> dict[str, Any]:
+    directory = _managed(Path(storage), document_id)
+    for name in (DOCUMENT_METADATA_FILE, ORIGINAL_PDF_FILE, EXTRACTED_TEXT_FILE, CONFIRMATION_FILE):
+        reject_symlinks(directory / name, Path(storage))
+    metadata, original, text_bytes = _read_document_evidence(directory)
+    if (metadata.get("document_id") != document_id or _sha(original) != metadata.get("sha256")
+            or _sha(text_bytes) != metadata.get("text_sha256")):
+        raise DocumentError("Dokumentintegrität verletzt: Original oder Extraktion wurde verändert.")
+    text = _decode_extraction(text_bytes)
+    confirmed = _document_confirmed(directory, metadata["text_sha256"])
     return {**metadata, "extracted_text": text, "confirmed": confirmed, "valid_evidence": True}
 
 

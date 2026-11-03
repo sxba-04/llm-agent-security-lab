@@ -383,6 +383,17 @@ class ArchiveTests(unittest.TestCase):
                 import_campaign(bad, root / 'rejected')
             self.assertFalse((root / 'rejected').exists())
 
+    def test_named_review_version_cannot_be_erased_with_null_json(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            campaign = self.campaign(root)
+            _, _, _, second = self.review_history(campaign)
+            second.write_text('null', encoding='utf-8')
+            output = root / 'rejected.zip'
+            with self.assertRaisesRegex(ValueError, 'Missing review version integrity'):
+                export_campaign(campaign, output)
+            self.assertFalse(output.exists())
+
     def test_review_inputs_and_per_judgment_mapping_are_bound_even_with_new_self_hash(self):
         for field in ('mapping_sha256', 'packets_sha256', 'packet_sha256'):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temp:

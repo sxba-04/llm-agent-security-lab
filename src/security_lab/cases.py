@@ -44,6 +44,15 @@ def validate_case(case: dict[str, Any]) -> None:
     Structural validation is not a scientific assessment of scenario realism or
     semantic attack success; those require the documented human review.
     """
+    _validate_identity(case)
+    _validate_tickets(case["tickets"])
+    allowed, write_id = _validate_session(case["session"], case["tickets"])
+    _validate_articles(case)
+    _validate_expected(case, allowed, write_id)
+    _validate_mock(case["mock"], case["tickets"])
+
+
+def _validate_identity(case: dict[str, Any]) -> None:
     fields = {
         "case_id", "scenario_group", "goal", "strategy", "user_request",
         "session", "tickets", "articles", "expected", "mock",
@@ -57,29 +66,35 @@ def validate_case(case: dict[str, Any]) -> None:
     _require(case["goal"] in {"G1", "G2", "G3"}, "goal: expected G1, G2 or G3")
     _require(case["strategy"] in {"authority", "dependency"}, "strategy: unsupported strategy")
 
-    tickets = case["tickets"]
+
+def _validate_tickets(tickets: Any) -> None:
     _require(isinstance(tickets, dict) and bool(tickets), "tickets: non-empty object required")
     for ticket_id, ticket in tickets.items():
-        _text(ticket_id, "ticket ID")
-        _require(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", ticket_id) is not None,
-                 "ticket ID: expected a letter followed by up to 63 letters, digits, underscores or hyphens")
-        _object(ticket, f"ticket {ticket_id}", {"id", "project", "title", "facts", "notes"})
-        _require(ticket["id"] == ticket_id, f"ticket {ticket_id}: id does not match mapping key")
-        _text(ticket["project"], f"ticket {ticket_id}.project")
-        _require(ticket["project"] in {"Alpha", "Beta"}, f"ticket {ticket_id}: unknown project")
-        _text(ticket["title"], f"ticket {ticket_id}.title")
-        _require(isinstance(ticket["facts"], dict) and bool(ticket["facts"]), f"ticket {ticket_id}: facts required")
-        for key, value in ticket["facts"].items():
-            _text(key, f"ticket {ticket_id}.facts key")
-            _text(value, f"ticket {ticket_id}.facts value")
-        _require(isinstance(ticket["notes"], list), f"ticket {ticket_id}: notes must be a list")
-        for note in ticket["notes"]:
-            _text(note, f"ticket {ticket_id}.notes")
-        if "secret" in ticket:
-            _require(ticket["secret"] == "__GENERATE__", f"ticket {ticket_id}: use generated synthetic canaries only")
-            _require(ticket["project"] == "Beta", f"ticket {ticket_id}: canary belongs in restricted Beta data")
+        _validate_ticket(ticket_id, ticket)
 
-    session = case["session"]
+
+def _validate_ticket(ticket_id: str, ticket: Any) -> None:
+    _text(ticket_id, "ticket ID")
+    _require(re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", ticket_id) is not None,
+             "ticket ID: expected a letter followed by up to 63 letters, digits, underscores or hyphens")
+    _object(ticket, f"ticket {ticket_id}", {"id", "project", "title", "facts", "notes"})
+    _require(ticket["id"] == ticket_id, f"ticket {ticket_id}: id does not match mapping key")
+    _text(ticket["project"], f"ticket {ticket_id}.project")
+    _require(ticket["project"] in {"Alpha", "Beta"}, f"ticket {ticket_id}: unknown project")
+    _text(ticket["title"], f"ticket {ticket_id}.title")
+    _require(isinstance(ticket["facts"], dict) and bool(ticket["facts"]), f"ticket {ticket_id}: facts required")
+    for key, value in ticket["facts"].items():
+        _text(key, f"ticket {ticket_id}.facts key")
+        _text(value, f"ticket {ticket_id}.facts value")
+    _require(isinstance(ticket["notes"], list), f"ticket {ticket_id}: notes must be a list")
+    for note in ticket["notes"]:
+        _text(note, f"ticket {ticket_id}.notes")
+    if "secret" in ticket:
+        _require(ticket["secret"] == "__GENERATE__", f"ticket {ticket_id}: use generated synthetic canaries only")
+        _require(ticket["project"] == "Beta", f"ticket {ticket_id}: canary belongs in restricted Beta data")
+
+
+def _validate_session(session: Any, tickets: dict) -> tuple[list[str], str | None]:
     _object(session, "session", {"user_id", "read_ticket_ids", "write_ticket_id", "write_enabled"})
     _text(session["user_id"], "session.user_id")
     allowed = session["read_ticket_ids"]
@@ -97,6 +112,10 @@ def validate_case(case: dict[str, Any]) -> None:
     if session["write_enabled"]:
         _require(write_id is not None, "session: write mode requires a target ticket")
 
+    return allowed, write_id
+
+
+def _validate_articles(case: dict[str, Any]) -> None:
     articles = case["articles"]
     _object(articles, "articles", {"clean", "attack"})
     for source in ("clean", "attack"):
@@ -120,17 +139,9 @@ def validate_case(case: dict[str, Any]) -> None:
     _require("__GENERATE__" not in case["user_request"] and "{{secret:" not in case["user_request"],
              "user_request: must not include secret fixtures")
 
-    expected = case["expected"]
-    _object(expected, "expected", {"target_ticket_id", "legitimate_ticket_id", "required_facts", "false_claim", "task"})
-    for field in ("target_ticket_id", "legitimate_ticket_id"):
-        _text(expected[field], f"expected.{field}")
-        _require(expected[field] in tickets, f"expected.{field}: unknown ticket")
-    _require(expected["legitimate_ticket_id"] in allowed, "expected: legitimate ticket is not readable")
-    facts = expected["required_facts"]
-    _require(isinstance(facts, list) and bool(facts), "expected.required_facts: non-empty list required")
-    for fact in facts:
-        _text(fact, "expected.required_facts item")
-    _require(len(set(facts)) == len(facts), "expected.required_facts: duplicate fact")
+
+def _validate_fact_sources(expected: dict, articles: dict, tickets: dict,
+                           allowed: list[str], facts: list[str]) -> None:
     fact_sources = expected.get("required_fact_sources")
     if fact_sources is None:
         # Legacy fixtures put all required facts in the article. New fixtures
@@ -157,6 +168,22 @@ def validate_case(case: dict[str, Any]) -> None:
             _require(_contains_fact(ticket_text, entry["fact"]), "ticket fact source: fact absent from ticket facts")
     _require(len(mapped_facts) == len(facts) and set(mapped_facts) == set(facts),
              "expected.required_fact_sources: exactly one source per required fact required")
+
+
+def _validate_expected(case: dict[str, Any], allowed: list[str], write_id: str | None) -> None:
+    tickets, articles, session = case["tickets"], case["articles"], case["session"]
+    expected = case["expected"]
+    _object(expected, "expected", {"target_ticket_id", "legitimate_ticket_id", "required_facts", "false_claim", "task"})
+    for field in ("target_ticket_id", "legitimate_ticket_id"):
+        _text(expected[field], f"expected.{field}")
+        _require(expected[field] in tickets, f"expected.{field}: unknown ticket")
+    _require(expected["legitimate_ticket_id"] in allowed, "expected: legitimate ticket is not readable")
+    facts = expected["required_facts"]
+    _require(isinstance(facts, list) and bool(facts), "expected.required_facts: non-empty list required")
+    for fact in facts:
+        _text(fact, "expected.required_facts item")
+    _require(len(set(facts)) == len(facts), "expected.required_facts: duplicate fact")
+    _validate_fact_sources(expected, articles, tickets, allowed, facts)
     if "semantic_criteria" in expected:
         criteria = expected["semantic_criteria"]
         _require(isinstance(criteria, list) and bool(criteria), "expected.semantic_criteria: nonempty list required")
@@ -178,31 +205,37 @@ def validate_case(case: dict[str, Any]) -> None:
         _text(expected["false_claim"], "G3 false_claim")
         _require(target == expected["legitimate_ticket_id"], "G3: target is the legitimate output/ticket")
 
-    _object(case["mock"], "mock", {"clean", "attack"})
+
+def _validate_mock(mock: Any, tickets: dict) -> None:
+    _object(mock, "mock", {"clean", "attack"})
     for source in ("clean", "attack"):
-        script = case["mock"][source]
+        script = mock[source]
         _require(isinstance(script, list) and bool(script), f"mock.{source}: non-empty script required")
         for index, step in enumerate(script):
-            _require(isinstance(step, dict), f"mock.{source}[{index}]: object required")
-            if set(step) == {"text"}:
-                _text(step["text"], "mock final text")
-                _require(index == len(script) - 1, "mock: final text must be the last step")
-                for secret_id in re.findall(r"\{\{secret:([^}]+)\}\}", step["text"]):
-                    _require(secret_id in tickets and "secret" in tickets[secret_id],
-                             "mock: secret placeholder references a ticket without a canary")
-                continue
-            _require(set(step) == {"name", "arguments"}, "mock: expected a tool step or final text")
-            name, args = step["name"], step["arguments"]
-            _text(name, "mock tool name")
-            _require(name in {"read_ticket", "append_note"}, "mock: unsupported tool")
-            required = {"ticket_id"} if name == "read_ticket" else {"ticket_id", "text"}
-            _object(args, "mock.arguments", required)
-            _require(set(args) == required, "mock.arguments: unexpected fields")
-            _require(isinstance(args["ticket_id"], str) and args["ticket_id"] in tickets,
-                     "mock: unknown target ticket")
-            if name == "append_note":
-                _text(args["text"], "mock note")
+            _validate_mock_step(step, source, index, index == len(script) - 1, tickets)
         _require(set(script[-1]) == {"text"}, "mock: script must end in final text")
+
+
+def _validate_mock_step(step: Any, source: str, index: int, is_last: bool, tickets: dict) -> None:
+    _require(isinstance(step, dict), f"mock.{source}[{index}]: object required")
+    if set(step) == {"text"}:
+        _text(step["text"], "mock final text")
+        _require(is_last, "mock: final text must be the last step")
+        for secret_id in re.findall(r"\{\{secret:([^}]+)\}\}", step["text"]):
+            _require(secret_id in tickets and "secret" in tickets[secret_id],
+                     "mock: secret placeholder references a ticket without a canary")
+        return
+    _require(set(step) == {"name", "arguments"}, "mock: expected a tool step or final text")
+    name, args = step["name"], step["arguments"]
+    _text(name, "mock tool name")
+    _require(name in {"read_ticket", "append_note"}, "mock: unsupported tool")
+    required = {"ticket_id"} if name == "read_ticket" else {"ticket_id", "text"}
+    _object(args, "mock.arguments", required)
+    _require(set(args) == required, "mock.arguments: unexpected fields")
+    _require(isinstance(args["ticket_id"], str) and args["ticket_id"] in tickets,
+             "mock: unknown target ticket")
+    if name == "append_note":
+        _text(args["text"], "mock note")
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

@@ -16,6 +16,7 @@ Die Dokumentation gehört zum Code und wird gemeinsam mit Änderungen über Pull
 | Einen echten Modellpilot vorbereiten | [Modellzugang und Budget](api.md), [offene Entscheidungen](decisions.md) |
 | Eine Änderung beitragen oder einen Fehler beheben | [CONTRIBUTING](../CONTRIBUTING.md), [Arbeitsablauf](workflow.md), [Projektanweisungen](../AGENTS.md) |
 | Tests und Sicherheitsbefunde nachvollziehen | [Qualitätswerkzeuge](quality-tooling.md), [GitHub Actions](github-actions.md), [Validierungsnachweise](validation.md) |
+| Weitere Verbesserungen priorisieren | [Ausbauplan für Oberfläche, Tests, Betrieb und Datenhaltung](roadmap-2026-11.md) |
 | Sicherheitsgrenzen oder Review-Anforderungen prüfen | [Security Policy](../SECURITY.md), [Bedrohungsmodell](threat-model.md), [Reviews](review-settings.md), [Branchschutz](branch-protection.md) |
 | Entscheidungen und KI-Unterstützung nachverfolgen | [Entscheidungen](decisions.md), [Beiträge](contributions.md) |
 
@@ -35,3 +36,5 @@ Ein GitHub-Wiki eignet sich als kurze Startseite für Sebastian, Jonah und den B
 Die Startseite und Navigation wurden am 2. November 2026 im [GitHub-Wiki](https://github.com/sxba-04/llm-agent-security-lab/wiki) veröffentlicht. Ihre [versionierten Quellen](wiki/README.md) bleiben hier. Weitere Änderungen zuerst im Repository prüfen und anschließend bewusst ins separate Wiki übernehmen; ein Repository-Merge synchronisiert es nicht automatisch.
 
 Bei fachlich relevanten Änderungen werden die betroffenen Anleitungen, der Entscheidungsstand und die Beiträge mitgepflegt. Versuchsfreigaben, menschliche Bewertungen und erfolgreiche Tests werden nur dokumentiert, wenn sie tatsächlich stattgefunden haben.
+
+- [Qualitätskorrekturen vom 3. November 2026](quality-improvements-2026-11-03.md): Refactoring, Sonar-Dispositionen und Prüfnachweise.

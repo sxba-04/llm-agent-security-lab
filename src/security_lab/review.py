@@ -297,6 +297,19 @@ def _valid_adjudication(value: Any) -> bool:
 
 def validate_combined(combined: Any) -> None:
     """Reject modified versions and judgments inconsistent with their originals."""
+    version, raters, judgments = _validate_review_metadata(combined)
+    review_ids, run_ids = set(), set()
+    for judgment in judgments:
+        review_id = _validate_judgment_provenance(judgment, review_ids, run_ids)
+        originals = _validate_original_ratings(judgment, review_id, raters)
+        _validate_judgment_decision(judgment, originals)
+    if combined.get("n_disagreements") != sum(j["status"] == "disagreement" for j in judgments):
+        raise ValueError("Invalid review disagreement count")
+    if version != 1 + sum(j["status"] == "adjudicated" for j in judgments):
+        raise ValueError("Review version does not match its adjudication history")
+
+
+def _validate_review_metadata(combined: Any) -> tuple[int, list[str], list[dict]]:
     if not isinstance(combined, dict) or not _is_digest(combined.get("content_sha256")):
         raise ValueError("Missing review version integrity; combine the verified packets again")
     if combined["content_sha256"] != _digest({key: value for key, value in combined.items() if key != "content_sha256"}):
@@ -321,44 +334,62 @@ def validate_combined(combined: Any) -> None:
     judgments = combined.get("judgments")
     if not isinstance(judgments, list) or not judgments or combined.get("n_reviews") != len(judgments):
         raise ValueError("Invalid review judgment set")
-    review_ids, run_ids = set(), set()
-    for judgment in judgments:
-        if not isinstance(judgment, dict):
-            raise ValueError("Invalid review judgment")
-        review_id, run_id = judgment.get("review_id"), judgment.get("run_id")
-        if (not isinstance(review_id, str) or not review_id.strip() or review_id in review_ids
-                or not isinstance(run_id, str) or not run_id.strip() or run_id in run_ids
-                or not _is_digest(judgment.get("packet_sha256")) or not _is_digest(judgment.get("result_sha256"))):
-            raise ValueError("Invalid or duplicate review provenance")
-        review_ids.add(review_id)
-        run_ids.add(run_id)
-        originals = judgment.get("original_ratings")
-        if not isinstance(originals, list) or len(originals) != 2:
-            raise ValueError("Two original ratings must be retained")
-        for index, original in enumerate(originals):
-            _validate_rating(original, review_id)
-            if original["rater"] != raters[index]:
-                raise ValueError("Original rating does not match its named rater")
-        same = all(originals[0][field] == originals[1][field] for field in JUDGMENT_FIELDS)
-        status = judgment.get("status")
-        if status == "consensus":
-            if not same or any(judgment.get(field) != originals[0][field] for field in JUDGMENT_FIELDS) or judgment.get("adjudication") is not None:
-                raise ValueError("Consensus differs from original ratings")
-        elif status == "disagreement":
-            if same or any(judgment.get(field) is not None for field in JUDGMENT_FIELDS) or judgment.get("adjudication") is not None:
-                raise ValueError("Unresolved disagreement must not contain a final judgment")
-        elif status == "adjudicated":
-            if (same or not _valid_adjudication(judgment.get("adjudication"))
-                    or not isinstance(judgment.get("legitimate_rating"), str) or judgment["legitimate_rating"] not in LEGITIMATE_RATINGS
-                    or not isinstance(judgment.get("attack_success"), str) or judgment["attack_success"] not in ATTACK_RATINGS
-                    or not isinstance(judgment.get("false_block"), str) or judgment["false_block"] not in FALSE_BLOCK_RATINGS):
-                raise ValueError("Invalid adjudication of original disagreement")
-        else:
-            raise ValueError("Invalid review status")
-    if combined.get("n_disagreements") != sum(j["status"] == "disagreement" for j in judgments):
-        raise ValueError("Invalid review disagreement count")
-    if version != 1 + sum(j["status"] == "adjudicated" for j in judgments):
-        raise ValueError("Review version does not match its adjudication history")
+    return version, raters, judgments
+
+
+def _validate_judgment_provenance(judgment: Any, review_ids: set[str], run_ids: set[str]) -> str:
+    if not isinstance(judgment, dict):
+        raise ValueError("Invalid review judgment")
+    review_id, run_id = judgment.get("review_id"), judgment.get("run_id")
+    if (not isinstance(review_id, str) or not review_id.strip() or review_id in review_ids
+            or not isinstance(run_id, str) or not run_id.strip() or run_id in run_ids
+            or not _is_digest(judgment.get("packet_sha256")) or not _is_digest(judgment.get("result_sha256"))):
+        raise ValueError("Invalid or duplicate review provenance")
+    review_ids.add(review_id)
+    run_ids.add(run_id)
+    return review_id
+
+
+def _validate_original_ratings(judgment: dict, review_id: str, raters: list[str]) -> list[dict]:
+    originals = judgment.get("original_ratings")
+    if not isinstance(originals, list) or len(originals) != 2:
+        raise ValueError("Two original ratings must be retained")
+    for index, original in enumerate(originals):
+        _validate_rating(original, review_id)
+        if original["rater"] != raters[index]:
+            raise ValueError("Original rating does not match its named rater")
+    return originals
+
+
+def _validate_judgment_decision(judgment: dict, originals: list[dict]) -> None:
+    same = all(originals[0][field] == originals[1][field] for field in JUDGMENT_FIELDS)
+    status = judgment.get("status")
+    if status == "consensus":
+        _validate_consensus(judgment, originals, same)
+    elif status == "disagreement":
+        _validate_disagreement(judgment, same)
+    elif status == "adjudicated":
+        _validate_adjudicated(judgment, same)
+    else:
+        raise ValueError("Invalid review status")
+
+
+def _validate_consensus(judgment: dict, originals: list[dict], same: bool) -> None:
+    if not same or any(judgment.get(field) != originals[0][field] for field in JUDGMENT_FIELDS) or judgment.get("adjudication") is not None:
+        raise ValueError("Consensus differs from original ratings")
+
+
+def _validate_disagreement(judgment: dict, same: bool) -> None:
+    if same or any(judgment.get(field) is not None for field in JUDGMENT_FIELDS) or judgment.get("adjudication") is not None:
+        raise ValueError("Unresolved disagreement must not contain a final judgment")
+
+
+def _validate_adjudicated(judgment: dict, same: bool) -> None:
+    if (same or not _valid_adjudication(judgment.get("adjudication"))
+            or not isinstance(judgment.get("legitimate_rating"), str) or judgment["legitimate_rating"] not in LEGITIMATE_RATINGS
+            or not isinstance(judgment.get("attack_success"), str) or judgment["attack_success"] not in ATTACK_RATINGS
+            or not isinstance(judgment.get("false_block"), str) or judgment["false_block"] not in FALSE_BLOCK_RATINGS):
+        raise ValueError("Invalid adjudication of original disagreement")
 
 
 def adjudicate_review(combined: dict[str, Any], review_id: str, *, legitimate_rating: str,
