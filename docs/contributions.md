@@ -143,7 +143,7 @@ Die automatische Freigabeprüfung hielt das Absenden der vorbereiteten
 OAuth-Registrierung für eine konkrete Aktionsbestätigung an; der Zugriff auf die
 Render-Verwaltung war noch nicht angemeldet. Es wurden in diesem Schritt weder
 OAuth-App/Secret noch Disk angelegt. Die anschließende Speichereinrichtung ist
-unten getrennt dokumentiert; die GitHub-Anmeldung bleibt noch deaktiviert.
+unten getrennt dokumentiert; die GitHub-Anmeldung blieb in diesem Schritt noch deaktiviert.
 
 Die Beiträge enthalten keine echten Modellaufrufe oder menschlichen Bewertungen.
 Fachliche Autorenabnahme und unabhängige Bewertung bleiben Aufgaben des Teams.
@@ -166,3 +166,27 @@ Die genauen Nachweise und Grenzen stehen in [validation.md](validation.md).
 Die Vorlage aktiviert keinen Blueprint-Sync. Ein automatischer externer
 Backupdienst, eine OAuth-App oder echte Modellversuche wurden dadurch nicht
 angelegt; menschliche Bewertungen und Quellenbestätigungen wurden nicht erfunden.
+
+
+## GitHub-Live-Einrichtung vom 3. November 2026
+
+Sebastian bestätigte Jonahs Konto `Jonah199` und erteilte die konkrete Freigabe
+für OAuth-Einrichtung, Ersatz-Secret, Widerruf des zuvor ungenutzten Secrets und
+Konfiguration des vorhandenen Render-Dienstes. ChatGPT/Codex setzte die vier
+Backend-Werte gemeinsam und prüfte die tatsächliche GitHub-Anmeldung mit
+`sxba-04` sowie den Zugriff auf die geschützte Werkbank. Jonahs Konto ist anhand
+der bestätigten numerischen ID freigegeben; eine Anmeldung in seinem Namen
+wird nicht behauptet. Zugangscodes und der gemeinsame Versuchskern blieben
+unverändert. Geheimnisse werden nicht in der Dokumentation festgehalten.
+
+Nach dem Merge von PR #27 wurde außerdem die Disk auf dem Produktionsstand
+`6fcc07b` erneut geprüft: alle 15 Prüfdateien, drei abgeschlossene Mock-Läufe,
+ein unbestätigter PDF-Import und das geprüfte Kampagnenarchiv blieben erhalten.
+Eine weitere lesende Prüfung nach der OAuth-Bereitstellung bestätigte dieselben
+Dateihashes und gültigen Belege. Abmelden, erneute Anmeldung ohne Neuladen und
+der gezielte Widerruf einer weiteren eigenen Sitzung wurden live geprüft.
+Die einzelnen Betriebsnachweise stehen in [validation.md](validation.md).
+ChatGPT/Codex aktualisierte diese Dokumentation in einem separaten Branch;
+eine unabhängige technische Gegenprüfung und aktuelle CI-/Codex-Reviews werden
+am zugehörigen PR dokumentiert. Fachliche Autorenabnahme, Jonahs eigener Login
+und menschliche Bewertungen bleiben getrennte Aufgaben.

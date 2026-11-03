@@ -3,7 +3,7 @@
 # This file records its verified configuration; do not create a duplicate service.
 # Disk persistence was checked across a controlled redeployment on 2026-11-02.
 # Storage costs USD 0.25/month; the owner-approved ceiling is USD 1/month.
-# Optional GitHub OAuth still has no live app/client-secret configuration.
+# GitHub OAuth is configured directly in the backend; no secret values here.
 # See docs/hosting.md and docs/validation.md for evidence and operating limits.
 services:
   - type: web
