@@ -77,6 +77,17 @@ def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[t
         return True
     if not isinstance(value, dict):
         return False
+    if _is_summary_evidence(value):
+        return True
+    if relative.as_posix() == "worker.json":
+        return (value.get("schema_version") == 1 and value.get("kind") == "workbench_mock_worker"
+                and all(isinstance(value.get(key), str) and value[key] for key in ("campaign_id", "instance_id", "created_at"))
+                and type(value.get("pid")) is int)
+    return (_known_review_support(path, value, inputs)
+            or _known_provenance_json(relative, value))
+
+
+def _is_summary_evidence(value: dict) -> bool:
     # CLI summary filenames are intentionally arbitrary; identify their schema,
     # rather than treating every file named summary*.json as trustworthy.
     if (value.get("schema_version") == 1 and type(value.get("n_runs")) is int
@@ -86,10 +97,10 @@ def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[t
             and isinstance(value.get("groups"), list)
             and ("paired_comparisons" not in value or isinstance(value["paired_comparisons"], dict))):
         return True
-    if relative.as_posix() == "worker.json":
-        return (value.get("schema_version") == 1 and value.get("kind") == "workbench_mock_worker"
-                and all(isinstance(value.get(key), str) and value[key] for key in ("campaign_id", "instance_id", "created_at"))
-                and type(value.get("pid")) is int)
+    return False
+
+
+def _known_review_support(path: Path, value: dict, inputs: dict[tuple[str, str], dict]) -> bool:
     for source in inputs.values():
         root = source["mapping"].parent
         if path == source["mapping"]:
@@ -99,19 +110,28 @@ def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[t
                     and type(value.get("packet_count")) is int and value["packet_count"] == len(source["entries"]))
         if path.parent in {root / "drafts-a", root / "drafts-b"}:
             return isinstance(value.get("rater"), str) and isinstance(value.get("ratings"), list)
+    return False
+
+
+def _known_provenance_json(relative: Path, value: dict) -> bool:
     if relative.parts[0] == "provenance":
         if (len(relative.parts) == 2 and relative.name.startswith("import-")
                 and value.get("source_code_included") is False
                 and all(isinstance(value.get(key), str) for key in ("archive_sha256", "imported_at", "original_archive"))):
             return True
         if len(relative.parts) == 3 and relative.parts[1].startswith("recovery-"):
-            if relative.name == "manifest.original.json":
-                return (value.get("schema_version") in {1, 2} and isinstance(value.get("schedule"), list)
-                        and isinstance(value.get("runs"), list) and isinstance(value.get("cases_sha256"), str))
-            if relative.name == "receipt.json":
-                return (value.get("schema_version") == 1 and value.get("reason") == "orphaned_workbench_worker"
-                        and type(value.get("verified_records")) is int
-                        and all(isinstance(value.get(key), str) for key in ("recovered_at", "worker_instance_id", "original_manifest_sha256")))
+            return _known_recovery_json(relative, value)
+    return False
+
+
+def _known_recovery_json(relative: Path, value: dict) -> bool:
+    if relative.name == "manifest.original.json":
+        return (value.get("schema_version") in {1, 2} and isinstance(value.get("schedule"), list)
+                and isinstance(value.get("runs"), list) and isinstance(value.get("cases_sha256"), str))
+    if relative.name == "receipt.json":
+        return (value.get("schema_version") == 1 and value.get("reason") == "orphaned_workbench_worker"
+                and type(value.get("verified_records")) is int
+                and all(isinstance(value.get(key), str) for key in ("recovered_at", "worker_instance_id", "original_manifest_sha256")))
     return False
 
 
@@ -123,8 +143,21 @@ def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], 
     Draft ratings may remain unfinished; only combined decisions make claims
     about their original CSV inputs and preceding adjudication versions.
     """
-    from .review import adjudicate_review, combine_reviews, validate_combined
+    files, versions, by_hash = _collect_review_versions(directory, inputs, document_ids)
+    file_hashes: dict[Path, str] = {}
+    verified_roots = set()
+    for _, value, source in versions:
+        if value["review_version"] == 1:
+            if value["content_sha256"] not in verified_roots:
+                _verify_initial_review(value, source, files, file_hashes)
+                verified_roots.add(value["content_sha256"])
+        else:
+            _verify_review_successor(value, by_hash)
+    return sorted(path.relative_to(directory).as_posix() for path, _, _ in versions)
 
+
+def _collect_review_versions(directory: Path, inputs: dict[tuple[str, str], dict],
+                             document_ids: list[str]) -> tuple[list[Path], list, dict]:
     files = [path for path in directory.rglob("*") if path.is_file()]
     manifest = _json((directory / MANIFEST_FILE).read_bytes())
     verified_paths = {item["path"] for item in manifest["runs"]}
@@ -135,83 +168,105 @@ def _review_history_check(directory: Path, inputs: dict[tuple[str, str], dict], 
     for path in files:
         if path.suffix.lower() != ".json":
             continue
-        named_version = (path.parent.name == "combined"
-                         or path.stem.startswith(("combined", "adjudicated")))
-        try:
-            value = _json(path.read_bytes())
-        except ValueError:
-            raise ValueError(f"Unreadable campaign JSON: {path.relative_to(directory).as_posix()}; restore the original JSON before archiving") from None
-        recognizable = isinstance(value, dict) and bool({"review_version", "judgments", "previous_version_sha256"} & value.keys())
-        if not named_version and not recognizable:
-            if not _known_json_evidence(path, value, directory, inputs, verified_paths):
-                raise ValueError(f"Unrecognized JSON campaign evidence: {path.relative_to(directory).as_posix()}; restore complete review provenance or keep unrelated JSON outside the campaign")
+        is_version, value = _read_review_version(path, directory, inputs, verified_paths)
+        if not is_version:
             continue
-        validate_combined(value)
-        key = (value["mapping_sha256"], value["packets_sha256"])
-        source = inputs.get(key)
-        if source is None:
-            raise ValueError("Combined review inputs are missing or differ from archived mapping/packets")
-        entries = source["entries"]
-        if {judgment["review_id"] for judgment in value["judgments"]} != set(entries):
-            raise ValueError("Combined review does not cover its archived mapping")
-        for judgment in value["judgments"]:
-            meta = entries[judgment["review_id"]]
-            if any(judgment.get(field) != meta.get(field)
-                   for field in ("run_id", "case_id", "result_sha256", "packet_sha256")):
-                raise ValueError("Combined review judgment differs from archived mapping")
+        source = _review_version_source(value, inputs)
         versions.append((path, value, source))
         by_hash[value["content_sha256"]] = value
+    return files, versions, by_hash
 
-    file_hashes: dict[Path, str] = {}
-    verified_roots = set()
-    for _, value, source in versions:
-        if value["review_version"] == 1:
-            if value["content_sha256"] in verified_roots:
-                continue  # Identical copies are harmless preserved evidence.
-            rating_paths = []
-            for item in value["rating_files"]:
-                name = item.get("name")
-                if not isinstance(name, str) or not name or Path(name).name != name:
-                    raise ValueError("Invalid original review rating filename")
-                found = None
-                for path in files:
-                    if path.name != name:
-                        continue
-                    if path not in file_hashes:
-                        file_hashes[path] = _sha(path)
-                    if file_hashes[path] == item["sha256"]:
-                        found = path
-                        break
-                if found is None:
-                    raise ValueError("Original review rating CSV is missing or changed")
-                rating_paths.append(found)
-            # Replay the shared importer to bind embedded original ratings to
-            # the archived CSV bytes, including names, judgments and notes.
-            with tempfile.TemporaryDirectory(prefix="security-lab-review-check-") as temporary:
-                replay = combine_reviews(source["mapping"], rating_paths, Path(temporary) / "combined.json",
-                                         packets_path=source["packets"])
-            if replay != value:
-                raise ValueError("Combined review differs from original rating CSV contents")
-            verified_roots.add(value["content_sha256"])
+
+def _read_review_version(path: Path, directory: Path, inputs: dict,
+                         verified_paths: set[str]) -> tuple[bool, Any]:
+    named_version = (path.parent.name == "combined"
+                     or path.stem.startswith(("combined", "adjudicated")))
+    try:
+        value = _json(path.read_bytes())
+    except ValueError:
+        raise ValueError(f"Unreadable campaign JSON: {path.relative_to(directory).as_posix()}; restore the original JSON before archiving") from None
+    recognizable = isinstance(value, dict) and bool({"review_version", "judgments", "previous_version_sha256"} & value.keys())
+    if not named_version and not recognizable:
+        if not _known_json_evidence(path, value, directory, inputs, verified_paths):
+            raise ValueError(f"Unrecognized JSON campaign evidence: {path.relative_to(directory).as_posix()}; restore complete review provenance or keep unrelated JSON outside the campaign")
+        return False, None
+    return True, value
+
+
+def _review_version_source(value: dict, inputs: dict) -> dict:
+    from .review import validate_combined
+    validate_combined(value)
+    key = (value["mapping_sha256"], value["packets_sha256"])
+    source = inputs.get(key)
+    if source is None:
+        raise ValueError("Combined review inputs are missing or differ from archived mapping/packets")
+    entries = source["entries"]
+    if {judgment["review_id"] for judgment in value["judgments"]} != set(entries):
+        raise ValueError("Combined review does not cover its archived mapping")
+    for judgment in value["judgments"]:
+        meta = entries[judgment["review_id"]]
+        if any(judgment.get(field) != meta.get(field)
+               for field in ("run_id", "case_id", "result_sha256", "packet_sha256")):
+            raise ValueError("Combined review judgment differs from archived mapping")
+    return source
+
+
+def _original_rating_paths(value: dict, files: list[Path], file_hashes: dict[Path, str]) -> list[Path]:
+    rating_paths = []
+    for item in value["rating_files"]:
+        name = item.get("name")
+        if not isinstance(name, str) or not name or Path(name).name != name:
+            raise ValueError("Invalid original review rating filename")
+        found = _find_original_rating(name, item["sha256"], files, file_hashes)
+        if found is None:
+            raise ValueError("Original review rating CSV is missing or changed")
+        rating_paths.append(found)
+    return rating_paths
+
+
+def _find_original_rating(name: str, expected_sha256: str, files: list[Path],
+                          file_hashes: dict[Path, str]) -> Path | None:
+    for path in files:
+        if path.name != name:
             continue
-        previous = by_hash.get(value["previous_version_sha256"])
-        if previous is None or previous["review_version"] + 1 != value["review_version"]:
-            raise ValueError("Archived review history is missing its preceding version")
-        before = {judgment["review_id"]: judgment for judgment in previous["judgments"]}
-        after = {judgment["review_id"]: judgment for judgment in value["judgments"]}
-        changed = [key for key in after if before.get(key) != after[key]]
-        if set(before) != set(after) or len(changed) != 1:
-            raise ValueError("Archived review history must resolve exactly one disagreement per version")
-        judgment = after[changed[0]]
-        adjudication = judgment.get("adjudication")
-        if not isinstance(adjudication, dict):
-            raise ValueError("Archived review history contains no adjudication")
-        replay = adjudicate_review(previous, changed[0], legitimate_rating=judgment["legitimate_rating"],
-                                   attack_success=judgment["attack_success"], false_block=judgment["false_block"],
-                                   rationale=adjudication["rationale"], adjudicators=adjudication["adjudicators"])
-        if replay != value:
-            raise ValueError("Archived review history changed original ratings or previous decisions")
-    return sorted(path.relative_to(directory).as_posix() for path, _, _ in versions)
+        if path not in file_hashes:
+            file_hashes[path] = _sha(path)
+        if file_hashes[path] == expected_sha256:
+            return path
+    return None
+
+
+def _verify_initial_review(value: dict, source: dict, files: list[Path], file_hashes: dict[Path, str]) -> None:
+    from .review import combine_reviews
+    rating_paths = _original_rating_paths(value, files, file_hashes)
+    # Replay the shared importer to bind embedded original ratings to
+    # the archived CSV bytes, including names, judgments and notes.
+    with tempfile.TemporaryDirectory(prefix="security-lab-review-check-") as temporary:
+        replay = combine_reviews(source["mapping"], rating_paths, Path(temporary) / "combined.json",
+                                 packets_path=source["packets"])
+    if replay != value:
+        raise ValueError("Combined review differs from original rating CSV contents")
+
+
+def _verify_review_successor(value: dict, by_hash: dict) -> None:
+    from .review import adjudicate_review
+    previous = by_hash.get(value["previous_version_sha256"])
+    if previous is None or previous["review_version"] + 1 != value["review_version"]:
+        raise ValueError("Archived review history is missing its preceding version")
+    before = {judgment["review_id"]: judgment for judgment in previous["judgments"]}
+    after = {judgment["review_id"]: judgment for judgment in value["judgments"]}
+    changed = [key for key in after if before.get(key) != after[key]]
+    if set(before) != set(after) or len(changed) != 1:
+        raise ValueError("Archived review history must resolve exactly one disagreement per version")
+    judgment = after[changed[0]]
+    adjudication = judgment.get("adjudication")
+    if not isinstance(adjudication, dict):
+        raise ValueError("Archived review history contains no adjudication")
+    replay = adjudicate_review(previous, changed[0], legitimate_rating=judgment["legitimate_rating"],
+                               attack_success=judgment["attack_success"], false_block=judgment["false_block"],
+                               rationale=adjudication["rationale"], adjudicators=adjudication["adjudicators"])
+    if replay != value:
+        raise ValueError("Archived review history changed original ratings or previous decisions")
 
 
 def _campaign_check(directory: Path) -> dict[str, Any]:
@@ -265,51 +320,9 @@ def _verify_into(path: Path, destination: Path) -> dict[str, Any]:
         raise ValueError("Invalid or oversized archive file")
     try:
         with zipfile.ZipFile(path) as archive:
-            entries = archive.infolist()
-            if not entries or len(entries) > MAX_FILES + 1:
-                raise ValueError("Invalid archive member count")
-            names: dict[str, zipfile.ZipInfo] = {}
-            folded = set()
-            total = 0
-            for entry in entries:
-                name = _safe_name(entry.filename)
-                if entry.is_dir():
-                    raise ValueError("Archive must contain regular files only")
-                mode = entry.external_attr >> 16
-                file_type = stat.S_IFMT(mode)
-                if file_type not in (0, stat.S_IFREG):
-                    raise ValueError("Archive contains a link or special file")
-                if entry.flag_bits & 1:
-                    raise ValueError("Encrypted archive entries are unsupported")
-                if entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
-                    raise ValueError("Unsupported archive compression")
-                if name in names or name.casefold() in folded:
-                    raise ValueError("Duplicate archive path")
-                names[name] = entry
-                folded.add(name.casefold())
-                total += entry.file_size
-                if total > MAX_TOTAL_BYTES:
-                    raise ValueError("Archive exceeds total expanded size limit")
-            if INDEX_NAME not in names:
-                raise ValueError("Archive integrity index missing")
-            index = _json(_read_member(archive, names[INDEX_NAME]))
-            if not isinstance(index, dict) or index.get("schema_version") != 1 or index.get("kind") != "security-lab-campaign":
-                raise ValueError("Unknown archive format")
-            indexed = index.get("files")
-            if not isinstance(indexed, dict) or set(indexed) != set(names) - {INDEX_NAME}:
-                raise ValueError("Archive file inventory mismatch")
-            if index.get("source_code_included") is not False:
-                raise ValueError("Unsupported source-code completeness claim")
-            for name, expected in indexed.items():
-                if not isinstance(expected, dict) or type(expected.get("size")) is not int:
-                    raise ValueError("Malformed archive hash entry")
-                data = _read_member(archive, names[name])
-                if len(data) != expected["size"] or hashlib.sha256(data).hexdigest() != expected.get("sha256"):
-                    raise ValueError(f"Archive hash mismatch: {name}")
-                target = destination / name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with target.open("xb") as stream:
-                    stream.write(data)
+            names = _archive_members(archive)
+            indexed = _archive_index(archive, names)
+            _extract_verified_members(archive, names, indexed, destination)
             checked = _campaign_check(destination)
             return {"verified": True, "authenticity_verified": False,
                     "archive_sha256": _sha(path), "files": len(indexed),
@@ -317,6 +330,67 @@ def _verify_into(path: Path, destination: Path) -> dict[str, Any]:
                     **checked}
     except (zipfile.BadZipFile, zipfile.LargeZipFile, UnicodeError, OSError, KeyError, TypeError) as exc:
         raise ValueError("Invalid or inconsistent campaign archive") from exc
+
+
+def _archive_members(archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
+    entries = archive.infolist()
+    if not entries or len(entries) > MAX_FILES + 1:
+        raise ValueError("Invalid archive member count")
+    names: dict[str, zipfile.ZipInfo] = {}
+    folded = set()
+    total = 0
+    for entry in entries:
+        name = _safe_name(entry.filename)
+        _validate_archive_member(entry)
+        if name in names or name.casefold() in folded:
+            raise ValueError("Duplicate archive path")
+        names[name] = entry
+        folded.add(name.casefold())
+        total += entry.file_size
+        if total > MAX_TOTAL_BYTES:
+            raise ValueError("Archive exceeds total expanded size limit")
+    return names
+
+
+def _validate_archive_member(entry: zipfile.ZipInfo) -> None:
+    if entry.is_dir():
+        raise ValueError("Archive must contain regular files only")
+    mode = entry.external_attr >> 16
+    file_type = stat.S_IFMT(mode)
+    if file_type not in (0, stat.S_IFREG):
+        raise ValueError("Archive contains a link or special file")
+    if entry.flag_bits & 1:
+        raise ValueError("Encrypted archive entries are unsupported")
+    if entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+        raise ValueError("Unsupported archive compression")
+
+
+def _archive_index(archive: zipfile.ZipFile, names: dict[str, zipfile.ZipInfo]) -> dict:
+    if INDEX_NAME not in names:
+        raise ValueError("Archive integrity index missing")
+    index = _json(_read_member(archive, names[INDEX_NAME]))
+    if not isinstance(index, dict) or index.get("schema_version") != 1 or index.get("kind") != "security-lab-campaign":
+        raise ValueError("Unknown archive format")
+    indexed = index.get("files")
+    if not isinstance(indexed, dict) or set(indexed) != set(names) - {INDEX_NAME}:
+        raise ValueError("Archive file inventory mismatch")
+    if index.get("source_code_included") is not False:
+        raise ValueError("Unsupported source-code completeness claim")
+    return indexed
+
+
+def _extract_verified_members(archive: zipfile.ZipFile, names: dict[str, zipfile.ZipInfo],
+                              indexed: dict, destination: Path) -> None:
+    for name, expected in indexed.items():
+        if not isinstance(expected, dict) or type(expected.get("size")) is not int:
+            raise ValueError("Malformed archive hash entry")
+        data = _read_member(archive, names[name])
+        if len(data) != expected["size"] or hashlib.sha256(data).hexdigest() != expected.get("sha256"):
+            raise ValueError(f"Archive hash mismatch: {name}")
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("xb") as stream:
+            stream.write(data)
 
 
 def verify_archive(path: str | Path) -> dict[str, Any]:
@@ -339,59 +413,15 @@ def export_campaign(directory: str | Path, output_path: str | Path) -> dict[str,
         raise ValueError("Archive output must be outside the campaign")
     if output_path.exists() or output_path.is_symlink():
         raise FileExistsError("Archive output already exists")
-    files = []
-    folded = set()
-    total = 0
-    for path in sorted(directory.rglob("*")):
-        if path.is_symlink():
-            raise ValueError("Campaign contains a symbolic link")
-        if path.is_dir():
-            continue
-        if not path.is_file():
-            raise ValueError("Campaign contains a special file")
-        name = _safe_name(path.relative_to(directory).as_posix())
-        if name == INDEX_NAME or name.casefold() in folded:
-            raise ValueError("Reserved or colliding campaign path")
-        if name.endswith(".tmp"):
-            raise ValueError("Campaign contains an unfinished temporary write")
-        folded.add(name.casefold())
-        size = path.stat().st_size
-        if size > MAX_FILE_BYTES:
-            raise ValueError("Campaign file exceeds archive size limit")
-        total += size
-        if total > MAX_TOTAL_BYTES or len(files) >= MAX_FILES:
-            raise ValueError("Campaign exceeds archive limits")
-        current = path.stat()
-        files.append((name, path, (current.st_size, current.st_mtime_ns, current.st_ino)))
+    files = _export_files(directory)
     _campaign_check(directory)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     handle, temporary = tempfile.mkstemp(prefix=".campaign-", suffix=".zip", dir=output_path.parent)
     os.close(handle)
     temp_path = Path(temporary)
     try:
-        index = {"schema_version": 1, "kind": "security-lab-campaign",
-                 "created_at": datetime.now(timezone.utc).isoformat(),
-                 "source_code_included": False,
-                 "scope": "Original campaign evidence; obtain source code separately using the manifest's Git commit and source hashes.",
-                 "files": {}}
-        with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-            for name, path, original_stat in files:
-                current = path.stat()
-                if (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat or path.is_symlink():
-                    raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
-                data = path.read_bytes()
-                if len(data) > MAX_FILE_BYTES:
-                    raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
-                index["files"][name] = {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
-                archive.writestr(name, data)
-            archive.writestr(INDEX_NAME, json.dumps(index, ensure_ascii=True, indent=2, allow_nan=False).encode("utf-8"))
-        current_files = {p.relative_to(directory).as_posix() for p in directory.rglob("*") if not p.is_dir()}
-        if current_files != {name for name, _, _ in files}:
-            raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
-        for _, path, original_stat in files:
-            current = path.stat()
-            if path.is_symlink() or (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat:
-                raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
+        _write_archive(temp_path, files)
+        _assert_export_unchanged(directory, files)
         report = verify_archive(temp_path)
         # Publish only complete, synced bytes. Like write_json_new, a
         # same-directory hard link is atomic and never replaces a rival output.
@@ -402,6 +432,70 @@ def export_campaign(directory: str | Path, output_path: str | Path) -> dict[str,
         return {**report, "archive_path": str(output_path)}
     finally:
         temp_path.unlink(missing_ok=True)
+
+
+def _export_files(directory: Path) -> list[tuple[str, Path, tuple[int, int, int]]]:
+    files = []
+    folded = set()
+    total = 0
+    for path in sorted(directory.rglob("*")):
+        name = _export_file_name(path, directory, folded)
+        if name is None:
+            continue
+        folded.add(name.casefold())
+        size = path.stat().st_size
+        if size > MAX_FILE_BYTES:
+            raise ValueError("Campaign file exceeds archive size limit")
+        total += size
+        if total > MAX_TOTAL_BYTES or len(files) >= MAX_FILES:
+            raise ValueError("Campaign exceeds archive limits")
+        current = path.stat()
+        files.append((name, path, (current.st_size, current.st_mtime_ns, current.st_ino)))
+    return files
+
+
+def _export_file_name(path: Path, directory: Path, folded: set[str]) -> str | None:
+    if path.is_symlink():
+        raise ValueError("Campaign contains a symbolic link")
+    if path.is_dir():
+        return None
+    if not path.is_file():
+        raise ValueError("Campaign contains a special file")
+    name = _safe_name(path.relative_to(directory).as_posix())
+    if name == INDEX_NAME or name.casefold() in folded:
+        raise ValueError("Reserved or colliding campaign path")
+    if name.endswith(".tmp"):
+        raise ValueError("Campaign contains an unfinished temporary write")
+    return name
+
+
+def _write_archive(temp_path: Path, files: list[tuple[str, Path, tuple[int, int, int]]]) -> None:
+    index = {"schema_version": 1, "kind": "security-lab-campaign",
+             "created_at": datetime.now(timezone.utc).isoformat(),
+             "source_code_included": False,
+             "scope": "Original campaign evidence; obtain source code separately using the manifest's Git commit and source hashes.",
+             "files": {}}
+    with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        for name, path, original_stat in files:
+            current = path.stat()
+            if (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat or path.is_symlink():
+                raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
+            data = path.read_bytes()
+            if len(data) > MAX_FILE_BYTES:
+                raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
+            index["files"][name] = {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+            archive.writestr(name, data)
+        archive.writestr(INDEX_NAME, json.dumps(index, ensure_ascii=True, indent=2, allow_nan=False).encode("utf-8"))
+
+
+def _assert_export_unchanged(directory: Path, files: list[tuple[str, Path, tuple[int, int, int]]]) -> None:
+    current_files = {p.relative_to(directory).as_posix() for p in directory.rglob("*") if not p.is_dir()}
+    if current_files != {name for name, _, _ in files}:
+        raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
+    for _, path, original_stat in files:
+        current = path.stat()
+        if path.is_symlink() or (current.st_size, current.st_mtime_ns, current.st_ino) != original_stat:
+            raise ValueError(CAMPAIGN_CHANGED_DURING_EXPORT)
 
 
 def import_campaign(archive: str | Path, destination: str | Path) -> dict[str, Any]:

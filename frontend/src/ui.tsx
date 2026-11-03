@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, ArrowRight, Check, ChevronRight, Inbox, LoaderCircle } from 'lucide-react';
 import type { Campaign, Data, Json } from './types';
+import { withContentKeys } from './list-identity';
 
 export const variantNames: Record<string, string> = { B: 'Basis', F: 'Textfilter', P: 'Policy', FP: 'Filter + Policy' };
 export const sourceNames: Record<string, string> = { clean: 'Saubere Quelle', attack: 'Manipulierte Quelle' };
@@ -68,5 +69,5 @@ export function diffLines(clean: string, attack: string): { clean: { text: strin
 }
 export function SourceDiff({ clean, attack }: Readonly<{ clean: string; attack: string }>) {
   const diff = diffLines(clean, attack);
-  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre>{diff[source].map((line, index) => <span key={index} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
+  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre>{withContentKeys(diff[source], line => line.text).map(({ item: line, key }, index) => <span key={key} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
 }

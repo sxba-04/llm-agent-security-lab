@@ -127,6 +127,49 @@ def _positive_integer(value: Any, name: str) -> int:
     return value
 
 
+def _configuration_labels(config: dict[str, Any], enabled: bool) -> dict[str, Any]:
+    validated: dict[str, Any] = {}
+    for key in ("model", "price_reference", "price_checked_on"):
+        value = _safe_text(config.get(key))
+        if value is None or (enabled and not value.strip()):
+            raise ValueError(key + " must be a valid configured string")
+        validated[key] = value.strip()
+    if "expected_returned_model" in config:
+        value = _safe_text(config["expected_returned_model"])
+        if value is None or not value.strip():
+            raise ValueError("expected_returned_model must be a nonempty identifier")
+        validated["expected_returned_model"] = value.strip()
+    return validated
+
+
+def _configuration_prices(config: dict[str, Any], enabled: bool) -> dict[str, Any]:
+    validated: dict[str, Any] = {}
+    for key in ("input_eur_per_million", "output_eur_per_million", "run_budget_eur"):
+        value = config.get(key)
+        if value is None and not enabled and key != "run_budget_eur":
+            validated[key] = None
+        else:
+            # Do not permit arbitrary objects, containers or numeric subclasses.
+            if type(value) not in (str, int, float):
+                raise ValueError(key + " must be a finite positive amount")
+            validated[key] = str(euros(value))
+    return validated
+
+
+def _configuration_sampling(config: dict[str, Any]) -> dict[str, Any]:
+    validated: dict[str, Any] = {}
+    if "temperature" in config:
+        value = config["temperature"]
+        if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 2:
+            raise ValueError("temperature must be a finite number between 0 and 2")
+        validated["temperature"] = value
+    if "seed" in config:
+        if type(config["seed"]) is not int:
+            raise ValueError("seed must be an integer")
+        validated["seed"] = config["seed"]
+    return validated
+
+
 def validate_config(config: Any) -> dict[str, Any]:
     """Return only validated, primitive configuration suitable for audit logs.
 
@@ -144,42 +187,87 @@ def validate_config(config: Any) -> dict[str, Any]:
     if type(config.get("enabled")) is not bool:
         raise ValueError("enabled must be a boolean")
     enabled = config["enabled"]
-    validated: dict[str, Any] = {"enabled": enabled}
-    for key in ("model", "price_reference", "price_checked_on"):
-        value = _safe_text(config.get(key))
-        if value is None or (enabled and not value.strip()):
-            raise ValueError(key + " must be a valid configured string")
-        validated[key] = value.strip()
-    if "expected_returned_model" in config:
-        value = _safe_text(config["expected_returned_model"])
-        if value is None or not value.strip():
-            raise ValueError("expected_returned_model must be a nonempty identifier")
-        validated["expected_returned_model"] = value.strip()
+    validated = {"enabled": enabled, **_configuration_labels(config, enabled)}
     for key in ("max_completion_tokens", "max_input_tokens", "max_requests"):
         validated[key] = _positive_integer(config.get(key), key)
-    for key in ("input_eur_per_million", "output_eur_per_million", "run_budget_eur"):
-        value = config.get(key)
-        if value is None and not enabled and key != "run_budget_eur":
-            validated[key] = None
-        else:
-            # Do not permit arbitrary objects, containers or numeric subclasses.
-            if type(value) not in (str, int, float):
-                raise ValueError(key + " must be a finite positive amount")
-            validated[key] = str(euros(value))
+    validated.update(_configuration_prices(config, enabled))
     timeout = config.get("timeout_seconds", 45)
     if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 120:
         raise ValueError("timeout_seconds must be between 0 and 120")
     validated["timeout_seconds"] = timeout
-    if "temperature" in config:
-        value = config["temperature"]
-        if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 2:
-            raise ValueError("temperature must be a finite number between 0 and 2")
-        validated["temperature"] = value
-    if "seed" in config:
-        if type(config["seed"]) is not int:
-            raise ValueError("seed must be an integer")
-        validated["seed"] = config["seed"]
+    validated.update(_configuration_sampling(config))
     return validated
+
+
+def _valid_reported_usage(usage: Any) -> bool:
+    return (isinstance(usage, dict)
+            and all(type(usage.get(key)) is int and usage[key] >= 0
+                    for key in ("prompt_tokens", "completion_tokens", "total_tokens"))
+            and usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"])
+
+
+def _safe_reported_usage(usage: Any, valid_usage: bool) -> dict[str, Any]:
+    if not isinstance(usage, dict):
+        return {}
+    try:
+        if len(_strict_json(usage)) <= MAX_RESPONSE_BYTES:
+            return usage
+    except (TypeError, ValueError, RecursionError):
+        # Preserve reported tokens even when unrelated metadata is malformed.
+        # The full metadata remains in the escaped raw-response evidence.
+        if valid_usage:
+            return {key: usage[key] for key in ("prompt_tokens", "completion_tokens", "total_tokens")}
+    return {}
+
+
+def _response_message(raw: Any) -> tuple[dict[str, Any], str]:
+    if not isinstance(raw, dict) or len(_strict_json(raw)) > MAX_RESPONSE_BYTES:
+        raise ValueError
+    if not isinstance(raw.get("model"), str) or not raw["model"].strip():
+        raise ValueError
+    choices = raw["choices"]
+    if not isinstance(choices, list) or len(choices) != 1:
+        raise ValueError
+    choice = choices[0]
+    message = choice["message"]
+    finish = choice["finish_reason"]
+    if not isinstance(message, dict) or message.get("role") != "assistant" or finish not in {"stop", "length", "tool_calls", "content_filter"}:
+        raise ValueError
+    return message, finish
+
+
+def _tool_arguments(arguments_text: Any) -> dict[str, Any]:
+    try:
+        arguments = json.loads(arguments_text) if isinstance(arguments_text, str) else None
+        # Reject nonfinite numbers and lone surrogates before they can enter
+        # proposals, ticket state or another API request.
+        _strict_json(arguments)
+    except (ValueError, TypeError, RecursionError):
+        arguments = None
+    if not isinstance(arguments, dict):
+        # Keep an invalid proposal observable; the common syntax gateway rejects
+        # this extra field, while usage retains the exact raw response.
+        return {"__invalid_arguments_json__": arguments_text}
+    return arguments
+
+
+def _response_tool_calls(calls: Any) -> list[ToolCall]:
+    if not isinstance(calls, list) or len(calls) > 64:
+        raise ValueError
+    result_calls = []
+    call_ids: set[str] = set()
+    for call in calls:
+        if not isinstance(call, dict) or call.get("type") != "function" or not isinstance(call.get("function"), dict):
+            raise ValueError
+        function = call["function"]
+        name, call_id = function.get("name"), call.get("id")
+        if not isinstance(name, str) or not name or not isinstance(call_id, str) or not call_id:
+            raise ValueError
+        if call_id in call_ids:
+            raise ValueError
+        call_ids.add(call_id)
+        result_calls.append(ToolCall(name, _tool_arguments(function.get("arguments")), call_id))
+    return result_calls
 
 
 class OpenAIModel:
@@ -264,25 +352,9 @@ class OpenAIModel:
     def _account_response(self, raw: Any, reservation: Decimal, reservation_id: str) -> dict[str, Any]:
         fields = raw if isinstance(raw, dict) else {}
         usage = fields.get("usage")
-        valid_usage = isinstance(usage, dict) and all(type(usage.get(k)) is int and usage[k] >= 0
-                                                    for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
-        if valid_usage and usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]:
-            valid_usage = False
+        valid_usage = _valid_reported_usage(usage)
         if valid_usage:
-            actual = self._cost(usage["prompt_tokens"], usage["completion_tokens"])
-            try:
-                within = self._ledger.settle(reservation_id, actual)
-            except (BudgetExceeded, OSError):
-                # The request already completed. Preserve evidence and let the
-                # runner stop AFTER recording submitted context and response.
-                # Do not misclassify this as a pre-request budget refusal.
-                self._accounted += max(actual, reservation) - reservation
-                accounting = {"estimated_cost_eur": str(actual), "accounting": "settlement_failed",
-                              "accounting_error": True, "budget_overrun": actual > reservation}
-            else:
-                self._accounted += actual - reservation
-                accounting = {"estimated_cost_eur": str(actual), "accounting": "reported_usage",
-                              "accounting_error": False, "budget_overrun": not within}
+            accounting = self._settle_usage(usage, reservation, reservation_id)
         else:
             accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
                           "accounting_error": False, "budget_overrun": False}
@@ -292,37 +364,32 @@ class OpenAIModel:
                 self._returned_model = actual_model
             elif actual_model != self._returned_model:
                 self._model_version_changed = True
-        safe_usage: dict[str, Any] = {}
-        if isinstance(usage, dict):
-            try:
-                if len(_strict_json(usage)) <= MAX_RESPONSE_BYTES:
-                    safe_usage = usage
-            except (TypeError, ValueError, RecursionError):
-                # Retain useful reported tokens even if unrelated usage metadata
-                # is malformed. Full metadata survives in escaped raw evidence.
-                if valid_usage:
-                    safe_usage = {key: usage[key] for key in ("prompt_tokens", "completion_tokens", "total_tokens")}
+        safe_usage = _safe_reported_usage(usage, valid_usage)
         return {**safe_usage, **accounting, "model_version_changed": self._model_version_changed,
                 "expected_returned_model": self._returned_model,
                 "response_id": _safe_text(fields.get("id")), "model": actual_model,
                 "reserved_eur": str(reservation), "reservation_id": reservation_id,
                 **_response_evidence(raw)}
 
+    def _settle_usage(self, usage: dict[str, Any], reservation: Decimal,
+                      reservation_id: str) -> dict[str, Any]:
+        actual = self._cost(usage["prompt_tokens"], usage["completion_tokens"])
+        try:
+            within = self._ledger.settle(reservation_id, actual)
+        except (BudgetExceeded, OSError):
+            # Receipt already happened: stop only AFTER recording response and
+            # submitted context, never as a pre-request budget refusal.
+            self._accounted += max(actual, reservation) - reservation
+            return {"estimated_cost_eur": str(actual), "accounting": "settlement_failed",
+                    "accounting_error": True, "budget_overrun": actual > reservation}
+        self._accounted += actual - reservation
+        return {"estimated_cost_eur": str(actual), "accounting": "reported_usage",
+                "accounting_error": False, "budget_overrun": not within}
+
     @staticmethod
     def _parse(raw: Any) -> ModelReply:
         try:
-            if not isinstance(raw, dict) or len(_strict_json(raw)) > MAX_RESPONSE_BYTES:
-                raise ValueError
-            if not isinstance(raw.get("model"), str) or not raw["model"].strip():
-                raise ValueError
-            choices = raw["choices"]
-            if not isinstance(choices, list) or len(choices) != 1:
-                raise ValueError
-            choice = choices[0]
-            message = choice["message"]
-            finish = choice["finish_reason"]
-            if not isinstance(message, dict) or message.get("role") != "assistant" or finish not in {"stop", "length", "tool_calls", "content_filter"}:
-                raise ValueError
+            message, finish = _response_message(raw)
             text = message.get("content")
             if text is not None and not isinstance(text, str):
                 raise ValueError
@@ -332,37 +399,7 @@ class OpenAIModel:
                     raise ValueError
                 text = text or refusal
                 finish = "content_filter"
-            calls = message.get("tool_calls") or []
-            if not isinstance(calls, list) or len(calls) > 64:
-                raise ValueError
-            result_calls = []
-            call_ids: set[str] = set()
-            for call in calls:
-                if not isinstance(call, dict) or call.get("type") != "function" or not isinstance(call.get("function"), dict):
-                    raise ValueError
-                function = call["function"]
-                name = function.get("name")
-                call_id = call.get("id")
-                if not isinstance(name, str) or not name or not isinstance(call_id, str) or not call_id:
-                    raise ValueError
-                if call_id in call_ids:
-                    raise ValueError
-                call_ids.add(call_id)
-                arguments_text = function.get("arguments")
-                try:
-                    arguments = json.loads(arguments_text) if isinstance(arguments_text, str) else None
-                    # json.loads accepts NaN/Infinity and overflowed exponents;
-                    # it can also decode an escaped lone surrogate. Neither may
-                    # enter proposals, tool state or the next API request.
-                    _strict_json(arguments)
-                except (ValueError, TypeError, RecursionError):
-                    arguments = None
-                if not isinstance(arguments, dict):
-                    # Keep generated invalid arguments as an observable model proposal.
-                    # The common syntax gateway rejects this extra field; raw response
-                    # remains available in usage for exact evidence.
-                    arguments = {"__invalid_arguments_json__": arguments_text}
-                result_calls.append(ToolCall(name, arguments, call_id))
+            result_calls = _response_tool_calls(message.get("tool_calls") or [])
             if (finish == "tool_calls" and not result_calls) or (result_calls and finish == "stop"):
                 raise ValueError
             return ModelReply(text=text, tool_calls=result_calls, finish_reason=finish)

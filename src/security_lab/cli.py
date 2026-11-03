@@ -91,94 +91,129 @@ def _factory(args: argparse.Namespace):
     return lambda case, source: model, {"provider": "openai", **config}
 
 
+def _run_campaign(args: argparse.Namespace) -> int:
+    cases = load_cases(args.cases)
+    if args.command == "demo":
+        # One pair from each goal; whole catalog available with run.
+        selected = {}
+        for case in cases:
+            selected.setdefault(case["goal"], case)
+        cases = list(selected.values())
+    factory, config = _factory(args)
+    manifest = run_batch(cases, args.output, factory, variants=args.variants, sources=args.sources,
+                         repeats=args.repeats, seed=args.seed, max_tool_calls=args.max_tool_calls,
+                         max_model_calls=args.max_model_calls, timeout_seconds=args.timeout_seconds,
+                         provider_config=config)
+    print(f"{manifest['state']}: {manifest['completed_runs']}/{manifest['planned_runs']} runs -> {args.output}")
+    if config.get("provider") == "mock":
+        print("MOCK ENGINEERING CHECKS ONLY. These are not empirical LLM results.")
+    return 0 if manifest["state"] == "completed" else 2
+
+
+def _validate_cases(args: argparse.Namespace) -> int:
+    cases = load_cases(args.cases)
+    print(f"Valid: {len(cases)} paired cases")
+    return 0
+
+
+def _summarize_campaign(args: argparse.Namespace) -> int:
+    from .evaluation import summarize
+    results = load_results(args.directory)
+    if args.reviews:
+        from .review import attach_reviews
+        results = attach_reviews(results, json.loads(args.reviews.read_text(encoding="utf-8")))
+    value = summarize(results)
+    manifest = json.loads((args.directory / "manifest.json").read_text(encoding="utf-8"))
+    protected = [(args.directory / entry["path"]).resolve() for entry in manifest["runs"]]
+    protected += [(args.directory / name).resolve() for name in ("manifest.json", "cases.snapshot.json")]
+    # Evidence lives in whole subdirectories, including future source and review formats.
+    evidence_dirs = [args.directory / name for name in ("records", "events", "sources", "reviews", "provenance")]
+    # Include file identities as well as paths so a hard-link alias
+    # cannot overwrite an original outside its protected directory.
+    protected += [path for directory in evidence_dirs for path in directory.rglob("*") if path.is_file()]
+    if args.reviews:
+        protected.append(args.reviews.resolve())
+    target = args.output.resolve()
+    if (target in protected or any(target.is_relative_to(path.resolve()) for path in evidence_dirs)
+            or any(path.exists() and args.output.exists() and path.samefile(args.output) for path in protected)):
+        raise ValueError("Summary output must not overwrite original campaign evidence")
+    value.update(campaign_state=manifest["state"], planned_runs=len(manifest["schedule"]), completed_runs=len(manifest["runs"]))
+    write_json(args.output, value)
+    print(f"Summary -> {args.output}")
+    return 0
+
+
+def _export_review(args: argparse.Namespace) -> int:
+    from .review import export_review
+    export_review(load_results(args.directory), args.output)
+    print(f"Blinded review material -> {args.output}")
+    return 0
+
+
+def _import_review(args: argparse.Namespace) -> int:
+    from .review import combine_reviews
+    combine_reviews(args.mapping, args.ratings, args.output, packets_path=args.packets)
+    print(f"Independent ratings -> {args.output}")
+    return 0
+
+
+def _adjudicate_review(args: argparse.Namespace) -> int:
+    from .review import adjudicate_review
+    if args.output.suffix.lower() != ".json":
+        raise ValueError("Adjudicated review output must use the .json extension for archive verification")
+    if args.output.exists():
+        raise ValueError("Use a new output path to preserve earlier review versions")
+    combined = json.loads(args.input.read_text(encoding="utf-8"))
+    updated = adjudicate_review(combined, args.review_id,
+                                legitimate_rating=args.legitimate_rating,
+                                attack_success=args.attack_success,
+                                false_block=args.false_block,
+                                rationale=args.rationale, adjudicators=args.adjudicators)
+    write_json_new(args.output, updated)
+    print(f"Adjudication -> {args.output}")
+    return 0
+
+
+def _freeze_cases(args: argparse.Namespace) -> int:
+    if args.output.exists():
+        raise ValueError("Snapshot path already exists; use a new version")
+    cases = load_cases(args.cases)
+    write_json(args.output, {"schema_version": 1, "stage": "development", "main_experiment_approved": False,
+                            "created_at": datetime.now(timezone.utc).isoformat(), "provenance": provenance(),
+                            "cases_sha256": digest(cases), "cases": cases})
+    print(f"Development snapshot -> {args.output}")
+    return 0
+
+
+def _archive_campaign(args: argparse.Namespace) -> int:
+    from .archives import export_campaign
+    print(json.dumps(export_campaign(args.directory, args.output), ensure_ascii=False))
+    return 0
+
+
+def _verify_archive(args: argparse.Namespace) -> int:
+    from .archives import verify_archive
+    print(json.dumps(verify_archive(args.archive), ensure_ascii=False))
+    return 0
+
+
+def _restore_archive(args: argparse.Namespace) -> int:
+    from .archives import import_campaign
+    print(json.dumps(import_campaign(args.archive, args.output), ensure_ascii=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
-    p = parser()
-    args = p.parse_args(argv)
+    args = parser().parse_args(argv)
+    handlers = {
+        "demo": _run_campaign, "run": _run_campaign, "validate": _validate_cases,
+        "summarize": _summarize_campaign, "review-export": _export_review,
+        "review-import": _import_review, "review-adjudicate": _adjudicate_review,
+        "freeze": _freeze_cases, "archive": _archive_campaign,
+        "verify-archive": _verify_archive, "restore-archive": _restore_archive,
+    }
     try:
-        if args.command in ("demo", "run"):
-            cases = load_cases(args.cases)
-            if args.command == "demo":
-                # One pair from each goal; whole catalog available with run.
-                selected = {}
-                for case in cases:
-                    selected.setdefault(case["goal"], case)
-                cases = list(selected.values())
-            factory, config = _factory(args)
-            manifest = run_batch(cases, args.output, factory, variants=args.variants, sources=args.sources,
-                                 repeats=args.repeats, seed=args.seed, max_tool_calls=args.max_tool_calls,
-                                 max_model_calls=args.max_model_calls, timeout_seconds=args.timeout_seconds,
-                                 provider_config=config)
-            print(f"{manifest['state']}: {manifest['completed_runs']}/{manifest['planned_runs']} runs -> {args.output}")
-            if config.get("provider") == "mock":
-                print("MOCK ENGINEERING CHECKS ONLY. These are not empirical LLM results.")
-            return 0 if manifest["state"] == "completed" else 2
-        if args.command == "validate":
-            cases = load_cases(args.cases)
-            print(f"Valid: {len(cases)} paired cases")
-        elif args.command == "summarize":
-            from .evaluation import summarize
-            results = load_results(args.directory)
-            if args.reviews:
-                from .review import attach_reviews
-                results = attach_reviews(results, json.loads(args.reviews.read_text(encoding="utf-8")))
-            value = summarize(results)
-            manifest = json.loads((args.directory / "manifest.json").read_text(encoding="utf-8"))
-            protected = [(args.directory / entry["path"]).resolve() for entry in manifest["runs"]]
-            protected += [(args.directory / name).resolve() for name in ("manifest.json", "cases.snapshot.json")]
-            # Evidence lives in whole subdirectories, including future source and review formats.
-            evidence_dirs = [args.directory / name for name in ("records", "events", "sources", "reviews", "provenance")]
-            # Include file identities as well as paths so a hard-link alias
-            # cannot overwrite an original outside its protected directory.
-            protected += [path for directory in evidence_dirs for path in directory.rglob("*") if path.is_file()]
-            if args.reviews:
-                protected.append(args.reviews.resolve())
-            target = args.output.resolve()
-            if (target in protected or any(target.is_relative_to(path.resolve()) for path in evidence_dirs)
-                    or any(path.exists() and args.output.exists() and path.samefile(args.output) for path in protected)):
-                raise ValueError("Summary output must not overwrite original campaign evidence")
-            value.update(campaign_state=manifest["state"], planned_runs=len(manifest["schedule"]), completed_runs=len(manifest["runs"]))
-            write_json(args.output, value)
-            print(f"Summary -> {args.output}")
-        elif args.command == "review-export":
-            from .review import export_review
-            export_review(load_results(args.directory), args.output)
-            print(f"Blinded review material -> {args.output}")
-        elif args.command == "review-import":
-            from .review import combine_reviews
-            combine_reviews(args.mapping, args.ratings, args.output, packets_path=args.packets)
-            print(f"Independent ratings -> {args.output}")
-        elif args.command == "review-adjudicate":
-            from .review import adjudicate_review
-            if args.output.suffix.lower() != ".json":
-                raise ValueError("Adjudicated review output must use the .json extension for archive verification")
-            if args.output.exists():
-                raise ValueError("Use a new output path to preserve earlier review versions")
-            combined = json.loads(args.input.read_text(encoding="utf-8"))
-            updated = adjudicate_review(combined, args.review_id,
-                                        legitimate_rating=args.legitimate_rating,
-                                        attack_success=args.attack_success,
-                                        false_block=args.false_block,
-                                        rationale=args.rationale, adjudicators=args.adjudicators)
-            write_json_new(args.output, updated)
-            print(f"Adjudication -> {args.output}")
-        elif args.command == "freeze":
-            if args.output.exists():
-                raise ValueError("Snapshot path already exists; use a new version")
-            cases = load_cases(args.cases)
-            write_json(args.output, {"schema_version": 1, "stage": "development", "main_experiment_approved": False,
-                                    "created_at": datetime.now(timezone.utc).isoformat(), "provenance": provenance(),
-                                    "cases_sha256": digest(cases), "cases": cases})
-            print(f"Development snapshot -> {args.output}")
-        elif args.command == "archive":
-            from .archives import export_campaign
-            print(json.dumps(export_campaign(args.directory, args.output), ensure_ascii=False))
-        elif args.command == "verify-archive":
-            from .archives import verify_archive
-            print(json.dumps(verify_archive(args.archive), ensure_ascii=False))
-        elif args.command == "restore-archive":
-            from .archives import import_campaign
-            print(json.dumps(import_campaign(args.archive, args.output), ensure_ascii=False))
-        return 0
+        return handlers[args.command](args)
     except (ValueError, OSError, KeyError) as exc:
         print(f"Error: {exc}", file=__import__("sys").stderr)
         return 2

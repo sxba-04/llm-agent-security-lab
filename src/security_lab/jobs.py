@@ -64,6 +64,35 @@ def checked_tree(directory: Path) -> Path:
     return directory
 
 
+def _stamp_metadata(path: Path, name: str, digest):
+    try:
+        value = path.lstat()
+    except FileNotFoundError:
+        digest.update(json.dumps([name, "missing"]).encode())
+        return None
+    attributes = getattr(value, "st_file_attributes", 0)
+    fields = [name, value.st_dev, value.st_ino, value.st_mode, value.st_size,
+              value.st_mtime_ns, value.st_ctime_ns, attributes]
+    digest.update(json.dumps(fields, ensure_ascii=True, separators=(",", ":")).encode())
+    return value
+
+
+def _bounded_child_names(directory: Path, remaining: int) -> list[str] | None:
+    with os.scandir(directory) as entries:
+        children = []
+        for entry in entries:
+            if len(children) >= remaining:
+                return None
+            children.append(entry.name)
+    return sorted(children)
+
+
+def _plain_directory(value) -> bool:
+    return (value is not None and stat.S_ISDIR(value.st_mode)
+            and not (getattr(value, "st_file_attributes", 0)
+                     & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)))
+
+
 class CampaignJobs:
     def __init__(self, workspace: Path):
         self.workspace = reject_symlinks(Path(workspace))
@@ -90,26 +119,31 @@ class CampaignJobs:
         with self._lock:
             return self._active == campaign_id
 
+    def _campaign_candidate(self, parent: Path, path: Path) -> bool:
+        try:
+            if path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction()):
+                return False
+            if not path.is_dir():
+                return False
+            manifest = path / batch.MANIFEST_FILE
+            if manifest.exists() or manifest.is_symlink():
+                return True
+            # An owned UI campaign that lost its manifest still
+            # needs a damaged row; unrelated folders do not.
+            return (parent == self.campaigns and bool(NEW_ID.fullmatch(path.name))
+                    and (self.workers / f"{path.name}.json").exists())
+        except OSError:
+            # Include an inaccessible candidate so brief() can report
+            # its failure without aborting discovery of its neighbours.
+            return True
+
     def _discover(self) -> dict[str, Path]:
         discovered = {}
         for parent in (self.workspace, self.campaigns):
             reject_symlinks(parent, self.workspace)
             for path in parent.iterdir():
-                try:
-                    if path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction()):
-                        continue
-                    if not path.is_dir():
-                        continue
-                    manifest = path / batch.MANIFEST_FILE
-                    if not manifest.exists() and not manifest.is_symlink():
-                        # An owned UI campaign that lost its manifest still
-                        # needs a damaged row; unrelated folders do not.
-                        if parent != self.campaigns or not NEW_ID.fullmatch(path.name) or not (self.workers / f"{path.name}.json").exists():
-                            continue
-                except OSError:
-                    # Include an inaccessible candidate so brief() can report
-                    # its failure without aborting discovery of its neighbours.
-                    pass
+                if not self._campaign_candidate(parent, path):
+                    continue
                 if parent == self.campaigns and NEW_ID.fullmatch(path.name):
                     identifier = path.name
                 else:
@@ -266,44 +300,26 @@ class CampaignJobs:
         """
         directory = reject_symlinks(directory)
         digest = hashlib.sha256()
-
-        def stamp(path: Path, name: str):
-            try:
-                value = path.lstat()
-            except FileNotFoundError:
-                digest.update(json.dumps([name, "missing"]).encode())
-                return None
-            attributes = getattr(value, "st_file_attributes", 0)
-            fields = [name, value.st_dev, value.st_ino, value.st_mode, value.st_size,
-                      value.st_mtime_ns, value.st_ctime_ns, attributes]
-            digest.update(json.dumps(fields, ensure_ascii=True, separators=(",", ":")).encode())
-            return value
-
-        root_stat = stamp(directory, str(directory))
+        root_stat = _stamp_metadata(directory, str(directory), digest)
         if root_stat is None:
             return digest.digest()
         pending = [directory]
         count = 0
         while pending:
             parent = pending.pop()
-            with os.scandir(parent) as entries:
-                children = []
-                for entry in entries:
-                    count += 1
-                    if count > MAX_FINGERPRINT_ENTRIES:
-                        return None  # Fall back to fresh validation, no cache.
-                    children.append(entry.name)
-            for name in sorted(children):
+            children = _bounded_child_names(parent, MAX_FINGERPRINT_ENTRIES - count)
+            if children is None:
+                return None  # Fall back to fresh validation, no cache.
+            count += len(children)
+            for name in children:
                 path = parent / name
-                value = stamp(path, path.relative_to(directory).as_posix())
-                if value is not None and stat.S_ISDIR(value.st_mode) and not (
-                    getattr(value, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
-                ):
+                value = _stamp_metadata(path, path.relative_to(directory).as_posix(), digest)
+                if _plain_directory(value):
                     pending.append(path)
         # Ownership affects crash recovery and displayed worker capabilities.
         for suffix in ("json", "lock"):
             path = reject_symlinks(self.workers / f"{campaign_id}.{suffix}", self.workspace)
-            stamp(path, "worker/" + path.name)
+            _stamp_metadata(path, "worker/" + path.name, digest)
         return digest.digest()
 
     def _listed_brief(self, campaign_id: str, directory: Path) -> dict[str, Any]:
@@ -337,9 +353,9 @@ class CampaignJobs:
     def list(self) -> list[dict[str, Any]]:
         discovered = self._discover()
         with self._lock:
-            for identifier in list(self._list_cache):
-                if identifier not in discovered:
-                    del self._list_cache[identifier]
+            stale = [identifier for identifier in self._list_cache if identifier not in discovered]
+            for identifier in stale:
+                del self._list_cache[identifier]
         return sorted([self._listed_brief(identifier, directory) for identifier, directory in discovered.items()],
                       key=lambda row: row.get("created_at") or "", reverse=True)
 
