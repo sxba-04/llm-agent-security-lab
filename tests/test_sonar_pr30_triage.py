@@ -82,9 +82,13 @@ class OperationTests(unittest.TestCase):
         self.assertFalse(report["revision_verified_by_server"])
 
     def test_unapproved_pin_blocks_every_post(self):
-        with self.assertRaisesRegex(triage.SafeError, "Apply disabled"):
-            triage.run(self.client, self.data, self.entries, self.digest, {"mutations": []}, True)
-        self.assertEqual(self.client.posts, [])
+        for pin, approved in (("", True), ("0" * 64, True), (self.digest, False)):
+            with self.subTest(pin=pin, approved=approved):
+                data = {**self.data, "approved": approved}
+                with patch.object(triage, "APPROVED_ALLOWLIST_SHA256", pin):
+                    with self.assertRaisesRegex(triage.SafeError, "Apply disabled"):
+                        triage.run(self.client, data, self.entries, self.digest, {"mutations": []}, True)
+                self.assertEqual(self.client.posts, [])
 
     def test_rule_and_missing_issue_fail_before_all_posts(self):
         self.approved()

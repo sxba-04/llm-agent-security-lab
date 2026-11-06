@@ -1,9 +1,13 @@
 # One-off Sonar PR 30 operations branch
 
-Prepared for root review only. No remote actions were performed while creating
-these files. They are outside the application checkout. The first supported
-operation is read-only. Apply is deliberately disabled: rules are null,
-`approved` is false, and `APPROVED_ALLOWLIST_SHA256` is empty.
+Prepared outside the application checkout. The initial candidate was read-only
+with apply disabled. Root then completed read-only CI run `42195487391` and
+reviewed its nine issue identities, rules, components, transitions and flows.
+The current candidate has root-reviewed rule pins, `approved=true`, analysis
+date `2026-11-06T09:07:41+0000`, and allowlist SHA256
+`ed695968a94bc9751894ba7ecba11ff270a40920ce07bc823aae63e5a2e8f78d`.
+The runner still defaults to read-only; an explicit `apply=true` dispatch is
+required for issue changes. The implementation agent performed no remote actions.
 
 ## Fixed scope
 
@@ -51,7 +55,7 @@ sets `revision_verified_by_server=false`. Match analysis/run evidence separately
 Unknown server schemas, absent PR, oversized responses and pagination drift fail
 closed instead of inventing a usable inventory.
 
-## Later explicit apply preparation
+## Explicit apply preparation
 
 After reviewing the returned inventory and the per-ID source evidence, root must
 manually complete each of the nine static `rule` fields. Do not infer a disposition
@@ -60,6 +64,7 @@ the code revision they describe. Copy the reviewed inventory's exact analysisDat
 to `expected_analysis_date`, set `approved=true`, calculate the JSON file's SHA256,
 and set that exact value in `APPROVED_ALLOWLIST_SHA256`. Commit those reviewed
 changes only on the operations branch. There is no automatic promotion helper.
+This preparation has been completed for the pinned candidate described above.
 
 Only then dispatch `apply=true`. Before the first POST all nine IDs must still
 exist in PR 30 and match their pinned rules/components. Each issue is re-read;
@@ -80,8 +85,9 @@ Do not undo successful earlier dispositions merely because a later issue failed.
 
 The existing token may lack Administer Issues permission. HTTP 401/403 causes a
 sanitized failure; no token creation, permission widening or alternate host is
-attempted. No raw server error is printed. Actual Cloud API compatibility and
-permissions are intentionally determined by the read-only operation first.
+attempted. No raw server error is printed. The completed read-only operation
+confirmed the read endpoints and available transitions. Successful POST execution
+and its effective permissions remain unverified until an explicit apply run.
 
 ## API contract checked against primary sources
 
@@ -94,8 +100,8 @@ permissions are intentionally determined by the read-only operation first.
 - [Sonar Web API authentication and POST encoding](https://docs.sonarsource.com/sonarqube-server/extension-guide/web-api):
   bearer authentication and `application/x-www-form-urlencoded` POST bodies.
 
-These primary API definitions are not a claim that the Cloud call succeeded.
-Unsupported/deprecated response behavior fails closed and must be reviewed.
+These primary API definitions do not certify POST success. Unsupported/deprecated
+response behavior fails closed and must be reviewed.
 
 ## Offline validation
 

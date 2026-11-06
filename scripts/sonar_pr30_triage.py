@@ -27,7 +27,7 @@ OPS_REF = "refs/heads/ops/sonar-pr30-triage"
 REVIEWED_REVISION = "6b48f567e708de55230029549fee7a27c06b3d93"
 # Deliberately empty. Root must review actual rule IDs + concrete comments, set
 # approved=true in the static file, and commit that file's exact SHA256 here.
-APPROVED_ALLOWLIST_SHA256 = ""
+APPROVED_ALLOWLIST_SHA256 = "ed695968a94bc9751894ba7ecba11ff270a40920ce07bc823aae63e5a2e8f78d"
 ALLOWLIST = Path(__file__).with_name("sonar_pr30_allowlist.json")
 OUTPUT = Path("quality-inventory/sonar-pr30-triage.json")
 MAX_BYTES = 4 * 1024 * 1024
