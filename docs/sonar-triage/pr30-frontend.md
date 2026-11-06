@@ -138,3 +138,28 @@ Windows-Skip und die per Tastatur erreichbare Scrollregion bleiben erhalten.
 Der gesonderte Python-Hinweis `python:S5778` betrifft einen Testaufbau und wird
 durch Konstruktion des Fake-Clients vor dem erwarteten Fehleraufruf behoben.
 Keiner dieser Nachweise ersetzt das anschließende Quality-Gate-Ergebnis.
+
+## Kontrast während des Navigationswechsels
+
+Der Linux-Browserlauf zu `ea76322` ([CI-Lauf 42197024427](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/42197024427))
+fand einen tatsächlichen Kontrastfehler: Beim ersten Versuch waren der ausgehende
+Übersichtslink und der eingehende Fälle-Link betroffen, beim zweiten der Versuche-
+und PDF-Link. Die 150-ms-Übergänge von Schrift und Hintergrund interpolierten
+zwischen hell-auf-dunkel und dunkel-auf-hell. Die gemessenen Zwischenfarben
+erreichten nur 3,90:1 beziehungsweise 3,44:1; die fertigen Farbpaare erreichen
+mindestens 9,19:1. Der Fehler war damit ein sichtbarer Übergangszustand.
+
+Die Navigationslinks schalten ihre Farbpaare jetzt gemeinsam ohne Interpolation
+um. Farbwerte, Hover-/Fokusdarstellung und die Bewegung des mobilen Menüs bleiben
+erhalten. Der neue Browsertest `frontend/e2e/navigation-contrast.spec.ts` prüft in
+beiden Themes drei echte Linkwechsel, jeweils den ausgehenden und eingehenden
+Link bei 0, 25, 50, 75 und 100 Prozent der CSS-Übergangszeit. Er berücksichtigt
+transparente Hintergründe über deren tatsächlichen Vorfahren. Auf dem vorherigen
+CSS schlug er in beiden Themes fehl, unter anderem mit 1,31:1 und 1,53:1 bei
+25 Prozent. Der Test verändert keine Farbwerte und verzögert keine axe-Prüfung;
+es gibt keine zusätzliche Ausnahme oder Wiederholung zum Bestehen des Tests.
+Nach der Korrektur bestanden beide Regressionstests unter Linux/Firefox mit
+mindestens 9,44:1 über jeweils 30 Messpunkte. Die gezielte Serie einschließlich
+Kontrasttests, axe, Navigation und Mobilansichten bestand elf Prüfungen;
+die abschließende Einzelprüfung der zwei Kontrasttests bestand ebenfalls.
+Die endgültige Chromium-/Windows-Prüfung folgt in der CI.

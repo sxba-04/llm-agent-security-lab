@@ -36,7 +36,7 @@ Live-Quellstand wurden zusätzlich als Git-Archive außerhalb des Dienstes bewah
 Dies war die Vorab-Sicherung mit dem bisherigen Kampagnenformat, keine Behauptung
 eines damals schon vorhandenen vollständigen Workspace-Exports.
 
-## Prüfungen und noch laufende Releaseprüfung
+## Prüfnachweise
 
 Die Baseline bestand unter Linux 337 Python-Tests mit einem erwarteten
 Windows-spezifischen Skip. Der zuletzt lokal geprüfte Stand bestand
@@ -50,6 +50,8 @@ Maßgeblich für die Veröffentlichung sind sämtliche Pflichtprüfungen und Rev
 am endgültigen Head von PR #30; die hier genannten Entwicklungsprüfungen
 ersetzen diesen Nachweis nicht. Ein laufender, fehlgeschlagener oder
 übersprungener Check wird nicht als bestanden gezählt.
+Die abschließenden CI-, Review-, Deployment- und Wiederherstellungsnachweise
+werden mit ihren jeweiligen Commit- und Lauf-IDs im verlinkten PR #30 festgehalten.
 
 Die unabhängigen Gegenprüfungen korrigierten vor der Veröffentlichung beschädigte
 Sicherungsinventare, konkurrierende Restore-Ziele, temporäre Metadatenpublikation,
@@ -91,6 +93,13 @@ Tastaturfokussierung bleibt erhalten. OAuth-Ziele werden nach strikter Prüfung
 aus der festen GitHub-Adresse aufgebaut, doppelte OAuth-Parameter abgelehnt.
 Der Inventarparser erhält fehlende Werte und Periodenangaben ausdrücklich,
 statt fehlende Messungen als null auszugeben.
+
+Eine spätere Browserprüfung fand beim Wechsel des aktiven Navigationslinks
+einen Kontrastverlust während der Farbübergänge. Ein gezielter Browsertest
+reproduzierte den Fehler in beiden Themes an Zwischenständen. Text und
+Hintergrund der Navigation wechseln deshalb jetzt gemeinsam ohne Farbinterpolation.
+Die Farbauswahl und die übrigen Animationen bleiben erhalten; axe wird weiterhin
+ohne Ausnahme für diese Elemente ausgeführt.
 
 Der zusätzliche [GitHub-AI-Scan vom 4. November](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/41799108962)
 scheiterte wegen ausgeschöpfter monatlicher Copilot-Quote. Das ist weder ein
