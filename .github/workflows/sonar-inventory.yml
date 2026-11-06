@@ -2,6 +2,17 @@ name: Read-only Sonar issue inventory
 
 on:
   workflow_dispatch:
+    inputs:
+      pull_request:
+        description: 'Optional positive PR number; empty exports main'
+        type: string
+        required: false
+        default: ''
+      expected_revision:
+        description: 'Full expected Git SHA; required when pull_request is set'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -18,14 +29,25 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - name: Collect unresolved main issues and analysis metadata without mutations
+      - name: Collect selected issues and analysis metadata without mutations
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: python scripts/sonar_inventory.py
+          LAB_SONAR_PR: ${{ inputs.pull_request }}
+          LAB_EXPECTED_REVISION: ${{ inputs.expected_revision }}
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$LAB_SONAR_PR" ]; then
+            args+=(--pull-request "$LAB_SONAR_PR")
+          fi
+          if [ -n "$LAB_EXPECTED_REVISION" ]; then
+            args+=(--expected-revision "$LAB_EXPECTED_REVISION")
+          fi
+          python scripts/sonar_inventory.py "${args[@]}"
       - name: Preserve sanitized inventory for individual review
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sonar-main-inventory
-          path: quality-inventory/sonar-main.json
+          name: ${{ inputs.pull_request != '' && 'sonar-pr-inventory' || 'sonar-main-inventory' }}
+          path: quality-inventory/sonar-*.json
           if-no-files-found: error
           retention-days: 14

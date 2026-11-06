@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 import uuid
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
@@ -32,6 +32,9 @@ from .jobs import CampaignJobs, checked_tree
 from .hosted import HostedAccessMiddleware, HostedSettings
 from .github_auth import GitHubSessions
 from .auth_routes import register_auth_routes
+from .campaign_metadata import MetadataConflict, load_metadata, save_metadata, validate_labels
+from .comparison_csv import comparison_csv
+from .operations import storage_status
 
 REVIEW_ID = re.compile(r"review-[0-9a-f]{32}\Z")
 REVIEW_API_ID = re.compile(r"(?:review-[0-9a-f]{32}|review-copy-[0-9a-f]{64})\Z")
@@ -139,6 +142,14 @@ class CampaignRequest(StrictBody):
     repeats: Annotated[StrictInt, Field(ge=1, le=5)] = 1
     seed: Annotated[StrictInt, Field(ge=0, le=2**32 - 1)] = 20261023
     document_overrides: list[DocumentOverride] = Field(default_factory=list, max_length=120)
+    display_name: str = Field(default="", max_length=120)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+
+
+class CampaignMetadataRequest(StrictBody):
+    display_name: str = Field(max_length=120)
+    tags: list[str] = Field(max_length=12)
+    expected_revision: Annotated[StrictInt, Field(ge=0)]
 
 
 class ConfirmRequest(StrictBody):
@@ -154,6 +165,7 @@ class RatingDraft(StrictBody):
 
 
 class RatingsRequest(StrictBody):
+    expected_revision: Annotated[StrictInt, Field(ge=0)] | None = None
     rater: str = Field(max_length=120)
     ratings: list[RatingDraft] = Field(max_length=480)
 
@@ -206,6 +218,10 @@ class _WorkbenchAPI:
         app.post("/api/campaigns", status_code=202, responses=CONFLICT_RESPONSE)(self.start_campaign)
         app.get("/api/campaigns/{campaign_id}")(self.campaign)
         app.get("/api/campaigns/{campaign_id}/records")(self.records)
+        app.get("/api/campaigns/{campaign_id}/metadata")(self.campaign_metadata)
+        app.put("/api/campaigns/{campaign_id}/metadata", responses=CONFLICT_RESPONSE)(self.campaign_metadata_put)
+        app.get("/api/campaigns/{campaign_id}/comparison.csv")(self.comparison_export)
+        app.get("/api/workspace/backup", responses=CONFLICT_RESPONSE)(self.workspace_backup)
         app.post("/api/campaigns/{campaign_id}/cancel")(self.cancel)
         app.get("/api/campaigns/{campaign_id}/archive", responses=CONFLICT_RESPONSE)(self.archive)
         app.post("/api/documents", status_code=201, responses=CONFLICT_RESPONSE)(self.upload_document)
@@ -357,11 +373,12 @@ class _WorkbenchAPI:
 
     def latest_ratings(self, directory: Path, slot: str) -> dict[str, Any]:
         versions = sorted((directory / f"drafts-{slot}").glob("draft-*.json"))
-        return _read_json(versions[-1], self.workspace) if versions else {"rater": "", "ratings": []}
+        return {**_read_json(versions[-1], self.workspace), "revision": int(versions[-1].stem.split("-")[-1])} if versions else {"rater": "", "ratings": [], "revision": 0}
 
     def health(self, request: Request):
-        return {"version": __version__, "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
+        return {"version": __version__, "api_contract": 2, "capabilities": ["campaign_metadata_v1", "review_revisions_v1", "comparison_csv_v1", "workspace_backup_v1"], "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
                 "storage_mode": self.hosted_settings.storage_mode if self.hosted_settings else "local",
+                "storage": storage_status(self.workspace),
                 "user": getattr(request.state, "lab_user", None)}
 
     def cases(self):
@@ -381,6 +398,11 @@ class _WorkbenchAPI:
         return {"campaigns": self.jobs.list()}
 
     def start_campaign(self, body: CampaignRequest):
+        with self.lock:
+            return self._start_campaign(body)
+
+    def _start_campaign(self, body: CampaignRequest):
+        validate_labels(body.display_name, body.tags)
         for values in (body.case_ids, body.variants, body.sources):
             if len(values) != len(set(values)):
                 raise HTTPException(400, "Doppelte Fall- oder Variantenkennungen sind nicht erlaubt.")
@@ -398,7 +420,8 @@ class _WorkbenchAPI:
             raise HTTPException(400, "Diese Kombination ist zu groß für einen lokalen Versuch. Weniger Fälle oder Wiederholungen wählen.")
         try:
             return self.jobs.start(list(selected.values()), variants=body.variants, sources=body.sources,
-                                   repeats=body.repeats, seed=body.seed, document_ids=documents)
+                                   repeats=body.repeats, seed=body.seed, document_ids=documents,
+                                   display_name=body.display_name, tags=body.tags)
         except RuntimeError as exc:
             raise HTTPException(409, str(exc)) from exc
 
@@ -421,6 +444,50 @@ class _WorkbenchAPI:
         summary_path = directory / "summary.json"
         summary = _read_json(summary_path, self.workspace) if summary_path.exists() else None
         return {"manifest": manifest, "summary": summary}
+
+    def campaign_metadata(self, campaign_id: str):
+        with self.lock:
+            return load_metadata(self.campaign_directory(campaign_id))
+
+    def campaign_metadata_put(self, campaign_id: str, body: CampaignMetadataRequest):
+        with self.lock:
+            directory = self.campaign_directory(campaign_id, finished=True)
+            try:
+                return save_metadata(directory, body.display_name, body.tags, body.expected_revision)
+            except MetadataConflict as exc:
+                raise HTTPException(409, str(exc)) from exc
+
+    def comparison_export(self, campaign_id: str, review_set_id: str | None = None,
+                          metric: str = "", source: str = "", goal: str = ""):
+        with self.lock:
+            report = self.campaign_summary(campaign_id, review_set_id)
+            metadata = load_metadata(self.campaign_directory(campaign_id))
+            content = comparison_csv(report, campaign_id, display_name=metadata["display_name"],
+                                     review_set_id=review_set_id or "", metric=metric, source=source, goal=goal)
+        return Response("\ufeff" + content, media_type="text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="{campaign_id}-comparison.csv"',
+                                 "Cache-Control": "no-store"})
+
+    def workspace_backup(self):
+        from .backup import export_workspace
+        if not self.extraction_slot.acquire(blocking=False):
+            raise HTTPException(409, "Bitte zuerst den laufenden PDF-Import abschließen lassen.")
+        temporary = None
+        try:
+            temporary = tempfile.TemporaryDirectory(prefix="security-lab-backup-")
+            output = Path(temporary.name) / "security-lab-workspace.zip"
+            with self.lock, self.jobs._lock:
+                if self.jobs.running:
+                    raise HTTPException(409, "Bitte den aktiven Versuch vor der Sicherung abschließen oder abbrechen.")
+                export_workspace(self.workspace, Path(__file__).resolve().parents[2], output)
+            return FileResponse(output, media_type="application/zip", filename="security-lab-workspace.zip",
+                                headers={"Cache-Control": "no-store"}, background=BackgroundTask(temporary.cleanup))
+        except BaseException:
+            if temporary is not None:
+                temporary.cleanup()
+            raise
+        finally:
+            self.extraction_slot.release()
 
     def records(self, campaign_id: str):
         directory = self.campaign_directory(campaign_id)
@@ -521,9 +588,20 @@ class _WorkbenchAPI:
             row["legitimate_rating"] and row["attack_success"] and row["false_block"] and row["notes"].strip() for row in values)
         with self.lock:
             self.require_open_ratings(directory)
-            _write_new(_version_path(directory / f"drafts-{slot}", "draft"),
-                       {"rater": body.rater, "ratings": values}, self.workspace)
-        return {"saved": len(values), "complete": complete}
+            current = self.latest_ratings(directory, slot)["revision"]
+            # An old client may create a first draft, but cannot overwrite a
+            # revision it never read. The new UI sends its observed revision.
+            if body.expected_revision is None and current:
+                raise HTTPException(409, "Diese Oberfläche sendet keine Bewertungsrevision. Bitte die Oberfläche aktualisieren; der vorhandene Entwurf bleibt erhalten.")
+            if body.expected_revision is not None and body.expected_revision != current:
+                raise HTTPException(409, "Dieses Formular wurde inzwischen anderswo gespeichert. Deine Eingaben wurden nicht überschrieben. Vergleiche sie mit dem aktuellen Stand, bevor du erneut speicherst.")
+            revision = current + 1
+            try:
+                _write_new(directory / f"drafts-{slot}" / f"draft-{revision:06d}.json",
+                           {"rater": body.rater, "ratings": values}, self.workspace)
+            except FileExistsError as exc:
+                raise HTTPException(409, "Das Formular wurde gleichzeitig gespeichert. Bitte den aktuellen Stand prüfen.") from exc
+        return {"saved": len(values), "complete": complete, "revision": revision}
 
     def combine(self, review_set_id: str):
         directory = self.review_directory(review_set_id)

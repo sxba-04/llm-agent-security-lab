@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from security_lab.batch import run_batch, load_results, write_json
+from security_lab.batch import run_batch, load_results
 from security_lab.cases import load_cases
 from security_lab.cli import main
 from security_lab.models import ScriptedModel

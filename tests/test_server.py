@@ -198,12 +198,13 @@ class ServerTests(unittest.TestCase):
         response = self.client.put(url + "/ratings/a", json=draft, headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["complete"])
-        self.assertEqual(self.client.get(url + "/ratings/b").json(), {"rater": "", "ratings": [], "locked": False})
+        self.assertEqual(self.client.get(url + "/ratings/b").json(), {"rater": "", "ratings": [], "locked": False, "revision": 0})
         self.assertEqual(self.client.post(url + "/combine", headers=self.headers).status_code, 400)
         a = self.ratings(packets, "Rater A")
         b = self.ratings(packets, "Rater B")
         b["ratings"][0]["legitimate_rating"] = "partial"
         for slot, body in (("a", a), ("b", b)):
+            body["expected_revision"] = self.client.get(url + f"/ratings/{slot}").json()["revision"]
             response = self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers)
             self.assertTrue(response.json()["complete"], response.text)
         response = self.client.post(url + "/combine", headers=self.headers)
@@ -374,7 +375,7 @@ class ServerTests(unittest.TestCase):
                     changed = self.ratings(packets, "Changed Rater")
                     response = self.client.put(url + f"/ratings/{slot}", json=changed, headers=self.headers)
                     self.assertEqual(response.status_code, 409, response.text)
-                    self.assertEqual(self.client.get(url + f"/ratings/{slot}").json(), {**drafts[slot], "locked": True})
+                    self.assertEqual(self.client.get(url + f"/ratings/{slot}").json(), {**drafts[slot], "locked": True, "revision": 1})
                 self.assertEqual(self.client.get(url + "/combined").json(), decision)
                 after = {path.relative_to(directory): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
                 self.assertEqual(after, before, "Rejected writes must create no submissions, drafts or combined versions")
@@ -425,7 +426,7 @@ class ServerTests(unittest.TestCase):
         for slot, body in drafts.items():
             self.assertEqual(self.client.put(url + f"/ratings/{slot}", json=body, headers=self.headers).status_code, 200)
         original_draft = self.client.get(url + "/ratings/a").json()
-        replacement = self.ratings(packets, "New name")
+        replacement = {**self.ratings(packets, "New name"), "expected_revision": original_draft["revision"]}
         with patch("security_lab.batch.os.fsync", side_effect=OSError("Synthetic storage failure")):
             with self.assertRaises(OSError):
                 self.client.put(url + "/ratings/a", json=replacement, headers=self.headers)

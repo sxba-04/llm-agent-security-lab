@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
 const cwd = fileURLToPath(new URL('..', import.meta.url));
@@ -20,11 +20,15 @@ export default defineConfig({
     actionTimeout: 15000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    ...devices['Desktop Chrome'],
     viewport: { width: 1440, height: 1000 },
     // Only these disposable localhost fixtures use a self-signed certificate.
     ignoreHTTPSErrors: true,
   },
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.LAB_CHROMIUM_EXECUTABLE || undefined } } },
+    { name: 'firefox', grep: /@smoke/, use: { browserName: 'firefox' } },
+    { name: 'webkit', grep: /@smoke/, use: { browserName: 'webkit' } },
+  ],
   webServer: [
     {
       cwd,

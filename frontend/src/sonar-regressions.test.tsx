@@ -110,7 +110,7 @@ it('keeps repeated blocked evidence and does not reuse it across different revie
   const packets = [basePacket, { ...basePacket, review_id: 'packet-b' }];
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
     url === '/api/reviews' ? { review_sets: [{ review_set_id: 'set-a', campaign_id: 'synthetic-campaign', packet_count: 2, created_at: '2026-11-03T00:00:00Z' }] }
-      : url.endsWith('/packets') ? { packets } : { rater: '', ratings: [], locked: false },
+      : url.endsWith('/packets') ? { packets } : { rater: '', ratings: [], locked: false, revision: 0 },
   ), { headers: { 'Content-Type': 'application/json' } })));
   const { container } = render(<ReviewsPage selected="set-a" slot="a" coordinating={false} />);
   await screen.findByText('packet-a');

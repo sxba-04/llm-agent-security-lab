@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useMobileNavigation } from './mobile-navigation';
 import { Activity, ArrowDownToLine, ArrowRight, BookOpen, ChevronRight, CircleHelp, ClipboardCheck, FileText, FlaskConical, GitCompareArrows, LayoutDashboard, Menu, Play, ShieldCheck, X } from 'lucide-react';
 import { confirmDiscardChanges, hosted, navigate, signOut, useResource, useRoute } from './api';
 import { AccessGate } from './AccessGate';
 import { SessionMenu } from './SessionMenu';
+import { ThemePicker } from './theme';
+import { StorageNotice } from './StorageNotice';
 import { DownloadButton } from './DownloadButton';
 import type { Campaign, Health, LabCase } from './types';
 import { Empty, EngineeringNote, ErrorBox, formatDate, GoButton, goalNames, hasActiveWorker, isDamagedCampaign, Loading, PageHeader, Panel, Pill, SourceDiff, Status, Disclosure, DataFields, JsonBlock } from './ui';
@@ -35,27 +38,31 @@ function Workbench() {
   const health = useResource<Health>('/api/health', 10000);
   const cases = useResource<{ cases: LabCase[] }>('/api/cases');
   const campaigns = useResource<{ campaigns: Campaign[] }>('/api/campaigns', 2500);
-  const [menu, setMenu] = useState(false);
   const current = pages.find(item => item.id === route.page) || pages[0];
-  useEffect(() => { setMenu(false); document.title = `${current.label} · Agent Security Lab`; }, [current.label]);
+  const { menu, mobile, menuButton, sidebar, closeMenu, selectCurrentPage, toggleMenu } = useMobileNavigation(current.label);
+  const drawerOpen = mobile && menu;
+  const drawerClosed = mobile && !menu;
+  const drawerSemantics = drawerOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } as const : {};
   const caseRows = cases.data?.cases || [];
   const campaignRows = campaigns.data?.campaigns || [];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); document.getElementById('main-content')?.focus(); }}>Zum Inhalt springen</a>
-    {menu && <button aria-label="Menü schließen" className="sidebar-backdrop" onClick={() => setMenu(false)} />}
-    <aside className={`sidebar ${menu ? 'open' : ''}`}>
+    {drawerOpen && <button aria-label="Navigation schließen" className="sidebar-backdrop" tabIndex={-1} onClick={closeMenu} />}
+    <aside id="main-navigation" ref={sidebar} className={`sidebar ${menu ? 'open' : ''}`} inert={drawerClosed} aria-hidden={drawerClosed || undefined} {...drawerSemantics}>
+      <button type="button" className="icon-button sidebar-close" aria-label="Navigation schließen" onClick={closeMenu}><X size={20} /></button>
       <a className="brand" href="#overview" aria-label="Agent Security Lab – Übersicht"><span className="brand-mark"><ShieldCheck size={25} /></span><span>Agent Security<span>RESEARCH LAB</span></span></a>
       <div className="sidebar-section-label">ARBEITSBEREICH</div>
-      <nav aria-label="Hauptnavigation">{pages.map(item => <a key={item.id} href={`#${item.id}`} aria-current={current.id === item.id ? 'page' : undefined} className={current.id === item.id ? 'active' : ''}><item.icon size={19} /><span>{item.label}</span>{current.id === item.id && <span className="nav-dot" />}</a>)}</nav>
+      <nav aria-label="Hauptnavigation">{pages.map(item => <a key={item.id} href={`#${item.id}`} onClick={() => { if (item.id === current.id) selectCurrentPage(); }} aria-current={current.id === item.id ? 'page' : undefined} className={current.id === item.id ? 'active' : ''}><item.icon size={19} /><span>{item.label}</span>{current.id === item.id && <span className="nav-dot" />}</a>)}</nav>
       <div className="sidebar-footer"><div className="local-indicator"><span />{hosted ? 'Online-Werkbank' : 'Lokale Werkbank'}</div><p>Kontrollierte Szenarien.<br />Nachvollziehbare Entscheidungen.</p><div className="sidebar-version"><span>Entwicklungsphase</span><span>{health.data?.version ? `v${health.data.version}` : '—'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} onClick={() => setMenu(!menu)}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span>{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
-      <main id="main-content" tabIndex={-1}>
+      <header className="topbar"><div className="breadcrumb"><button ref={menuButton} className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} aria-controls="main-navigation" aria-expanded={menu} onClick={toggleMenu}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span><ThemePicker />{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
+      <main id="main-content" tabIndex={-1} inert={drawerOpen}>
+        <StorageNotice storage={health.data?.storage} />
         {health.data?.storage_mode === 'ephemeral' && <aside className="notice warning" role="note" aria-label="Flüchtiger Testbetrieb"><div><strong>Testbetrieb · Daten werden nicht dauerhaft gespeichert</strong><br />Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment des Backends verloren. Benötigte Kampagnenarchive vorher herunterladen; wichtige Studienbelege außerhalb dieser Testumgebung sichern.</div></aside>}
         {health.error && <ErrorBox error={health.error} retry={health.refresh} />}
-        {cases.error && <ErrorBox error={cases.error} retry={cases.refresh} />}
-        {campaigns.error && <ErrorBox error={campaigns.error} retry={campaigns.refresh} />}
+        {cases.error && <ErrorBox error={cases.error} retry={() => { if (confirmDiscardChanges()) cases.refresh(); }} />}
+        {campaigns.error && <ErrorBox error={campaigns.error} retry={() => { if (confirmDiscardChanges()) campaigns.refresh(); }} />}
         {cases.loading && !cases.data ? <Loading text="Werkbank wird geladen …" /> : <>
           {current.id === 'overview' && <Overview cases={caseRows} campaigns={campaignRows} />}
           {current.id === 'cases' && <CasesPage cases={caseRows} selected={route.params.get('id')} />}

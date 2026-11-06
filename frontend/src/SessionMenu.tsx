@@ -9,11 +9,14 @@ export function SessionMenu() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const menu = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const sessions = useResource<{ sessions: OperatorSession[] }>(open && user ? '/api/auth/sessions' : null);
   useEffect(() => {
     if (!open) return;
+    closeButton.current?.focus();
     const close = (event: MouseEvent) => { if (!menu.current?.contains(event.target as Node)) setOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false); toggle.current?.focus(); } };
     document.addEventListener('click', close);
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('click', close); document.removeEventListener('keydown', escape); };
@@ -29,10 +32,10 @@ export function SessionMenu() {
     catch (err) { setError(message(err)); }
     finally { setBusy(''); }
   }
-  return <div className="session-menu" ref={menu}>
-    <button className="button quiet small session-account" type="button" aria-expanded={open} aria-controls="operator-sessions" onClick={() => setOpen(value => !value)} title={`GitHub-Konto @${user.login}`}><UserRound size={15} /><span>@{user.login}</span></button>
+  return <div className="session-menu" ref={menu} onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
+    <button ref={toggle} className="button quiet small session-account" type="button" aria-expanded={open} aria-controls="operator-sessions" onClick={() => setOpen(value => !value)} title={`GitHub-Konto @${user.login}`}><UserRound size={15} /><span>@{user.login}</span></button>
     {open && <section className="session-panel" id="operator-sessions" aria-label="Deine Sitzungen">
-      <div className="session-panel-heading"><h2>Deine Sitzungen</h2><button className="icon-button" type="button" aria-label="Sitzungen schließen" onClick={() => setOpen(false)}><X size={18} /></button></div>
+      <div className="session-panel-heading"><h2>Deine Sitzungen</h2><button ref={closeButton} className="icon-button" type="button" aria-label="Sitzungen schließen" onClick={() => { setOpen(false); toggle.current?.focus(); }}><X size={18} /></button></div>
       <p>Angemeldet als <strong>@{user.login}</strong> · Projektmitglied</p>
       <p>Du kannst gemeinsame Versuchsdaten lesen und bearbeiten. Hier verwaltest du ausschließlich deine eigenen GitHub-Sitzungen.</p>
       {(error || sessions.error) && <p className="notice error" role="alert">{error || sessions.error}</p>}

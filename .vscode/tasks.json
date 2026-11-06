@@ -37,7 +37,7 @@
       "detail": "Führt 24 kostenlose Mock-Läufe aus; Ergebnisse bleiben lokal unter runs/."
     },
     {
-      "label": "Labor: Alle Tests",
+      "label": "Labor: Python-Tests",
       "type": "shell",
       "command": "uv",
       "args": [
@@ -55,10 +55,7 @@
         "tests",
         "-v"
       ],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
+      "group": "test",
       "problemMatcher": [],
       "detail": "Führt alle Python-Tests aus, inklusive PDF- und HTTP-Prüfungen."
     },
@@ -165,7 +162,7 @@
       "windows": {
         "command": "npm.cmd"
       },
-      "detail": "Lädt den zur installierten Playwright-Version passenden Chromium-Testbrowser."
+      "detail": "Lädt die zur Playwright-Version passenden Chromium-, Firefox- und WebKit-Testbrowser; Systempakete bleiben ein getrennter Schritt."
     },
     {
       "label": "Labor: Browsertests",
@@ -183,7 +180,7 @@
       "windows": {
         "command": "npm.cmd"
       },
-      "detail": "Baut das Frontend und testet in Chromium. Laborserver vorher beenden: Port 8765 muss frei sein."
+      "detail": "Baut das Frontend und führt die Browsermatrix aus. Port 8765 muss frei sein; Tests nutzen einen temporären Workspace."
     },
     {
       "label": "Labor: Browserbericht oeffnen",
@@ -237,6 +234,61 @@
       "dependsOrder": "sequence",
       "problemMatcher": [],
       "detail": "Synchronisiert Python-Pakete, installiert npm-Pakete und baut das Frontend. Git, uv und Node.js müssen bereits verfügbar sein."
+    },
+    {
+      "label": "Labor: Diagnose (nur lesend)",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-B",
+        "-m",
+        "security_lab.doctor"
+      ],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+      },
+      "problemMatcher": [],
+      "detail": "Prüft vorhandene Werkzeuge, Build, Port, Speicher, Rechte und Proxy-/CA-Konfiguration. Keine Installation, keine externen Netzwerkanfragen."
+    },
+    {
+      "label": "Labor: Gesamtcheck",
+      "type": "process",
+      "command": "uv",
+      "args": [
+        "run",
+        "--no-sync",
+        "--locked",
+        "--extra",
+        "web",
+        "--group",
+        "dev",
+        "python",
+        "scripts/check_all.py"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Ruff, Python-Tests, React-Tests, TypeScript/Build und Chromium nacheinander; stoppt beim ersten Fehler. Pakete und Browser vorher separat installieren."
+    },
+    {
+      "label": "Labor: Ressourcenprobe (synthetisch)",
+      "type": "process",
+      "command": "uv",
+      "args": [
+        "run",
+        "--no-sync",
+        "--locked",
+        "--extra",
+        "web",
+        "--group",
+        "dev",
+        "python",
+        "scripts/performance_probe.py"
+      ],
+      "problemMatcher": [],
+      "detail": "Begrenzte Mock-/PDF-/API-Messung in einem temporären Workspace. Keine Live-Daten oder Modellaufrufe; JSON im Terminal."
     }
   ]
 }

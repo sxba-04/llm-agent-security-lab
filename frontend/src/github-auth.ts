@@ -28,14 +28,20 @@ function authorizationTarget(start: LoginStart, challenge: string) {
   let target: URL;
   try { target = new URL(start.authorization_url); } catch { throw new ApiError('Die GitHub-Anmeldung ist nicht korrekt konfiguriert.', 0); }
   const redirect = `${window.location.origin}${window.location.pathname}`;
+  const parameterNames = [...target.searchParams.keys()];
   if (target.origin !== 'https://github.com' || target.pathname !== '/login/oauth/authorize' || target.username || target.password || target.hash
+    || new Set(parameterNames).size !== parameterNames.length
     || typeof start.state !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(start.state)
     || !Number.isInteger(start.expires_in) || start.expires_in < 1 || start.expires_in > loginLifetime / 1000
     || target.searchParams.get('state') !== start.state || target.searchParams.get('code_challenge') !== challenge
     || target.searchParams.get('code_challenge_method') !== 'S256' || target.searchParams.get('redirect_uri') !== redirect) {
     throw new ApiError('Die GitHub-Anmeldung ist nicht korrekt konfiguriert.', 0);
   }
-  return target.href;
+  // Build the navigation origin/path from a constant after validating the
+  // response and the browser-bound OAuth parameters, never from API text.
+  const destination = new URL('https://github.com/login/oauth/authorize');
+  destination.search = target.search;
+  return destination.href;
 }
 function pendingLogin(): PendingLogin {
   let value: PendingLogin;

@@ -1,5 +1,9 @@
 # Ausbauplan für die Forschungswerkbank
 
+**Umsetzung:** Der [Änderungsnachweis vom 6. November 2026](roadmap-implementation-2026-11-06.md)
+beschreibt die implementierten Pakete und die noch offenen fachlichen und
+betrieblichen Abnahmen. Der folgende Text bewahrt den ursprünglichen Planungsstand.
+
 Stand: 3. November 2026. Diese Analyse bezieht sich auf den Ausgangsstand
 `d966880aa01e4a340bce3d84c381fcde13948de9`. Sie unterscheidet vorhandene Funktionen,
 konkrete Verbesserungen und spätere Optionen. Die folgenden Pakete sind Vorschläge,

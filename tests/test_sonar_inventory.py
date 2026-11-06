@@ -33,11 +33,16 @@ class FakeSonar:
         self.rows = [sample_issue("one"), sample_issue("two"), sample_issue("three")]
         self.analysis = {"key": "analysis-key", "date": "2026-11-01T12:00:00Z", "revision": "a" * 40,
                          "events": [{"name": "Private event"}]}
+        self.pull_request = {"key": "30", "analysisDate": "2026-11-06T10:00:00+0000",
+                             "status": {"qualityGateStatus": "OK"}, "title": "Private PR title",
+                             "branch": "private-branch-name"}
 
     def get(self, endpoint, parameters):
         self.requests.append((endpoint, parameters))
         if endpoint == "project_analyses/search":
             return {"analyses": [copy.deepcopy(self.analysis)]}
+        if endpoint == "project_pull_requests/list":
+            return {"pullRequests": [copy.deepcopy(self.pull_request)]}
         if endpoint == "issues/search":
             page, size = parameters["p"], parameters["ps"]
             return {"paging": {"total": len(self.rows), "pageIndex": page, "pageSize": size},
@@ -50,6 +55,169 @@ class FakeSonar:
 
 
 class SonarInventoryTests(unittest.TestCase):
+    def test_pr_inventory_uses_pr_scope_and_does_not_claim_server_revision(self):
+        client = FakeSonar()
+        with patch.object(inventory, "PAGE_SIZE", 2):
+            report = inventory.collect(client, pull_request=30, expected_revision="b" * 40)
+        self.assertEqual(report["pull_request"], 30)
+        self.assertNotIn("branch", report)
+        self.assertEqual(report["analysis"]["analysis_date"], client.pull_request["analysisDate"])
+        self.assertNotIn("revision", report["analysis"])
+        self.assertEqual(report["scan_context"]["expected_revision"], "b" * 40)
+        self.assertFalse(report["scan_context"]["server_revision_verified"])
+        self.assertEqual(report["issue_count"], 3)
+        for endpoint, parameters in client.requests:
+            self.assertNotEqual(endpoint, "project_analyses/search")
+            self.assertNotIn("branch", parameters)
+            if endpoint != "project_pull_requests/list":
+                self.assertEqual(parameters["pullRequest"], "30")
+        serialized = json.dumps(report)
+        for private in ("Private PR title", "private-branch-name", "Private discussion"):
+            self.assertNotIn(private, serialized)
+
+    def test_pr_scope_requires_positive_number_and_full_expected_revision_before_requests(self):
+        for number, revision in ((0, "a" * 40), (-1, "a" * 40), (True, "a" * 40),
+                                 (30, None), (30, "short"), (30, "x" * 40)):
+            client = FakeSonar()
+            with self.subTest(number=number, revision=revision), self.assertRaises(inventory.InventoryError):
+                inventory.collect(client, pull_request=number, expected_revision=revision)
+            self.assertEqual(client.requests, [])
+        client = FakeSonar()
+        with self.assertRaisesRegex(inventory.InventoryError, "does not match"):
+            inventory.collect(client, expected_revision="b" * 40)
+
+    def test_pr_missing_analysis_and_changing_analysis_reject_partial_inventory(self):
+        for field, value in (("key", "31"), ("analysisDate", None),
+                             ("analysisDate", "2026-11-06T10:00:00"), ("analysisDate", "bad-date")):
+            client = FakeSonar()
+            client.pull_request[field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(inventory.InventoryError):
+                inventory.collect(client, pull_request=30, expected_revision="a" * 40)
+        client = FakeSonar()
+        original = client.get
+        def change_date(endpoint, parameters):
+            if endpoint == "qualitygates/project_status":
+                client.pull_request["analysisDate"] = "2026-11-06T11:00:00Z"
+            return original(endpoint, parameters)
+        with patch.object(client, "get", side_effect=change_date):
+            with self.assertRaisesRegex(inventory.InventoryError, "changed during collection"):
+                inventory.collect(client, pull_request=30, expected_revision="a" * 40)
+
+    def test_new_code_period_values_are_distinct_and_missing_values_not_zero(self):
+        client = MagicMock()
+        client.get.return_value = {"component": {"key": inventory.PROJECT, "measures": [
+            {"metric": "coverage", "value": "91.2"},
+            {"metric": "new_coverage", "period": {"value": "79.5", "index": 1, "private": "ignored"}},
+        ]}}
+        result = inventory.measures(client, pull_request=30)
+        self.assertEqual(result["values"], {"coverage": "91.2"})
+        self.assertEqual(result["period_values"], {"new_coverage": "79.5"})
+        self.assertIn("new_uncovered_lines", result["missing_metrics"])
+        self.assertNotIn("new_coverage", result["missing_metrics"])
+
+    def test_pr_listing_and_gate_disagreement_rejects_mixed_snapshot(self):
+        client = FakeSonar()
+        original = client.get
+        def inconsistent_gate(endpoint, parameters):
+            result = original(endpoint, parameters)
+            if endpoint == "qualitygates/project_status":
+                result["projectStatus"]["status"] = "ERROR"
+            return result
+        with patch.object(client, "get", side_effect=inconsistent_gate):
+            with self.assertRaisesRegex(inventory.InventoryError, "listing and quality gate disagree"):
+                inventory.collect(client, pull_request=30, expected_revision="a" * 40)
+
+    def test_legacy_periods_preserve_indices_and_metric_only_null_values_are_unavailable(self):
+        client = MagicMock()
+        client.get.return_value = {"component": {"key": inventory.PROJECT, "measures": [
+            {"metric": "coverage"}, {"metric": "line_coverage", "value": None},
+            {"metric": "branch_coverage", "value": "", "period": None, "periods": []},
+            {"metric": "new_coverage", "periods": [{"index": 1, "value": "79.5", "private": "never export"}]},
+            {"metric": "new_line_coverage", "periods": [{"index": 1, "value": "0"}, {"index": 2, "value": "55"}]},
+            {"metric": "new_uncovered_lines", "periods": [{"index": 1, "value": None}]},
+        ]}}
+        report = inventory.measures(client, pull_request=30)
+        self.assertEqual(report["values"], {})
+        self.assertEqual(report["period_values"], {"new_coverage": "79.5"})
+        self.assertEqual(report["periods"]["new_line_coverage"], [{"index": 1, "value": "0"}, {"index": 2, "value": "55"}])
+        self.assertEqual(report["unavailable_metrics"], ["coverage", "line_coverage", "branch_coverage", "new_uncovered_lines"])
+        self.assertIn("new_conditions_to_cover", report["missing_metrics"])
+        self.assertNotIn("coverage", report["missing_metrics"])
+        self.assertNotIn("never export", json.dumps(report))
+
+    def test_missing_all_measures_preserves_unavailable_not_zero_semantics(self):
+        client = MagicMock()
+        for source in ({"key": inventory.PROJECT}, {"key": inventory.PROJECT, "measures": None}):
+            client.get.return_value = {"component": source}
+            report = inventory.measures(client)
+            self.assertEqual(report["values"], {})
+            self.assertEqual(report["missing_metrics"], list(inventory.METRICS))
+
+    def test_period_bounds_duplicates_and_malformed_values_remain_fail_closed(self):
+        values = ([{"index": 1, "value": "1"}] * 2,
+                  [{"index": index + 1, "value": "1"} for index in range(inventory.MAX_METRIC_PERIODS + 1)],
+                  [{"index": True, "value": "1"}], [{"value": {"private": "not a measurement"}}])
+        for value in values:
+            with self.subTest(value=value), self.assertRaises(inventory.InventoryError):
+                inventory._metric_periods(value)
+
+    def test_missing_metric_values_do_not_discard_pr_issues_or_failed_gate(self):
+        client = FakeSonar()
+        client.pull_request["status"]["qualityGateStatus"] = "ERROR"
+        original = client.get
+        def metric_only(endpoint, parameters):
+            result = original(endpoint, parameters)
+            if endpoint == "measures/component":
+                result["component"]["measures"] = [
+                    {"metric": "coverage", "value": None},
+                    {"metric": "new_coverage", "periods": [{"index": 1, "value": "85"}]},
+                ]
+            if endpoint == "qualitygates/project_status":
+                result["projectStatus"]["status"] = "ERROR"
+            return result
+        with patch.object(client, "get", side_effect=metric_only):
+            report = inventory.collect(client, pull_request=30, expected_revision="a" * 40)
+        self.assertEqual(report["issue_count"], 3)
+        self.assertEqual(report["quality_gate"]["status"], "ERROR")
+        self.assertEqual(report["measures"]["unavailable_metrics"], ["coverage"])
+        self.assertEqual(report["measures"]["period_values"], {"new_coverage": "85"})
+
+    def test_scanner_receipt_is_bounded_and_exports_only_validated_task_identifier(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "report-task.txt"
+            good = f"projectKey={inventory.PROJECT}\nserverUrl={inventory.HOST}\nceTaskId=task_123-ABC\n"
+            path.write_text(good + "dashboardUrl=https://private.example/synthetic-secret\nsonar.token=synthetic-secret\n")
+            result = inventory.collect(FakeSonar(), pull_request=30, expected_revision="a" * 40, scanner_report=path)
+            self.assertEqual(result["scanner_submission"]["ce_task_id"], "task_123-ABC")
+            self.assertNotIn("synthetic-secret", json.dumps(result))
+            invalid = [good.replace(inventory.PROJECT, "foreign-project"),
+                       good + "ceTaskId=duplicate\n", good.replace("task_123-ABC", "bad token"),
+                       good.replace(inventory.HOST, "https://attacker.example"), "x" * 32769]
+            for content in invalid:
+                path.write_text(content)
+                with self.subTest(content=content[:25]), self.assertRaises(inventory.InventoryError):
+                    inventory.scanner_submission(path)
+
+    def test_pr_cli_publishes_sanitized_gate_failure_without_faking_success(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "sonar-pr.json"
+            client = FakeSonar()
+            client.pull_request["status"]["qualityGateStatus"] = "ERROR"
+            original = client.get
+            def failed_gate(endpoint, parameters):
+                result = original(endpoint, parameters)
+                if endpoint == "qualitygates/project_status":
+                    result["projectStatus"]["status"] = "ERROR"
+                return result
+            with patch.object(client, "get", side_effect=failed_gate), \
+                    patch.object(inventory, "PR_OUTPUT", output), \
+                    patch.dict(os.environ, {"SONAR_TOKEN": "synthetic-token"}), \
+                    patch.object(inventory, "SonarClient", return_value=client), patch("sys.stdout", new=StringIO()):
+                self.assertEqual(inventory.main(["--pull-request", "30", "--expected-revision", "a" * 40]), 0)
+            report = json.loads(output.read_text())
+            self.assertEqual(report["quality_gate"]["status"], "ERROR")
+            self.assertFalse(report["scan_context"]["server_revision_verified"])
+
     def test_complete_pagination_projects_only_review_fields_and_main_scope(self):
         client = FakeSonar()
         with patch.object(inventory, "PAGE_SIZE", 2):
@@ -247,12 +415,12 @@ class SonarInventoryTests(unittest.TestCase):
             output = Path(temporary) / "inventory.json"
             with patch.object(inventory, "OUTPUT", output), patch.dict(os.environ, {"SONAR_TOKEN": ""}), \
                     patch.object(inventory, "collect") as collect, patch("sys.stderr", new=StringIO()):
-                self.assertEqual(inventory.main(), 1)
+                self.assertEqual(inventory.main([]), 1)
                 collect.assert_not_called()
             with patch.object(inventory, "OUTPUT", output), patch.dict(os.environ, {"SONAR_TOKEN": "synthetic-token"}), \
                     patch.object(inventory, "collect", side_effect=inventory.InventoryError("Synthetic failure")), \
                     patch("sys.stderr", new=StringIO()):
-                self.assertEqual(inventory.main(), 1)
+                self.assertEqual(inventory.main([]), 1)
             self.assertFalse(output.exists())
 
     def test_main_publishes_complete_inventory_and_rejects_replacement_before_request(self):
@@ -261,10 +429,10 @@ class SonarInventoryTests(unittest.TestCase):
             with patch.object(inventory, "OUTPUT", output), patch.dict(os.environ, {"SONAR_TOKEN": "synthetic-token"}), \
                     patch.object(inventory, "SonarClient", return_value=FakeSonar()) as client, \
                     patch("sys.stdout", new=StringIO()), patch("sys.stderr", new=StringIO()):
-                self.assertEqual(inventory.main(), 0)
+                self.assertEqual(inventory.main([]), 0)
                 report = json.loads(output.read_text())
                 self.assertEqual(report["issue_count"], 3)
-                self.assertEqual(inventory.main(), 1)
+                self.assertEqual(inventory.main([]), 1)
                 client.assert_called_once_with("synthetic-token")
             self.assertEqual(json.loads(output.read_text()), report)
 
@@ -275,7 +443,7 @@ class SonarInventoryTests(unittest.TestCase):
                     patch.object(inventory, "SonarClient", return_value=FakeSonar()), \
                     patch.object(inventory.os, "fsync", side_effect=OSError("Synthetic storage failure")), \
                     patch("sys.stderr", new=StringIO()) as error:
-                self.assertEqual(inventory.main(), 1)
+                self.assertEqual(inventory.main([]), 1)
             self.assertIn("could not be published", error.getvalue())
             self.assertFalse(output.exists())
             self.assertEqual(list(output.parent.glob("*.tmp")), [])

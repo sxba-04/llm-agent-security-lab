@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "engineering_only": true,
+  "live_model_calls": 0,
+  "created_at": "2026-11-06T08:30:14.100842+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "logical_cpus": 9,
+  "harness_sha256": "e15d41ed5762fb38d7393130f0bf3c2bcebd53c69b100f2e465b6e9ee0c3cf24",
+  "source": {
+    "version": "0.2.0",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "git_commit": "079babd70eb38152c188fc71a355b8a19420c937",
+    "git_status": "M .github/workflows/pages.yml\n M .github/workflows/tests.yml\n M .vscode/tasks.json\n M docs/setup-windows.md\n M docs/vscode.md\n M frontend/e2e-hosted/hosted.spec.ts\n M frontend/index.html\n M frontend/package-lock.json\n M frontend/package.json\n M frontend/playwright.config.ts\n M frontend/playwright.hosted.config.ts\n M frontend/src/AccessGate.tsx\n M frontend/src/App.tsx\n M frontend/src/Campaigns.tsx\n M frontend/src/Compare.tsx\n M frontend/src/Reviews.tsx\n M frontend/src/SessionMenu.tsx\n M frontend/src/api.ts\n M frontend/src/reviews-recovery.test.tsx\n M frontend/src/sonar-regressions.test.tsx\n M frontend/src/styles.css\n M frontend/src/types.ts\n M frontend/src/ui.tsx\n M frontend/src/workbench.test.tsx\n M pyproject.toml\n M src/security_lab/archives.py\n M src/security_lab/jobs.py\n M src/security_lab/server.py\n M tests/test_budget.py\n M tests/test_cli_integrity.py\n M tests/test_providers.py\n M tests/test_server.py\n M uv.lock\n?? docs/browser-quality.md\n?? docs/study-preflight.md\n?? frontend/e2e/accessibility.spec.ts\n?? frontend/e2e/core.smoke.spec.ts\n?? frontend/e2e/helpers.ts\n?? frontend/e2e/mobile.spec.ts\n?? frontend/e2e/server.py\n?? frontend/e2e/visual.spec.ts\n?? frontend/playwright.local-firefox.config.ts\n?? frontend/public/\n?? frontend/src/theme-navigation.test.tsx\n?? frontend/src/theme.tsx\n?? scripts/check_all.py\n?? scripts/performance_probe.py\n?? src/security_lab/backup.py\n?? src/security_lab/campaign_metadata.py\n?? src/security_lab/comparison_csv.py\n?? src/security_lab/doctor.py\n?? src/security_lab/study.py\n?? tests/test_campaign_comfort.py\n?? tests/test_doctor.py\n?? tests/test_performance_probe.py\n?? tests/test_study.py\n?? tests/test_workspace_backup.py",
+    "source_sha256": {
+      "src/security_lab/__init__.py": "820a415ee92a6af1be50b155006d2bd1af8c6f284c7d7aed30b35c2790f8a018",
+      "src/security_lab/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+      "src/security_lab/archives.py": "3a4faf4d71c4b3ca534d623b75d340f88f185e8f940c62580ff8e94a41a55cf5",
+      "src/security_lab/auth_routes.py": "d81b5423bcb580193a37ecc7b1a651e8827d63287994a1e179926ccb899ee1e1",
+      "src/security_lab/backup.py": "5caad681048dce5466c34a5796089470ca090bdfbd91051dc91636aac420e9fa",
+      "src/security_lab/batch.py": "41915123c342cf3fcd26e355c643c2b82870e64e181494ffc92d5d7eed17b785",
+      "src/security_lab/budget.py": "92fa1214d6190e1da68c59b06e897385bf882b38b4ca050e3161e74394c7935c",
+      "src/security_lab/campaign_metadata.py": "d9b6c8e5131ca041c02c3dd592311c34d6cdb0889ae76c1c1f2665afdaf360f7",
+      "src/security_lab/cases.py": "6148724e18d1a0a58c4b84c28658667462f5db00520a4a2fc67c0c5af2b6a299",
+      "src/security_lab/cli.py": "69a71bd90c57a9512b20d3ecd464dffc348fbc399b7eb6ac350d24ca328fe6a9",
+      "src/security_lab/comparison_csv.py": "c6b81e9452dce04a41c12958088db4b6ca84df25b397a34837a985961b0c85c6",
+      "src/security_lab/comparisons.py": "f1b7e60e7f9586581fae69046405b212da53a5c464444185f56d9271bc841606",
+      "src/security_lab/contracts.py": "c103834af73ef26940ef9230bc6ed1d619f85477fcecc4fa2a8a224fcdc8f834",
+      "src/security_lab/core.py": "4a657779c71c680bc421476cb4f1252a5f9e1e219480ab2105e85e9eb6ad6f60",
+      "src/security_lab/doctor.py": "39aa82eb1bb3bb3266c47ab25489495fd842922b54b2d3fac7e08999d65a770c",
+      "src/security_lab/documents.py": "a68106663c15d0b5f8c3a8c4e7e44e7e112982046270dae527912202fa83c547",
+      "src/security_lab/evaluation.py": "dbf581765525e271cabff244f37c802f5cf38ef98f281bcd845e94e6badc0ff1",
+      "src/security_lab/github_auth.py": "6b634ef5ddbdbe58c1e50dc50490cdd48f9c982f1dbc82a7523c7e9d7aaba87b",
+      "src/security_lab/hosted.py": "b9e5ce3e6ab4c8fc4ba39d75f978fe535bf831f836a4eaedf470f3914a7006d0",
+      "src/security_lab/hosted_cli.py": "8181a99a490ef428a542532d67eddf0fb81905b61eaa8f4b43a23ab00b71868c",
+      "src/security_lab/jobs.py": "dceb42d1aec58b1f46caa5ca1dbc485a11283fdffadd4f058c5d9c38d3989516",
+      "src/security_lab/models.py": "c910c2531b48270d97100f6e491cd77a0e9b97e800b8969271dcbf2d220ec979",
+      "src/security_lab/providers.py": "ef91fccdb159f9c8de40ca457345a9a08a7efb1e5e157393de069d32f59c5186",
+      "src/security_lab/review.py": "d478fb7dd26b795117ed0217d0b890b84c5c3ae687b54aacba273d912077a937",
+      "src/security_lab/sample_pdf.py": "b6facf7a9ae09cc4d6f4d6e9952f286f59776842e862ed624978e9c5e34262b4",
+      "src/security_lab/server.py": "7b06839020d2510254422830e923e7a68f03b09c817704c35f7cecf2114380e9",
+      "src/security_lab/study.py": "e8822b57bb371aec3b5642ff9aeaaf02e880f52fd927ed21abf5e3e6280518f3",
+      "src/security_lab/web_cli.py": "5d447990c91287161b20a52b12085b34a5d252a52dd446ea85ed8adfa4ebf92a",
+      "pyproject.toml": "2e29d6eaf21fce8c5b43ad37ff15dd1be06ade9ff2465e901ea5e34979785a15",
+      "uv.lock": "27f1964104bc83d523e77b44626cb3e37dea3c67726bf43dc22015ff685429b0",
+      ".python-version": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d"
+    }
+  },
+  "parameters": {
+    "campaign_counts": [
+      1,
+      10,
+      30
+    ],
+    "warm_samples": 5,
+    "pdf_pages": 40,
+    "text_characters": 180000
+  },
+  "scope": "temporary workspace; in-process ASGI, no TCP/TLS/browser; no 512 MiB limit imposed",
+  "listing": [
+    {
+      "campaigns": 1,
+      "cold_application_cache_ms": 17.126,
+      "warm_median_ms": 3.282,
+      "warm_max_ms": 3.769,
+      "warm_samples_ms": [
+        3.282,
+        3.338,
+        2.971,
+        2.816,
+        3.769
+      ],
+      "response_bytes": 329
+    },
+    {
+      "campaigns": 10,
+      "cold_application_cache_ms": 131.937,
+      "warm_median_ms": 13.029,
+      "warm_max_ms": 15.217,
+      "warm_samples_ms": [
+        11.546,
+        13.01,
+        13.029,
+        15.217,
+        14.458
+      ],
+      "response_bytes": 3155
+    },
+    {
+      "campaigns": 30,
+      "cold_application_cache_ms": 457.728,
+      "warm_median_ms": 40.94,
+      "warm_max_ms": 50.952,
+      "warm_samples_ms": [
+        35.505,
+        43.475,
+        40.94,
+        50.952,
+        33.549
+      ],
+      "response_bytes": 9435
+    }
+  ],
+  "fixture": {
+    "seed_campaign_ms": 37.75,
+    "runs_per_campaign": 8,
+    "copied_campaigns": 29,
+    "note": "Identical copies scale storage only; not independent scientific observations."
+  },
+  "pdf": {
+    "input_bytes": 97517,
+    "pages": 40,
+    "text_characters": 70109,
+    "import_ms": 215.803,
+    "confirmation": "not confirmed; synthetic load fixture only"
+  },
+  "long_evidence": {
+    "article_characters": 180000,
+    "campaign_ms": 25.987,
+    "records_endpoint_ms": 53.262,
+    "response_bytes": 1089922
+  },
+  "concurrent_start": {
+    "second_start_status": 409,
+    "rejection_ms": 5.098,
+    "method": "first mock factory gated with an event; real HTTP handlers, no network listener"
+  },
+  "storage": {
+    "file_count": 586,
+    "total_bytes": 11155775
+  },
+  "memory": {
+    "parent_peak_rss_mib": 56.598,
+    "children_peak_rss_mib": 56.598,
+    "method": "process-lifetime getrusage high-water RSS; child maximum separate, not concurrent total"
+  },
+  "wall_seconds": 1.49,
+  "parent_cpu_seconds": 1.21,
+  "limitations": [
+    "Not a Render/Windows production measurement.",
+    "RSS is a process high-water mark; child values do not prove concurrent aggregate use.",
+    "OS caches are not flushed; cold means application listing cache only.",
+    "No index/database decision from one machine or one synthetic corpus."
+  ]
+}

@@ -11,7 +11,7 @@ function transport() {
   return vi.fn(async (url: string) => {
     const result = url === '/api/reviews' ? { review_sets: [restored], damaged_review_sets: [{ review_set_id: 'review-incomplete', campaign_id: campaign.campaign_id, error: 'Bewertungsbelege unvollständig.' }] }
       : url.endsWith('/packets') ? { packets: [] }
-      : url.includes('/ratings/') ? { rater: '', ratings: [], locked: false }
+      : url.includes('/ratings/') ? { rater: '', ratings: [], locked: false, revision: 0 }
       : url.includes('/summary') ? { n_runs: 1, engineering_only: true, groups: [] }
       : {};
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });

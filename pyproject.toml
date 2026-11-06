@@ -29,6 +29,7 @@ where = ["src"]
 dev = [
     "coverage>=7.17,<8",
     "httpx>=0.28.1",
+    "ruff>=0.17.4",
 ]
 
 [tool.coverage.run]
@@ -49,3 +50,10 @@ output = "coverage/python/coverage.json"
 
 [tool.coverage.html]
 directory = "coverage/python/html"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# Start with syntax, undefined names and unused imports; formatting is separate.
+select = ["E4", "E9", "F"]

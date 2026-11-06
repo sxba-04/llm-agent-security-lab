@@ -1,7 +1,7 @@
 """Disposable HTTPS test servers; never a deployment entry point.
 
 The certificate and bearer below are synthetic fixtures. Each process gets its
-own temporary directory under runs/browser-hosted, outside published assets.
+own OS temporary directory, outside research workspaces and published assets.
 """
 from __future__ import annotations
 
@@ -50,9 +50,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("api", "static"))
     args = parser.parse_args()
-    base = ROOT / "runs" / "browser-hosted"
-    base.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=args.mode + "-", dir=base) as temporary:
+    with tempfile.TemporaryDirectory(prefix="security-lab-browser-hosted-" + args.mode + "-") as temporary:
         directory = Path(temporary)
         key = directory / "localhost.key"
         cert = directory / "localhost.crt"

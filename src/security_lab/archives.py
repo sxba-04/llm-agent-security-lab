@@ -73,6 +73,10 @@ def _known_json_evidence(path: Path, value: Any, directory: Path, inputs: dict[t
     # and source hashes before reviewing supplementary artifacts.
     if relative.as_posix() in {MANIFEST_FILE, "cases.snapshot.json"}:
         return True
+    if len(relative.parts) == 2 and relative.parts[0] == "campaign-metadata":
+        # _campaign_check validated the entire schema/version/hash chain first.
+        from .campaign_metadata import VERSION_FILE
+        return bool(VERSION_FILE.fullmatch(relative.name))
     if relative.as_posix() in verified_paths:
         return True
     if not isinstance(value, dict):
@@ -270,6 +274,8 @@ def _verify_review_successor(value: dict, by_hash: dict) -> None:
 
 
 def _campaign_check(directory: Path) -> dict[str, Any]:
+    from .campaign_metadata import load_metadata
+    metadata = load_metadata(directory)
     results = load_results(directory)
     manifest = _json((directory / MANIFEST_FILE).read_bytes())
     if manifest["state"] == "running":
@@ -300,6 +306,7 @@ def _campaign_check(directory: Path) -> dict[str, Any]:
             "verified_integrity": True, **evidence_completeness(manifest),
             "verified_document_sources": documents,
             "verified_review_versions": review_versions,
+            "unpublished_metadata_writes": ["campaign-metadata/" + name for name in metadata.get("unpublished_writes", [])],
             "source_code_included": False, "source_provenance": manifest.get("provenance", {})}
 
 
@@ -465,7 +472,9 @@ def _export_file_name(path: Path, directory: Path, folded: set[str]) -> str | No
     if name == INDEX_NAME or name.casefold() in folded:
         raise ValueError("Reserved or colliding campaign path")
     if name.endswith(".tmp"):
-        raise ValueError("Campaign contains an unfinished temporary write")
+        from .campaign_metadata import is_unpublished_metadata_file
+        if not is_unpublished_metadata_file(path):
+            raise ValueError("Campaign contains an unfinished temporary write")
     return name
 
 
@@ -528,3 +537,8 @@ def import_campaign(archive: str | Path, destination: str | Path) -> dict[str, A
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
+
+
+def verify_campaign_directory(directory: str | Path) -> dict[str, Any]:
+    """Verify evidence, sources, review history and display metadata without exporting."""
+    return _campaign_check(Path(directory))

@@ -48,7 +48,7 @@ jobs:
         run: npm run build -- --base /llm-agent-security-lab/ --outDir dist-hosted
       - name: Install test browser
         working-directory: frontend
-        run: node ./node_modules/@playwright/test/cli.js install --with-deps chromium
+        run: node ./node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit
       - name: Test Pages path with the authenticated backend over HTTPS
         working-directory: frontend
         env:

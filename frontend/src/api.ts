@@ -159,6 +159,7 @@ export async function downloadFile(path: string, filename: string) {
 function downloadContentType(filename: string) {
   if (filename.endsWith('.pdf')) return 'application/pdf';
   if (filename.endsWith('.zip')) return 'application/zip';
+  if (filename.endsWith('.csv')) return 'text/csv';
   return null;
 }
 export function post<T>(path: string, body?: unknown) {
@@ -204,7 +205,7 @@ const historyIndexKey = '__securityLabRouteIndex';
 const historyEpochKey = '__securityLabRouteEpoch';
 
 export function confirmDiscardChanges() {
-  return !unsavedForms.size || window.confirm('Ungespeicherte Bewertungen verwerfen und die Ansicht verlassen?');
+  return !unsavedForms.size || window.confirm('Ungespeicherte Änderungen verwerfen und die Ansicht verlassen?');
 }
 export function useUnsavedChanges(dirty: boolean) {
   useEffect(() => {

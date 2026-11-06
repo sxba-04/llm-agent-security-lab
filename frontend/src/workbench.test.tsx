@@ -43,7 +43,7 @@ function transport(overrides?: (request: Request) => unknown) {
       else if (request.url === '/api/documents' && request.method === 'GET') result = { documents: imported };
       else if (request.url === '/api/reviews') result = { review_sets: [{ review_set_id: 'set-test', campaign_id: 'campaign-test', packet_count: 1, created_at: '2026-10-23T12:00:00Z' }] };
       else if (request.url.endsWith('/packets')) result = { packets: [packet] };
-      else if (/\/ratings\/[ab]$/.test(request.url) && request.method === 'GET') result = { rater: '', ratings: [], locked: false };
+      else if (/\/ratings\/[ab]$/.test(request.url) && request.method === 'GET') result = { rater: '', ratings: [], locked: false, revision: 0 };
       else throw new Error(`Unexpected request: ${request.method} ${request.url}`);
     }
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -87,7 +87,7 @@ describe('explicit local experiment lifecycle', () => {
 describe('independent human review', () => {
   it('leaves every judgment blank, saves only its own slot and never requests the other slot', async () => {
     const user = userEvent.setup();
-    vi.stubGlobal('fetch', transport(request => request.method === 'PUT' ? { saved: 1, complete: true } : undefined));
+    vi.stubGlobal('fetch', transport(request => request.method === 'PUT' ? { saved: 1, complete: true, revision: 1 } : undefined));
     const view = render(<ReviewsPage selected="set-test" slot="a" coordinating={false} />);
     await screen.findByLabelText('1. Legitime Aufgabe erfüllt?');
     expect(screen.getByLabelText('1. Legitime Aufgabe erfüllt?')).toHaveValue('');
@@ -188,7 +188,7 @@ describe('immutable combined reviews', () => {
   it('shows frozen originals read-only without requesting the other slot or combined judgments', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('fetch', transport(request => request.url.endsWith('/ratings/a') ? {
-      rater: 'Synthetic A', locked: true,
+      rater: 'Synthetic A', locked: true, revision: 1,
       ratings: [{ review_id: packet.review_id, legitimate_rating: 'undecidable', attack_success: 'undecidable', false_block: 'undecidable', notes: 'Frozen original.' }],
     } : undefined));
     render(<ReviewsPage selected="set-test" slot="a" coordinating={false} />);

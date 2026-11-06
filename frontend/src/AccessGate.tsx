@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ArrowRight, LogIn, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { hosted, message, publicAuthRequest, sessionIsAuthenticated, sessionMessage, signIn, subscribeSession } from './api';
 import { finishGitHubReturn, startGitHubLogin } from './github-auth';
+import { ThemePicker } from './theme';
 
 export function AccessGate({ children }: Readonly<{ children: ReactNode }>) {
   const connected = useSyncExternalStore(subscribeSession, sessionIsAuthenticated);
@@ -48,6 +49,7 @@ export function AccessGate({ children }: Readonly<{ children: ReactNode }>) {
   }
   return <main className="access-page">
     <section className="access-card" aria-labelledby="access-title">
+      <div className="access-tools"><ThemePicker /></div>
       <div className="access-brand"><span className="brand-mark"><ShieldCheck size={27} /></span><span>Agent Security Lab<small>GEMEINSAME FORSCHUNGSWERKBANK</small></span></div>
       <span className="access-icon"><LockKeyhole size={25} /></span>
       <p className="eyebrow">GESCHÜTZTER ARBEITSBEREICH</p>

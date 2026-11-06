@@ -9,8 +9,11 @@ export interface LabCase {
 }
 export interface Campaign {
   campaign_id: string; created_at: string; state: string; completed_runs: number; planned_runs: number; engineering_only: boolean;
+  display_name?: string; tags?: string[]; metadata_revision?: number; metadata_unpublished_writes?: number;
   valid_evidence?: boolean; error?: string; worker_active?: boolean | null; managed_worker?: boolean; can_cancel?: boolean;
 }
+export interface CampaignMetadata { schema_version: number; revision: number; display_name: string; tags: string[]; updated_at: string | null; unpublished_writes?: string[] }
+export interface StoredRatings { rater: string; ratings: Rating[]; locked: boolean; revision?: number }
 export interface Manifest extends Data {
   state: string; created_at: string; schedule: Data[]; runs: Data[];
 }
@@ -51,4 +54,4 @@ export interface Judgment extends Rating {
 export interface Combined { n_reviews: number; n_disagreements: number; raters: string[]; judgments: Judgment[] }
 export interface SessionUser { id: number; login: string; role: 'researcher'; permissions: string[] }
 export interface OperatorSession { id: string; created_at: string; expires_at: string; current: boolean }
-export interface Health { version: string; mode: 'mock'; csrf_token: string; running: boolean; storage_mode: 'local' | 'persistent' | 'ephemeral'; user?: SessionUser | null }
+export interface Health { version: string; api_contract?: number; capabilities?: string[]; storage?: {state: 'ok' | 'low' | 'unknown'; total_bytes: number | null; free_bytes: number | null}; mode: 'mock'; csrf_token: string; running: boolean; storage_mode: 'local' | 'persistent' | 'ephemeral'; user?: SessionUser | null }
