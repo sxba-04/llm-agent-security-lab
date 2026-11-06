@@ -227,8 +227,16 @@ def load_allowlist(path=ALLOWLIST):
 
 
 def false_positive(row):
-    return (row.get("issueStatus") == "FALSE_POSITIVE"
-            or (row.get("resolution") == "FALSE-POSITIVE" and row.get("status") in {"RESOLVED", "CLOSED"}))
+    legacy = row.get("resolution") == "FALSE-POSITIVE" and row.get("status") in {"RESOLVED", "CLOSED"}
+    if "issueStatus" not in row:
+        return legacy
+    modern = row["issueStatus"] == "FALSE_POSITIVE"
+    if "resolution" in row:
+        require(modern == (row["resolution"] == "FALSE-POSITIVE"), "Contradictory issue status representations.")
+    if modern and "status" in row:
+        require(row["status"] in {"RESOLVED", "CLOSED"}, "Contradictory issue status representations.")
+    require(not legacy or modern, "Contradictory issue status representations.")
+    return modern
 
 
 def validate_apply(data, entries, digest, current, stamp):

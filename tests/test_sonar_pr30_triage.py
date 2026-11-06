@@ -274,6 +274,15 @@ class OperationTests(unittest.TestCase):
         quoted = 'secret"token'
         self.assertNotIn(quoted, json.dumps(triage.redact({"key": quoted, quoted: [quoted]}, quoted)))
 
+    def test_modern_and_legacy_status_must_not_contradict(self):
+        self.assertTrue(triage.false_positive({"issueStatus": "FALSE_POSITIVE"}))
+        self.assertTrue(triage.false_positive({"status": "RESOLVED", "resolution": "FALSE-POSITIVE"}))
+        for row in ({"issueStatus": "OPEN", "status": "RESOLVED", "resolution": "FALSE-POSITIVE"},
+                    {"issueStatus": "FALSE_POSITIVE", "status": "OPEN"},
+                    {"issueStatus": "FALSE_POSITIVE", "status": "RESOLVED", "resolution": "FIXED"}):
+            with self.subTest(row=row), self.assertRaises(triage.SafeError):
+                triage.false_positive(row)
+
 
 if __name__ == "__main__":
     unittest.main()
