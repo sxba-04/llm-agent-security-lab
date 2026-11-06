@@ -1,0 +1,292 @@
+{
+  "schema_version": "triage-finding/v0",
+  "repository": {
+    "path": "/workspace/scratch/168121de09d9/llm-agent-security-lab",
+    "revision": "58ed94e50013676da212fc0e1fa74590fad216af"
+  },
+  "findings": [
+    {
+      "triage_item_id": "triage-001",
+      "input_id": "AaGMS_9U7rRJBvbBA1oc",
+      "source_type": "scanner_ticket",
+      "title": "S8707: CLI-selected study output reaches exclusive JSON publication",
+      "normalized_input": {
+        "vulnerable_component": "src/security_lab/batch.py",
+        "claimed_source": "study.py:330 argparse.parse_args(argv), specifically the operator-supplied plan --output Path declared at study.py:287.",
+        "claimed_sink": "batch.py:86 os.link(temporary, path) in write_json_new.",
+        "claimed_control": "S8707 flagged an argv-derived filesystem path; the supplied sanitized inventory omits its prose. This assessment independently checks who controls that path and whether a lower-trust input crosses the host-filesystem boundary.",
+        "affected_version_or_path": "58ed94e50013676da212fc0e1fa74590fad216af:src/security_lab/batch.py",
+        "preconditions": [
+          "The operator invokes the reviewed CLI under the existing OS account.",
+          "The reported lower-trust exploit would additionally require model/request control over CLI argv or an equivalent caller; no such bridge exists in the reviewed shipped source."
+        ],
+        "impact": "Claimed unsafe file creation through a CLI-derived destination; the provided inventory has no prose establishing a model-controlled source.",
+        "references": [
+          "https://sonarcloud.io/project/issues?id=sxba-04_llm-agent-security-lab&branch=main&issues=AaGMS_9U7rRJBvbBA1oc",
+          "/tmp/pr30-main-sonar-58ed94e.json"
+        ]
+      },
+      "verdict": "not_actionable",
+      "confidence": "high",
+      "affected_locations": [
+        {
+          "label": "CLI source",
+          "path": "src/security_lab/study.py",
+          "lines": "277-287,306-311,329-332",
+          "detail": "CLI source"
+        },
+        {
+          "label": "Protected output check",
+          "path": "src/security_lab/study.py",
+          "lines": "270-274",
+          "detail": "Protected output check"
+        },
+        {
+          "label": "Exclusive publication sink",
+          "path": "src/security_lab/batch.py",
+          "lines": "66-89",
+          "detail": "Exclusive publication sink"
+        },
+        {
+          "label": "Model boundary",
+          "path": "src/security_lab/core.py",
+          "lines": "88-105,181-209",
+          "detail": "Model boundary"
+        },
+        {
+          "label": "Managed HTTP writer",
+          "path": "src/security_lab/server.py",
+          "lines": "186-189",
+          "detail": "Managed HTTP writer"
+        }
+      ],
+      "reachable_path": [
+        "The operator invokes python -m security_lab.study plan with --output (study.py:277-287,329-332).",
+        "_run_command creates the offline plan from fixtures, then passes args.output directly to _new_output (study.py:307-311).",
+        "_new_output rejects the protected fixture path and output inside a protected fixture directory (study.py:270-274).",
+        "write_json_new serializes the value first, creates a random same-directory temporary file exclusively, flushes/fsyncs it, then os.link publishes the requested destination without replacing an existing file (batch.py:66-89).",
+        "No model response participates in selecting args.output. The only model dispatch is the fixed synthetic gateway (core.py:88-105,181-209); the HTTP layer has no study CLI execution endpoint."
+      ],
+      "boundary_assessment": {
+        "product_surface": "Explicit offline study-plan CLI, with shared writer callers checked for the model/HTTP boundary.",
+        "source_trust": "trusted operator configuration; imported content and model replies remain untrusted data",
+        "boundary_crossed": false,
+        "policy_basis": "SECURITY.md:20-30,50-52 and docs/threat-model.md:19-28 distinguish trusted operator configuration from untrusted articles, PDFs, model replies and tool arguments. They require a concrete attacker-controlled source-to-impact path and explicitly do not exempt all local/CLI code. The reviewed gateway enforces the actual separation at core.py:88-105,181-209; only synthetic in-memory read_ticket/append_note are dispatched."
+      },
+      "exploitability_stack_rank": {
+        "rank_queue": null,
+        "rank": null,
+        "rationale": "No actionable lower-trust-to-host-filesystem exploit is established for this exact shipped flow; existing explicit CLI authority is required.",
+        "drivers": []
+      },
+      "evidence": [
+        "Individual false-positive disposition for issue AaGMS_9U7rRJBvbBA1oc, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The exact reported flow starts at study.main argparse.parse_args(argv) (study.py:330), not at a model response or HTTP parameter. plan --output is an explicit operator-selected Path (study.py:287,311); _new_output checks protected fixture/campaign paths before calling write_json_new (study.py:270-274). batch.py:75-86 serializes the JSON, opens a random same-directory temporary file with xb, flushes/fsyncs, and publishes using os.link so an existing destination cannot be overwritten. Those publication protections preserve evidence; they are not a sandbox for arbitrary operator CLI paths. The application does not expose CLI execution or filesystem tools to the model: core.py:88-105 rejects unknown tools/argument fields and core.py:181-209 dispatches only read_ticket/append_note against in-memory synthetic tickets. Browser storage callers use managed paths and reject_symlinks (server.py:186-189); they do not forward browser input into this study argv. Relevant existing tests: test_atomic_writes.py test_new_json_is_fully_synced_before_exclusive_publication, test_concurrent_new_json_writers_cannot_replace_the_winner; test_study.py test_cli_refuses_overwriting_plan_and_campaign; test_core.py test_invalid_syntax_never_reaches_backend. Their bodies were inspected, not rerun for this static triage. The CLI path is reachable, but the asserted lower-trust-to-host-file authority transfer is absent. This disposition covers only this ID and reviewed flow, requests no rule/gate change, and must be revisited if CLI execution becomes model- or request-controlled.",
+        "Inventory SHA-256: 359a7edc0cc5c99484ecdc83e0fde573b24d1f3d8de8366f4fe2cf534937c934; server analysis {\"date\": \"2026-11-06T10:38:09+0000\", \"key\": \"e3ce6eb2-cc85-4f61-85e9-5c3c963f234b\", \"revision\": \"58ed94e50013676da212fc0e1fa74590fad216af\"}; repository HEAD and clean status independently checked.",
+        "Recorded scanner locations in original sink-to-source order: [[{\"end_line\": 86, \"path\": \"src/security_lab/batch.py\", \"start_line\": 86}, {\"end_line\": 76, \"path\": \"src/security_lab/batch.py\", \"start_line\": 76}, {\"end_line\": 76, \"path\": \"src/security_lab/batch.py\", \"start_line\": 76}, {\"end_line\": 66, \"path\": \"src/security_lab/batch.py\", \"start_line\": 66}, {\"end_line\": 66, \"path\": \"src/security_lab/batch.py\", \"start_line\": 66}, {\"end_line\": 274, \"path\": \"src/security_lab/study.py\", \"start_line\": 274}, {\"end_line\": 270, \"path\": \"src/security_lab/study.py\", \"start_line\": 270}, {\"end_line\": 270, \"path\": \"src/security_lab/study.py\", \"start_line\": 270}, {\"end_line\": 311, \"path\": \"src/security_lab/study.py\", \"start_line\": 311}, {\"end_line\": 311, \"path\": \"src/security_lab/study.py\", \"start_line\": 311}, {\"end_line\": 306, \"path\": \"src/security_lab/study.py\", \"start_line\": 306}, {\"end_line\": 306, \"path\": \"src/security_lab/study.py\", \"start_line\": 306}, {\"end_line\": 332, \"path\": \"src/security_lab/study.py\", \"start_line\": 332}, {\"end_line\": 330, \"path\": \"src/security_lab/study.py\", \"start_line\": 330}]]",
+        "tests/test_atomic_writes.py:156-210: exclusive publication, full sync before publication, failure cleanup and competing writers cannot overwrite the winner.",
+        "tests/test_study.py:201-210: CLI refuses replacing the plan or writing linked output inside an input campaign.",
+        "tests/test_core.py:136-149: shell, traversal-shaped ticket IDs, unknown tickets and malformed arguments never reach a synthetic backend effect.",
+        "Reviewed file SHA-256 values: {\"SECURITY.md\": \"3cd5212d48d287db9f26b6f33bf394181f3fce028e94f14e8cd09ed038a6913a\", \"docs/threat-model.md\": \"21d4b752628a53d90cee0779b81d1873d4072a975124759772da2712deac22bf\", \"src/security_lab/batch.py\": \"41915123c342cf3fcd26e355c643c2b82870e64e181494ffc92d5d7eed17b785\", \"src/security_lab/core.py\": \"4a657779c71c680bc421476cb4f1252a5f9e1e219480ab2105e85e9eb6ad6f60\", \"src/security_lab/server.py\": \"670a056c4cca6bc4eeb83912b0cabffef7c21aba03d818a23db86759e8714657\", \"src/security_lab/study.py\": \"06708a3f6b653ae008937fd3c96141ed75e6954866e0e2e3667571457958ddc8\", \"tests/test_atomic_writes.py\": \"3aaa1b63f47cc9039968ad1f998ad45a423c08e8cf29c4bffd0b4c7f01f097bf\", \"tests/test_core.py\": \"8971b66f3486edfbfaa2485c1bbb89ed7213525cc4a35045612f8e2fc27bc900\", \"tests/test_study.py\": \"31b680eabe73f650788e8db2946110110afafaf661f86e117f296f7ad8cc5bea\"}"
+      ],
+      "counterevidence": [
+        "The reported argv-to-filesystem path is real. The CLI intentionally allows operator-selected absolute or relative output paths under the OS account permissions; there is no intended workspace-only restriction for this command.",
+        "The exclusive-file controls do not prevent a fully privileged local actor from changing parent directories or executing arbitrary commands. That actor is outside the specific model/request authority boundary; no untrusted-content-to-argv bridge was found."
+      ],
+      "proof_gaps": [
+        "Static source review only; existing regression test bodies were inspected but not executed for this triage. No app files or remote resources were changed. This is not an exhaustive security audit, a runtime exploit validation, or proof of outer OS/container isolation. The sanitized Sonar inventory omits the finding prose; the assessment uses its exact rule, component, location and complete recorded source-to-sink flow without inventing an omitted title."
+      ],
+      "recommended_next_step": "Propose an individual false-positive disposition for this exact issue after root review, using evidence[0] as the concrete comment and the exact main analysis/identity pins. No application fix, global exclusion, rule or quality-gate change is indicated by this flow. Re-triage if source ownership or callers change.",
+      "fix_finding_handoff": null
+    },
+    {
+      "triage_item_id": "triage-002",
+      "input_id": "AaGMS_9j7rRJBvbBA1o-",
+      "source_type": "scanner_ticket",
+      "title": "S8707: CLI-selected workspace backup reaches SHA-256 file read",
+      "normalized_input": {
+        "vulnerable_component": "src/security_lab/archives.py",
+        "claimed_source": "backup.py:511 argparse.parse_args(argv), specifically the operator-selected verify archive Path declared at backup.py:506-507.",
+        "claimed_sink": "archives.py:62 path.open(\"rb\") inside _sha, called by backup._verify_into at backup.py:448.",
+        "claimed_control": "S8707 flagged an argv-derived filesystem path; the supplied sanitized inventory omits its prose. This assessment independently checks who controls that path and whether a lower-trust input crosses the host-filesystem boundary.",
+        "affected_version_or_path": "58ed94e50013676da212fc0e1fa74590fad216af:src/security_lab/archives.py",
+        "preconditions": [
+          "The operator invokes the reviewed CLI under the existing OS account.",
+          "The reported lower-trust exploit would additionally require model/request control over CLI argv or an equivalent caller; no such bridge exists in the reviewed shipped source."
+        ],
+        "impact": "Claimed unsafe file read through a CLI-derived archive path; the returned value at this sink is a SHA-256 digest of the selected backup.",
+        "references": [
+          "https://sonarcloud.io/project/issues?id=sxba-04_llm-agent-security-lab&branch=main&issues=AaGMS_9j7rRJBvbBA1o-",
+          "/tmp/pr30-main-sonar-58ed94e.json"
+        ]
+      },
+      "verdict": "not_actionable",
+      "confidence": "high",
+      "affected_locations": [
+        {
+          "label": "CLI source",
+          "path": "src/security_lab/backup.py",
+          "lines": "498-518",
+          "detail": "CLI source"
+        },
+        {
+          "label": "Verifier and hash call",
+          "path": "src/security_lab/backup.py",
+          "lines": "431-460",
+          "detail": "Verifier and hash call"
+        },
+        {
+          "label": "Binary SHA-256 sink",
+          "path": "src/security_lab/archives.py",
+          "lines": "60-65",
+          "detail": "Binary SHA-256 sink"
+        },
+        {
+          "label": "Untrusted archive boundary",
+          "path": "src/security_lab/archives.py",
+          "lines": "32-45,342-366,389-402",
+          "detail": "Untrusted archive boundary"
+        },
+        {
+          "label": "Internal candidate caller",
+          "path": "src/security_lab/backup.py",
+          "lines": "375-390",
+          "detail": "Internal candidate caller"
+        }
+      ],
+      "reachable_path": [
+        "The operator invokes python -m security_lab.backup verify ARCHIVE (backup.py:498-516).",
+        "verify_workspace_backup receives args.archive and creates a fresh temporary validation directory (backup.py:457-460).",
+        "_verify_into rejects a symlink, non-file or oversized top-level archive; then validates ZIP members, exact inventory, extracted-byte hashes and workspace/source evidence before calculating the selected archive digest (backup.py:431-452).",
+        "archives._sha opens that same operator-selected archive in binary mode and streams SHA-256 chunks (archives.py:60-65); no member name or JSON field changes the selected top-level path.",
+        "Untrusted ZIP member paths are separately rejected when absolute/traversing/unsafe, duplicates or special files; validated members are exclusively materialized only under the fresh temporary destination (archives.py:32-45,342-366,389-402).",
+        "Production callers are the explicit backup CLI and export verification of an internally created candidate (backup.py:390,516,518). No API or model tool accepts a path for this verifier."
+      ],
+      "boundary_assessment": {
+        "product_surface": "Explicit workspace backup verify/restore CLI and internal export-candidate verification.",
+        "source_trust": "trusted operator configuration; imported content and model replies remain untrusted data",
+        "boundary_crossed": false,
+        "policy_basis": "SECURITY.md:20-30,50-52 and docs/threat-model.md:19-28 distinguish trusted operator configuration from untrusted articles, PDFs, model replies and tool arguments. They require a concrete attacker-controlled source-to-impact path and explicitly do not exempt all local/CLI code. The reviewed gateway enforces the actual separation at core.py:88-105,181-209; only synthetic in-memory read_ticket/append_note are dispatched."
+      },
+      "exploitability_stack_rank": {
+        "rank_queue": null,
+        "rank": null,
+        "rationale": "No actionable lower-trust-to-host-filesystem exploit is established for this exact shipped flow; existing explicit CLI authority is required.",
+        "drivers": []
+      },
+      "evidence": [
+        "Individual false-positive disposition for issue AaGMS_9j7rRJBvbBA1o-, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The exact source is backup.main argparse.parse_args(argv) at backup.py:511: the operator supplies the positional archive Path to the verify command (506-507,516). verify_workspace_backup passes it into a newly created temporary validation directory (457-460). _verify_into rejects top-level symlinks, non-files and oversized archives, validates ZIP member names/types/bounds, exact inventory, hashes and workspace/source evidence, then computes archives._sha(path) (431-452). The sink archives.py:62 opens that same chosen archive for a streamed SHA-256 digest; neither a ZIP member name nor embedded JSON can replace the top-level path. ZIP contents are untrusted and separately constrained by archives._safe_name, _archive_members and _extract_verified_members (32-45,342-366,389-402), including traversal, absolute paths, special files, duplicates and exclusive extraction into the new temporary directory. Call-site inspection found only explicit backup CLI operations and export verification of an internally generated candidate; no HTTP/model path-selection endpoint. The model gateway only dispatches read_ticket/append_note in memory (core.py:88-105,181-209). Existing tests inspected: test_workspace_backup.py test_cli_verify_restore_and_failure_exit_codes and test_rejects_changed_bytes_extra_members_schema_and_traversal; test_archives.py test_paths_links_duplicates_and_excessive_expansion_rejected. No new tests were run. This is a precise source-ownership finding, not an exemption for archive code or a claim that hashes establish authenticity. Only this ID/flow is proposed false positive; no rule or quality-gate change.",
+        "Inventory SHA-256: 359a7edc0cc5c99484ecdc83e0fde573b24d1f3d8de8366f4fe2cf534937c934; server analysis {\"date\": \"2026-11-06T10:38:09+0000\", \"key\": \"e3ce6eb2-cc85-4f61-85e9-5c3c963f234b\", \"revision\": \"58ed94e50013676da212fc0e1fa74590fad216af\"}; repository HEAD and clean status independently checked.",
+        "Recorded scanner locations in original sink-to-source order: [[{\"end_line\": 62, \"path\": \"src/security_lab/archives.py\", \"start_line\": 62}, {\"end_line\": 60, \"path\": \"src/security_lab/archives.py\", \"start_line\": 60}, {\"end_line\": 60, \"path\": \"src/security_lab/archives.py\", \"start_line\": 60}, {\"end_line\": 448, \"path\": \"src/security_lab/backup.py\", \"start_line\": 448}, {\"end_line\": 431, \"path\": \"src/security_lab/backup.py\", \"start_line\": 431}, {\"end_line\": 431, \"path\": \"src/security_lab/backup.py\", \"start_line\": 431}, {\"end_line\": 460, \"path\": \"src/security_lab/backup.py\", \"start_line\": 460}, {\"end_line\": 460, \"path\": \"src/security_lab/backup.py\", \"start_line\": 460}, {\"end_line\": 457, \"path\": \"src/security_lab/backup.py\", \"start_line\": 457}, {\"end_line\": 457, \"path\": \"src/security_lab/backup.py\", \"start_line\": 457}, {\"end_line\": 516, \"path\": \"src/security_lab/backup.py\", \"start_line\": 516}, {\"end_line\": 516, \"path\": \"src/security_lab/backup.py\", \"start_line\": 516}, {\"end_line\": 511, \"path\": \"src/security_lab/backup.py\", \"start_line\": 511}, {\"end_line\": 511, \"path\": \"src/security_lab/backup.py\", \"start_line\": 511}]]",
+        "tests/test_workspace_backup.py:207-216: explicit CLI verify/restore succeeds on generated backup and missing archive fails.",
+        "tests/test_workspace_backup.py:117-138: traversal, unindexed members, damaged bytes and invalid schema are rejected, with no published restore or escaped file.",
+        "tests/test_archives.py:189-214: absolute/traversal/Windows-unsafe names, symlink members, excessive expansion and case-folded duplicate names are rejected by shared archive validation.",
+        "Reviewed file SHA-256 values: {\"SECURITY.md\": \"3cd5212d48d287db9f26b6f33bf394181f3fce028e94f14e8cd09ed038a6913a\", \"docs/threat-model.md\": \"21d4b752628a53d90cee0779b81d1873d4072a975124759772da2712deac22bf\", \"src/security_lab/archives.py\": \"b72bbc6da0da139232bf713a8f01988ac5f2943ca5e8336da2d8e3837d9f89e3\", \"src/security_lab/backup.py\": \"9b2e7f508cfeb812184a80ae67a8929e7d83e20100b3c5926afd33fd6a9073df\", \"src/security_lab/core.py\": \"4a657779c71c680bc421476cb4f1252a5f9e1e219480ab2105e85e9eb6ad6f60\", \"tests/test_archives.py\": \"3e84ecc1527682bb9f00d64f0a19323db36b2dd44e309043f0bd11ab27ee0e51\", \"tests/test_workspace_backup.py\": \"4807dd71a03ab3f301ee8c59b72ffa7be703925e67b6f62118693f6d4a78805b\"}"
+      ],
+      "counterevidence": [
+        "The explicit operator may choose any readable archive path; this is the documented backup-verification interface, not a model capability.",
+        "Archive payloads remain untrusted. Their extraction boundary has real constraints; dismissing this top-level argv flow does not dismiss future malicious-member or parser findings.",
+        "Validation/hash checks do not promise authenticity, protect against an actor replacing files with the same OS privileges, or provide general OS isolation. No such protection is relied on for this source-ownership disposition."
+      ],
+      "proof_gaps": [
+        "Static source review only; existing regression test bodies were inspected but not executed for this triage. No app files or remote resources were changed. This is not an exhaustive security audit, a runtime exploit validation, or proof of outer OS/container isolation. The sanitized Sonar inventory omits the finding prose; the assessment uses its exact rule, component, location and complete recorded source-to-sink flow without inventing an omitted title."
+      ],
+      "recommended_next_step": "Propose an individual false-positive disposition for this exact issue after root review, using evidence[0] as the concrete comment and the exact main analysis/identity pins. No application fix, global exclusion, rule or quality-gate change is indicated by this flow. Re-triage if source ownership or callers change.",
+      "fix_finding_handoff": null
+    },
+    {
+      "triage_item_id": "triage-003",
+      "input_id": "AaGwcWxOGbIwpvwBe420",
+      "source_type": "scanner_ticket",
+      "title": "S8707: CLI-selected case fixture reaches JSON text read",
+      "normalized_input": {
+        "vulnerable_component": "src/security_lab/cases.py",
+        "claimed_source": "study.py:330 argparse.parse_args(argv), specifically the operator-selected plan --cases Path declared at study.py:281.",
+        "claimed_sink": "cases.py:253 path.read_text(encoding=\"utf-8\") inside load_case.",
+        "claimed_control": "S8707 flagged an argv-derived filesystem path; the supplied sanitized inventory omits its prose. This assessment independently checks who controls that path and whether a lower-trust input crosses the host-filesystem boundary.",
+        "affected_version_or_path": "58ed94e50013676da212fc0e1fa74590fad216af:src/security_lab/cases.py",
+        "preconditions": [
+          "The operator invokes the reviewed CLI under the existing OS account.",
+          "The reported lower-trust exploit would additionally require model/request control over CLI argv or an equivalent caller; no such bridge exists in the reviewed shipped source."
+        ],
+        "impact": "Claimed unsafe file read through a CLI-derived fixture path; the specific path is trusted operator configuration, while loaded JSON is parsed and validated as fixture data.",
+        "references": [
+          "https://sonarcloud.io/project/issues?id=sxba-04_llm-agent-security-lab&branch=main&issues=AaGwcWxOGbIwpvwBe420",
+          "/tmp/pr30-main-sonar-58ed94e.json"
+        ]
+      },
+      "verdict": "not_actionable",
+      "confidence": "high",
+      "affected_locations": [
+        {
+          "label": "CLI source",
+          "path": "src/security_lab/study.py",
+          "lines": "281,306-311,329-332",
+          "detail": "CLI source"
+        },
+        {
+          "label": "Fixture loader sink",
+          "path": "src/security_lab/cases.py",
+          "lines": "249-270",
+          "detail": "Fixture loader sink"
+        },
+        {
+          "label": "Mock tool validation",
+          "path": "src/security_lab/cases.py",
+          "lines": "219-238",
+          "detail": "Mock tool validation"
+        },
+        {
+          "label": "Fixed web catalog and lookup",
+          "path": "src/security_lab/server.py",
+          "lines": "205-208,384-416",
+          "detail": "Fixed web catalog and lookup"
+        },
+        {
+          "label": "Model boundary",
+          "path": "src/security_lab/core.py",
+          "lines": "88-105,181-209",
+          "detail": "Model boundary"
+        }
+      ],
+      "reachable_path": [
+        "The operator invokes python -m security_lab.study plan with --cases, defaulting to cases/dev (study.py:281,329-332).",
+        "_run_command passes args.cases directly into load_cases before building an offline plan (study.py:307-311).",
+        "load_cases interprets the operator path as one file or enumerates *.json in that chosen directory; load_case reads each Path, rejects duplicate JSON keys, validates the fixture, and load_cases rejects empty catalogs/duplicate case IDs (cases.py:249-270).",
+        "Article/model content is loaded data, never used as a replacement path or argv. Mock step validation restricts tools and ticket targets (cases.py:219-238), and execution uses the fixed in-memory gateway (core.py:88-105,181-209).",
+        "For HTTP callers, cases_dir is fixed at app construction from the local/hosted launcher configuration, checked by checked_tree; request case IDs select from the already loaded catalog and do not become filesystem paths (web_cli.py:9-24; hosted_cli.py:35-46; server.py:205-208,384-416)."
+      ],
+      "boundary_assessment": {
+        "product_surface": "Explicit offline study preparation and fixed-catalog local/hosted API callers of the shared fixture loader.",
+        "source_trust": "trusted operator configuration; imported content and model replies remain untrusted data",
+        "boundary_crossed": false,
+        "policy_basis": "SECURITY.md:20-30,50-52 and docs/threat-model.md:19-28 distinguish trusted operator configuration from untrusted articles, PDFs, model replies and tool arguments. They require a concrete attacker-controlled source-to-impact path and explicitly do not exempt all local/CLI code. The reviewed gateway enforces the actual separation at core.py:88-105,181-209; only synthetic in-memory read_ticket/append_note are dispatched."
+      },
+      "exploitability_stack_rank": {
+        "rank_queue": null,
+        "rank": null,
+        "rationale": "No actionable lower-trust-to-host-filesystem exploit is established for this exact shipped flow; existing explicit CLI authority is required.",
+        "drivers": []
+      },
+      "evidence": [
+        "Individual false-positive disposition for issue AaGwcWxOGbIwpvwBe420, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The reported path begins with study.main argparse.parse_args(argv) (study.py:330). plan --cases is an explicit operator Path with default cases/dev (281), passed to load_cases by _run_command (309). cases.py:260-270 selects that file or enumerates its *.json fixtures; load_case reads it at 253, rejects duplicate JSON keys, and applies validate_case. Neither article text nor a model reply supplies the CLI argument or chooses the next file. This trust separation was checked beyond this single call: model dispatch allows only read_ticket/append_note against in-memory synthetic tickets, rejecting unknown tools/fields/targets (core.py:88-105,181-209); fixture mock steps are constrained at cases.py:219-238. HTTP callers obtain cases_dir from trusted launcher/app configuration (web_cli.py:9-24, hosted_cli.py:35-46, server.py:205-208). Browser case_ids are looked up in that fixed validated catalog, not converted into paths (server.py:384-416). Existing tests inspected: test_cases.py test_mock_may_not_invoke_arbitrary_tools_or_targets, test_duplicate_json_keys_are_rejected, test_empty_catalog_is_an_error_not_an_implicit_development_fallback; test_core.py test_invalid_syntax_never_reaches_backend; test_study.py test_frozen_case_export_is_readable_and_never_overwrites. They were not rerun for this static triage. JSON validation is not claimed to sanitize an arbitrary hostile filesystem path; the decisive fact is that this path belongs to operator configuration and no lower-trust bridge supplies it. Only this exact ID/flow is proposed false positive; revisit if a model tool or HTTP endpoint is added that accepts arbitrary fixture paths.",
+        "Inventory SHA-256: 359a7edc0cc5c99484ecdc83e0fde573b24d1f3d8de8366f4fe2cf534937c934; server analysis {\"date\": \"2026-11-06T10:38:09+0000\", \"key\": \"e3ce6eb2-cc85-4f61-85e9-5c3c963f234b\", \"revision\": \"58ed94e50013676da212fc0e1fa74590fad216af\"}; repository HEAD and clean status independently checked.",
+        "Recorded scanner locations in original sink-to-source order: [[{\"end_line\": 253, \"path\": \"src/security_lab/cases.py\", \"start_line\": 253}, {\"end_line\": 251, \"path\": \"src/security_lab/cases.py\", \"start_line\": 251}, {\"end_line\": 251, \"path\": \"src/security_lab/cases.py\", \"start_line\": 251}, {\"end_line\": 249, \"path\": \"src/security_lab/cases.py\", \"start_line\": 249}, {\"end_line\": 249, \"path\": \"src/security_lab/cases.py\", \"start_line\": 249}, {\"end_line\": 265, \"path\": \"src/security_lab/cases.py\", \"start_line\": 265}, {\"end_line\": 265, \"path\": \"src/security_lab/cases.py\", \"start_line\": 265}, {\"end_line\": 265, \"path\": \"src/security_lab/cases.py\", \"start_line\": 265}, {\"end_line\": 263, \"path\": \"src/security_lab/cases.py\", \"start_line\": 263}, {\"end_line\": 263, \"path\": \"src/security_lab/cases.py\", \"start_line\": 263}, {\"end_line\": 262, \"path\": \"src/security_lab/cases.py\", \"start_line\": 262}, {\"end_line\": 262, \"path\": \"src/security_lab/cases.py\", \"start_line\": 262}, {\"end_line\": 260, \"path\": \"src/security_lab/cases.py\", \"start_line\": 260}, {\"end_line\": 260, \"path\": \"src/security_lab/cases.py\", \"start_line\": 260}, {\"end_line\": 309, \"path\": \"src/security_lab/study.py\", \"start_line\": 309}, {\"end_line\": 309, \"path\": \"src/security_lab/study.py\", \"start_line\": 309}, {\"end_line\": 306, \"path\": \"src/security_lab/study.py\", \"start_line\": 306}, {\"end_line\": 306, \"path\": \"src/security_lab/study.py\", \"start_line\": 306}, {\"end_line\": 332, \"path\": \"src/security_lab/study.py\", \"start_line\": 332}, {\"end_line\": 330, \"path\": \"src/security_lab/study.py\", \"start_line\": 330}]]",
+        "tests/test_cases.py:204-213: shell, unknown ticket IDs and additional argument fields in mock steps fail fixture validation.",
+        "tests/test_cases.py:231-242: duplicate JSON keys and empty case catalogs fail explicitly.",
+        "tests/test_core.py:136-149: unrecognized tools, traversal-shaped IDs and invalid arguments do not reach the backend.",
+        "tests/test_study.py:70-78: exported frozen cases remain readable and exporting onto an existing fixture destination fails.",
+        "Reviewed file SHA-256 values: {\"SECURITY.md\": \"3cd5212d48d287db9f26b6f33bf394181f3fce028e94f14e8cd09ed038a6913a\", \"docs/threat-model.md\": \"21d4b752628a53d90cee0779b81d1873d4072a975124759772da2712deac22bf\", \"src/security_lab/cases.py\": \"6148724e18d1a0a58c4b84c28658667462f5db00520a4a2fc67c0c5af2b6a299\", \"src/security_lab/core.py\": \"4a657779c71c680bc421476cb4f1252a5f9e1e219480ab2105e85e9eb6ad6f60\", \"src/security_lab/hosted_cli.py\": \"8181a99a490ef428a542532d67eddf0fb81905b61eaa8f4b43a23ab00b71868c\", \"src/security_lab/server.py\": \"670a056c4cca6bc4eeb83912b0cabffef7c21aba03d818a23db86759e8714657\", \"src/security_lab/study.py\": \"06708a3f6b653ae008937fd3c96141ed75e6954866e0e2e3667571457958ddc8\", \"src/security_lab/web_cli.py\": \"5d447990c91287161b20a52b12085b34a5d252a52dd446ea85ed8adfa4ebf92a\", \"tests/test_cases.py\": \"c27fe57a1967b7677f804cc9dd09b8a3b546abb732f24b5a2cd2bb401105242f\", \"tests/test_core.py\": \"8971b66f3486edfbfaa2485c1bbb89ed7213525cc4a35045612f8e2fc27bc900\", \"tests/test_study.py\": \"31b680eabe73f650788e8db2946110110afafaf661f86e117f296f7ad8cc5bea\"}"
+      ],
+      "counterevidence": [
+        "CLI --cases can name an operator-chosen absolute or relative file/directory. JSON schema validation does not confine this path and is not treated as a filesystem sanitizer.",
+        "Untrusted articles can be contained in validated fixtures; their text remains data for the experiment and does not become argv or a path in this loader.",
+        "Allowing a future model/HTTP caller to supply arbitrary load_cases paths would change this assessment. The currently shipped HTTP callers instead use a fixed server-side catalog and ID membership checks."
+      ],
+      "proof_gaps": [
+        "Static source review only; existing regression test bodies were inspected but not executed for this triage. No app files or remote resources were changed. This is not an exhaustive security audit, a runtime exploit validation, or proof of outer OS/container isolation. The sanitized Sonar inventory omits the finding prose; the assessment uses its exact rule, component, location and complete recorded source-to-sink flow without inventing an omitted title."
+      ],
+      "recommended_next_step": "Propose an individual false-positive disposition for this exact issue after root review, using evidence[0] as the concrete comment and the exact main analysis/identity pins. No application fix, global exclusion, rule or quality-gate change is indicated by this flow. Re-triage if source ownership or callers change.",
+      "fix_finding_handoff": null
+    }
+  ]
+}

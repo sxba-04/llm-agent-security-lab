@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "project": "sxba-04_llm-agent-security-lab",
+  "branch": "main",
+  "reviewed_revision": "58ed94e50013676da212fc0e1fa74590fad216af",
+  "approved": false,
+  "expected_analysis": {
+    "key": "e3ce6eb2-cc85-4f61-85e9-5c3c963f234b",
+    "date": "2026-11-06T10:38:09+0000",
+    "revision": "58ed94e50013676da212fc0e1fa74590fad216af"
+  },
+  "source_inventory_sha256": "359a7edc0cc5c99484ecdc83e0fde573b24d1f3d8de8366f4fe2cf534937c934",
+  "issues": [
+    {
+      "key": "AaGMS_9U7rRJBvbBA1oc",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/batch.py",
+      "rule": "pythonsecurity:S8707",
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for issue AaGMS_9U7rRJBvbBA1oc, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The exact reported flow starts at study.main argparse.parse_args(argv) (study.py:330), not at a model response or HTTP parameter. plan --output is an explicit operator-selected Path (study.py:287,311); _new_output checks protected fixture/campaign paths before calling write_json_new (study.py:270-274). batch.py:75-86 serializes the JSON, opens a random same-directory temporary file with xb, flushes/fsyncs, and publishes using os.link so an existing destination cannot be overwritten. Those publication protections preserve evidence; they are not a sandbox for arbitrary operator CLI paths. The application does not expose CLI execution or filesystem tools to the model: core.py:88-105 rejects unknown tools/argument fields and core.py:181-209 dispatches only read_ticket/append_note against in-memory synthetic tickets. Browser storage callers use managed paths and reject_symlinks (server.py:186-189); they do not forward browser input into this study argv. Relevant existing tests: test_atomic_writes.py test_new_json_is_fully_synced_before_exclusive_publication, test_concurrent_new_json_writers_cannot_replace_the_winner; test_study.py test_cli_refuses_overwriting_plan_and_campaign; test_core.py test_invalid_syntax_never_reaches_backend. Their bodies were inspected, not rerun for this static triage. The CLI path is reachable, but the asserted lower-trust-to-host-file authority transfer is absent. This disposition covers only this ID and reviewed flow, requests no rule/gate change, and must be revisited if CLI execution becomes model- or request-controlled.",
+      "evidence_document": "triage-review.json",
+      "evidence_document_sha256": "e23cee56ac744ce5a487cf12f751979478e14a18606737df061d6ab04f46fa8b"
+    },
+    {
+      "key": "AaGMS_9j7rRJBvbBA1o-",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/archives.py",
+      "rule": "pythonsecurity:S8707",
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for issue AaGMS_9j7rRJBvbBA1o-, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The exact source is backup.main argparse.parse_args(argv) at backup.py:511: the operator supplies the positional archive Path to the verify command (506-507,516). verify_workspace_backup passes it into a newly created temporary validation directory (457-460). _verify_into rejects top-level symlinks, non-files and oversized archives, validates ZIP member names/types/bounds, exact inventory, hashes and workspace/source evidence, then computes archives._sha(path) (431-452). The sink archives.py:62 opens that same chosen archive for a streamed SHA-256 digest; neither a ZIP member name nor embedded JSON can replace the top-level path. ZIP contents are untrusted and separately constrained by archives._safe_name, _archive_members and _extract_verified_members (32-45,342-366,389-402), including traversal, absolute paths, special files, duplicates and exclusive extraction into the new temporary directory. Call-site inspection found only explicit backup CLI operations and export verification of an internally generated candidate; no HTTP/model path-selection endpoint. The model gateway only dispatches read_ticket/append_note in memory (core.py:88-105,181-209). Existing tests inspected: test_workspace_backup.py test_cli_verify_restore_and_failure_exit_codes and test_rejects_changed_bytes_extra_members_schema_and_traversal; test_archives.py test_paths_links_duplicates_and_excessive_expansion_rejected. No new tests were run. This is a precise source-ownership finding, not an exemption for archive code or a claim that hashes establish authenticity. Only this ID/flow is proposed false positive; no rule or quality-gate change.",
+      "evidence_document": "triage-review.json",
+      "evidence_document_sha256": "e23cee56ac744ce5a487cf12f751979478e14a18606737df061d6ab04f46fa8b"
+    },
+    {
+      "key": "AaGwcWxOGbIwpvwBe420",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/cases.py",
+      "rule": "pythonsecurity:S8707",
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for issue AaGwcWxOGbIwpvwBe420, rule pythonsecurity:S8707, project sxba-04_llm-agent-security-lab, branch main, source revision 58ed94e50013676da212fc0e1fa74590fad216af. The reported path begins with study.main argparse.parse_args(argv) (study.py:330). plan --cases is an explicit operator Path with default cases/dev (281), passed to load_cases by _run_command (309). cases.py:260-270 selects that file or enumerates its *.json fixtures; load_case reads it at 253, rejects duplicate JSON keys, and applies validate_case. Neither article text nor a model reply supplies the CLI argument or chooses the next file. This trust separation was checked beyond this single call: model dispatch allows only read_ticket/append_note against in-memory synthetic tickets, rejecting unknown tools/fields/targets (core.py:88-105,181-209); fixture mock steps are constrained at cases.py:219-238. HTTP callers obtain cases_dir from trusted launcher/app configuration (web_cli.py:9-24, hosted_cli.py:35-46, server.py:205-208). Browser case_ids are looked up in that fixed validated catalog, not converted into paths (server.py:384-416). Existing tests inspected: test_cases.py test_mock_may_not_invoke_arbitrary_tools_or_targets, test_duplicate_json_keys_are_rejected, test_empty_catalog_is_an_error_not_an_implicit_development_fallback; test_core.py test_invalid_syntax_never_reaches_backend; test_study.py test_frozen_case_export_is_readable_and_never_overwrites. They were not rerun for this static triage. JSON validation is not claimed to sanitize an arbitrary hostile filesystem path; the decisive fact is that this path belongs to operator configuration and no lower-trust bridge supplies it. Only this exact ID/flow is proposed false positive; revisit if a model tool or HTTP endpoint is added that accepts arbitrary fixture paths.",
+      "evidence_document": "triage-review.json",
+      "evidence_document_sha256": "e23cee56ac744ce5a487cf12f751979478e14a18606737df061d6ab04f46fa8b"
+    }
+  ]
+}
