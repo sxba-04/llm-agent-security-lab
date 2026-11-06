@@ -3,8 +3,8 @@
   "project": "sxba-04_llm-agent-security-lab",
   "pull_request": "30",
   "reviewed_revision": "90667b5259fe2694734755f74cb56009be478b4b",
-  "approved": false,
-  "expected_analysis_date": null,
+  "approved": true,
+  "expected_analysis_date": "2026-11-06T09:37:16+0000",
   "issues": [
     {
       "key": "AaGwHn_y3f6_aqzNEjB3",

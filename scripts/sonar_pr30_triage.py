@@ -27,7 +27,7 @@ OPS_REF = "refs/heads/ops/sonar-pr30-triage"
 REVIEWED_REVISION = "90667b5259fe2694734755f74cb56009be478b4b"
 # Apply stays disabled until a fresh read-only run and separate root review.
 # Root must approve the exact static file and pin its SHA256 here.
-APPROVED_ALLOWLIST_SHA256 = ""
+APPROVED_ALLOWLIST_SHA256 = "148d334741beba6748ca7061c502e794d6ca621d8cc86d6e025d5dc9dae5f318"
 ALLOWLIST = Path(__file__).with_name("sonar_pr30_allowlist.json")
 OUTPUT = Path("quality-inventory/sonar-pr30-triage-final.json")
 MAX_BYTES = 4 * 1024 * 1024
