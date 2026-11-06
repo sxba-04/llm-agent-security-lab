@@ -82,8 +82,9 @@ class SonarInventoryTests(unittest.TestCase):
             with self.subTest(number=number, revision=revision), self.assertRaises(inventory.InventoryError):
                 inventory.collect(client, pull_request=number, expected_revision=revision)
             self.assertEqual(client.requests, [])
+        client = FakeSonar()
         with self.assertRaisesRegex(inventory.InventoryError, "does not match"):
-            inventory.collect(FakeSonar(), expected_revision="b" * 40)
+            inventory.collect(client, expected_revision="b" * 40)
 
     def test_pr_missing_analysis_and_changing_analysis_reject_partial_inventory(self):
         for field, value in (("key", "31"), ("analysisDate", None),

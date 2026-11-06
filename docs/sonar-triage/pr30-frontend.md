@@ -113,3 +113,28 @@ Sitzungswiderruf/Abmeldung und axe auf Anmeldung/Sitzungsmenü in beiden Themes.
 Die GitHub-Antworten dieser lokalen HTTPS-Fixtures sind synthetisch; dies ist kein
 neuer Live-Login-Nachweis. CI-/Sonar-Ergebnisse des finalen Commits werden im
 allgemeinen Änderungsnachweis separat festgehalten.
+
+## Erneute Analyse auf `90667b5`
+
+Die Analyse vom 6. November 2026, 09:37:16 UTC, enthält nach den Korrekturen
+noch drei der hier geprüften Frontend-Meldungen. Der Befund zur gemeinsamen
+Scrollregion hat nun die ID `AaGwOUR7RVlkm00GzpSU` (`typescript:S6845`);
+die übrigen IDs bleiben `AaGwHoAJ3f6_aqzNEjCE` (`typescript:S1607`) und
+`AaGwHn_y3f6_aqzNEjB3` (`tssecurity:S6105`).
+
+Der OAuth-Flow zeigt API-Antwort, `startGitHubLogin()` und
+`window.location.assign()`, berücksichtigt aber die dazwischenliegende
+Prüfung und Neukonstruktion in `authorizationTarget()` nicht als Bereinigung.
+An der Navigationsstelle kann weiterhin ausschließlich der feste HTTPS-Origin
+und Pfad von GitHub verwendet werden. Die übernommenen Queryparameter können
+den Origin oder Pfad des bereits erzeugten URL-Objekts nicht ersetzen.
+Die im vorigen Abschnitt genannten Gegenbeispiele werden abgelehnt, bevor
+Anmeldezustand gespeichert wird. Die Bewertung gilt für diesen konkreten
+Aufrufpfad; beliebige andere API-Weiterleitungen werden damit nicht freigestellt.
+
+Auf diesem Commit bestanden beide Chromium-Bildvergleiche unter Linux und
+die funktionalen Browserprüfungen unter Windows und Linux. Der begründete
+Windows-Skip und die per Tastatur erreichbare Scrollregion bleiben erhalten.
+Der gesonderte Python-Hinweis `python:S5778` betrifft einen Testaufbau und wird
+durch Konstruktion des Fake-Clients vor dem erwarteten Fehleraufruf behoben.
+Keiner dieser Nachweise ersetzt das anschließende Quality-Gate-Ergebnis.
