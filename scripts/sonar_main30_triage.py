@@ -29,7 +29,7 @@ REVIEWED_ANALYSIS = {"key": "e3ce6eb2-cc85-4f61-85e9-5c3c963f234b",
                      "date": "2026-11-06T10:38:09+0000", "revision": REVIEWED_REVISION}
 # Apply stays disabled until a fresh read-only run and separate root review.
 # Root must approve the exact static file and pin its SHA256 here.
-APPROVED_ALLOWLIST_SHA256 = ""
+APPROVED_ALLOWLIST_SHA256 = "230bde46f417f3011b75b1caa6bd0eb0f84c0ca0b5ff32a08551bc173c44632d"
 ALLOWLIST = Path(__file__).with_name("sonar_main30_allowlist.json")
 OUTPUT = Path("quality-inventory/sonar-main30-triage.json")
 MAX_BYTES = 4 * 1024 * 1024

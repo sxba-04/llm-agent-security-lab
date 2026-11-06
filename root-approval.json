@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "kind": "root_approved_local_delta",
+  "authority": "root explicit task approval",
+  "scope": "Only the existing three main issue dispositions; no scope, comments, rules, components, analysis or transition changes.",
+  "changed_fields": [
+    "scripts/sonar_main30_allowlist.json:approved false -> true",
+    "scripts/sonar_main30_triage.py:APPROVED_ALLOWLIST_SHA256 empty -> exact approved JSON SHA256"
+  ],
+  "project": "sxba-04_llm-agent-security-lab",
+  "branch": "main",
+  "issue_ids": [
+    "AaGMS_9U7rRJBvbBA1oc",
+    "AaGMS_9j7rRJBvbBA1o-",
+    "AaGwcWxOGbIwpvwBe420"
+  ],
+  "expected_analysis": {
+    "key": "e3ce6eb2-cc85-4f61-85e9-5c3c963f234b",
+    "date": "2026-11-06T10:38:09+0000",
+    "revision": "58ed94e50013676da212fc0e1fa74590fad216af"
+  },
+  "validated_only_expected_delta": true,
+  "local_validate_apply_against_readonly_receipt": "passed",
+  "readonly_workflow_run": "42207176597",
+  "readonly_artifact_id": "13496893501",
+  "readonly_zip_sha256": "a5ad1ecccd5694b37c47525acc9e6c48adec18edee4f5d4a401549656de59a06",
+  "readonly_json_sha256": "67532df4a8df28f608b986e383fb3d683077085006f1d79ceb9aa5cf649f5f41",
+  "zip_member_equals_readonly_json": true,
+  "independent_review_sha256": "d473384a631f76ca21ff8337c600591f85bd0e8877bfa25a1d72e343a698c5ea",
+  "before_sha256": {
+    "scripts/sonar_main30_allowlist.json": "ef40321cd977f14d0a0675cf8f2624d210b3c5ea7eed23d5688cc31aa6600ee5",
+    "scripts/sonar_main30_triage.py": "abda5cff435264c5fe9102b19b7304ee72af695f26c0875d9dfce2afa425bba6"
+  },
+  "after_sha256": {
+    "scripts/sonar_main30_allowlist.json": "230bde46f417f3011b75b1caa6bd0eb0f84c0ca0b5ff32a08551bc173c44632d",
+    "scripts/sonar_main30_triage.py": "26ec471a7c081b33de5256a4b344d7204eb64ca1d2cf3c2eeb35ce1a2deb8b29"
+  },
+  "unchanged_sha256": {
+    "tests/test_sonar_main30_triage.py": "8f4b6efa9fa355df5f14dbf6df8004c6110deef5119d85b8f7d1bdd25160188a",
+    ".github/workflows/sonar-inventory.yml": "3d3cb4d81ad648e2de8740e0d909e8eaeaa0c23d1fcaf1774404082d240f8f70",
+    "triage-review.json": "e23cee56ac744ce5a487cf12f751979478e14a18606737df061d6ab04f46fa8b"
+  },
+  "offline_tests": {
+    "command": "env -u SONAR_TOKEN python -B -m unittest discover -s tests -p test_sonar_main30_triage.py -q",
+    "passed": 31,
+    "failed": 0,
+    "transport": "blocked by test set",
+    "sonar_token": "removed from test environment"
+  },
+  "remote_requests_performed": false,
+  "remote_changes_performed": false,
+  "application_repository_changed": false
+}
