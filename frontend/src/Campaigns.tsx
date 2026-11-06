@@ -1,8 +1,9 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { ArrowDownToLine, CheckCheck, ChevronRight, ClipboardCheck, GitCompareArrows, Play, Plus, RefreshCw, Square, X } from 'lucide-react';
-import { downloadFile, message, navigate, post, useResource } from './api';
-import type { Campaign, Data, Document, DocumentEntry, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
-import { DataFields, Disclosure, Empty, EngineeringNote, ErrorBox, formatDate, hasActiveWorker, isDamagedCampaign, JsonBlock, Loading, metricNames, PageHeader, Panel, Pill, sourceNames, Status, TextBlock, TicketDiff, variantNames } from './ui';
+import { DownloadButton } from './DownloadButton';
+import { api, confirmDiscardChanges, downloadFile, message, navigate, post, useResource, useUnsavedChanges } from './api';
+import type { Campaign, CampaignMetadata, Data, Document, DocumentEntry, LabCase, Manifest, RunRecord, Source, Summary, Variant } from './types';
+import { DataFields, Disclosure, Empty, EngineeringNote, ErrorBox, formatDate, hasActiveWorker, isDamagedCampaign, JsonBlock, Loading, metricNames, PageHeader, Panel, Pill, sourceNames, Status, Tabs, TextBlock, TicketDiff, variantNames } from './ui';
 
 const activeStates = new Set(['queued', 'running', 'cancelling']);
 export function CampaignsPage({ cases, campaigns, selected, showNew, onChange, loading = false }: Readonly<{ cases: LabCase[]; campaigns: Campaign[]; selected: string | null; showNew: boolean; onChange: () => void; loading?: boolean }>) {
@@ -10,6 +11,7 @@ export function CampaignsPage({ cases, campaigns, selected, showNew, onChange, l
     <PageHeader eyebrow="02 / VERSUCHSDURCHFÜHRUNG" title="Kontrolliert starten. Genau hinsehen." description="Jeder Versuch protokolliert seine Konfiguration, die einzelnen Läufe und alle beobachteten Effekte." action={!showNew && <button className="button primary" onClick={() => navigate('campaigns', { new: '1' })}><Plus size={17} />Neuer Mock-Versuch</button>} />
     {showNew || (!campaigns.length && !selected) ? <LaunchForm cases={cases} active={campaigns.some(hasActiveWorker)} onChange={onChange} /> : null}
     <CampaignSelection campaigns={campaigns} selected={selected} showNew={showNew} loading={loading} onChange={onChange} />
+    <Panel><Disclosure title="Gesamten Forschungsbestand sichern"><p>Die Sicherung umfasst alle gespeicherten Versuche, auch nicht zugeordnete PDF-Quellen, Bewertungshistorien und verfügbare Codeversionen. Bewahre die Datei zusätzlich außerhalb des Dienstes auf. Unvollständige Versuche und fehlende historische Codeversionen bleiben im Sicherungsbericht gekennzeichnet.</p>{campaigns.some(hasActiveWorker) ? <p className="muted">Bitte den aktiven Versuch vor der Sicherung abschließen oder abbrechen.</p> : <DownloadButton path="/api/workspace/backup" filename="security-lab-workspace.zip" className="button secondary"><ArrowDownToLine size={16} />Forschungsbestand herunterladen</DownloadButton>}<p className="muted">Eine heruntergeladene Datei ersetzt noch keine überprüfte Wiederherstellung in einen getrennten Arbeitsbereich.</p></Disclosure></Panel>
     <EngineeringNote />
   </>;
 }
@@ -25,7 +27,7 @@ function CampaignSelection({ campaigns, selected, showNew, loading, onChange }: 
   return <CampaignDetail key={selected} id={selected} brief={campaign} onChange={onChange} />;
 }
 function CampaignHistory({ campaigns }: Readonly<{ campaigns: Campaign[] }>) {
-  return <Panel title="Versuchsverlauf" subtitle={`${campaigns.length} gespeicherte Versuche`}><div className="table-scroll"><table><thead><tr><th>Versuch</th><th>Erstellt</th><th>Status</th><th>Läufe</th><th><span className="sr-only">Öffnen</span></th></tr></thead><tbody>{campaigns.map(c => <tr key={c.campaign_id}><td><button className="text-button mono" onClick={() => navigate('campaigns', { id: c.campaign_id })}>{c.campaign_id}</button>{isDamagedCampaign(c) && <small className="text-danger">{c.error || 'Integritätsprüfung fehlgeschlagen'}</small>}</td><td>{formatDate(c.created_at)}</td><td><Status value={isDamagedCampaign(c) ? 'damaged' : c.state} /> <Pill>{c.engineering_only ? 'Mock' : 'CLI-Import'}</Pill></td><td>{isDamagedCampaign(c) ? 'Nicht prüfbar' : `${c.completed_runs} / ${c.planned_runs}`}</td><td><button className="icon-button" aria-label={`Versuch ${c.campaign_id} öffnen`} onClick={() => navigate('campaigns', { id: c.campaign_id })}><ChevronRight size={18} /></button></td></tr>)}</tbody></table></div></Panel>;
+  return <Panel title="Versuchsverlauf" subtitle={`${campaigns.length} gespeicherte Versuche`}><div className="table-scroll" tabIndex={0} role="region" aria-label="Versuchsverlauf"><table><thead><tr><th>Versuch</th><th>Erstellt</th><th>Status</th><th>Läufe</th><th><span className="sr-only">Öffnen</span></th></tr></thead><tbody>{campaigns.map(c => <tr key={c.campaign_id}><td><button className="text-button mono" onClick={() => navigate('campaigns', { id: c.campaign_id })}>{c.display_name || c.campaign_id}</button>{c.display_name && <small className="mono">{c.campaign_id}</small>}{Boolean(c.tags?.length) && <small>{c.tags!.join(" · ")}</small>}{isDamagedCampaign(c) && <small className="text-danger">{c.error || 'Integritätsprüfung fehlgeschlagen'}</small>}</td><td>{formatDate(c.created_at)}</td><td><Status value={isDamagedCampaign(c) ? 'damaged' : c.state} /> <Pill>{c.engineering_only ? 'Mock' : 'CLI-Import'}</Pill></td><td>{isDamagedCampaign(c) ? 'Nicht prüfbar' : `${c.completed_runs} / ${c.planned_runs}`}</td><td><button className="icon-button" aria-label={`Versuch ${c.campaign_id} öffnen`} onClick={() => navigate('campaigns', { id: c.campaign_id })}><ChevronRight size={18} /></button></td></tr>)}</tbody></table></div></Panel>;
 }
 function initialCases(cases: LabCase[], preferred: string | null): string[] {
   if (preferred && cases.some(item => item.case_id === preferred)) return [preferred];
@@ -42,6 +44,7 @@ export function LaunchForm({ cases, active, onChange }: Readonly<{ cases: LabCas
   const [variants, setVariants] = useState<Variant[]>(['B', 'F', 'P', 'FP']);
   const [sources, setSources] = useState<Source[]>(['clean', 'attack']);
   const [repeats, setRepeats] = useState(1), [seed, setSeed] = useState(20261022);
+  const [displayName, setDisplayName] = useState(''), [tagText, setTagText] = useState('');
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const documents = useResource<{ documents: DocumentEntry[] }>('/api/documents');
@@ -53,11 +56,12 @@ export function LaunchForm({ cases, active, onChange }: Readonly<{ cases: LabCas
     setBusy(true); setError('');
     try {
       const document_overrides = selected.flatMap(case_id => sources.flatMap(source => overrides[`${case_id}:${source}`] ? [{ case_id, source, document_id: overrides[`${case_id}:${source}`] }] : []));
-      const campaign = await post<Campaign>('/api/campaigns', { case_ids: selected, variants, sources, repeats, seed, ...(document_overrides.length ? { document_overrides } : {}) });
+      const campaign = await post<Campaign>('/api/campaigns', { case_ids: selected, variants, sources, repeats, seed, ...(document_overrides.length ? { document_overrides } : {}), ...(displayName.trim() || tagText.trim() ? { display_name: displayName.trim(), tags: parseTags(tagText) } : {}) });
       onChange(); navigate('campaigns', { id: campaign.campaign_id });
     } catch (err) { setError(message(err)); } finally { setBusy(false); }
   }
   return <div className="launch-layout"><Panel title="Neuen Mock-Versuch vorbereiten" subtitle="Einzelne Kombination oder systematischer Vergleich – du legst den Umfang fest." action={<button className="icon-button" aria-label="Vorbereitung schließen" onClick={() => navigate('campaigns')}><X size={18} /></button>}><form onSubmit={e => { e.preventDefault(); void start(); }}>
+    <Disclosure title="Optional: Versuchsname und Tags"><MetadataFields displayName={displayName} setDisplayName={setDisplayName} tagText={tagText} setTagText={setTagText} disabled={busy} /><p className="muted">Die technische ID und die Versuchsbelege bleiben unverändert. Namen und Tags dienen nur der Organisation.</p></Disclosure>
     <fieldset><legend><span className="step-number">1</span>Fälle auswählen <span className="muted">({selected.length})</span></legend><div className="button-row selection-tools"><button type="button" className="text-button" onClick={() => setSelected(cases.map(c => c.case_id))}>Alle Fälle</button><button type="button" className="text-button" onClick={() => setSelected(cases[0] ? [cases[0].case_id] : [])}>Nur erster Fall</button><button type="button" className="text-button" onClick={() => setSelected([])}>Auswahl leeren</button></div><div className="case-check-grid">{cases.map(c => {
       const controlId = `${caseControlPrefix}-control-${c.case_id}`;
       const nameId = `${caseControlPrefix}-name-${c.case_id}`;
@@ -103,7 +107,8 @@ function CampaignDetail({ id, brief, onChange }: Readonly<{ id: string; brief?: 
       await downloadFile(`/api/campaigns/${encodeURIComponent(id)}/archive`, `${id}.zip`);
     } catch (err) { setError(message(err)); } finally { setBusy(''); }
   }
-  return <div className="stack"><Panel title={<span className="title-with-pill"><span className="mono">{id}</span><Status value={state} /><Pill>{brief?.engineering_only === false ? 'CLI-Import · Laufmodus im Protokoll' : 'Mock'}</Pill></span>} subtitle={brief?.created_at ? formatDate(brief.created_at) : 'Versuch wird vorbereitet'} action={<button className="button quiet small" onClick={() => { detail.refresh(); records.refresh(); onChange(); }}><RefreshCw size={14} />Aktualisieren</button>}><div className="campaign-progress"><span><strong>{count}</strong> / {planned} Läufe protokolliert</span><span>{activeStates.has(state) ? 'Status wird automatisch aktualisiert' : 'Versuch beendet'}</span></div><progress value={count} max={Math.max(1, planned)} aria-label="Versuchsfortschritt" /><div className="button-row detail-actions"><button className="button secondary small" onClick={() => navigate('compare', { id })}><GitCompareArrows size={16} />Vergleichen</button><button className="button secondary small" disabled={Boolean(busy) || activeStates.has(state) || !rows.length} onClick={exportReview}><ClipboardCheck size={16} />{busy === 'review' ? 'Wird erstellt …' : 'Bewertungssatz erstellen'}</button><button className="button quiet small" disabled={Boolean(busy) || activeStates.has(state)} onClick={download}><ArrowDownToLine size={16} />{busy === 'download' ? 'Archiv wird geprüft …' : 'Archiv herunterladen'}</button>{activeStates.has(state) && brief?.can_cancel !== false && <button className="button danger small" disabled={Boolean(busy) || state === 'cancelling'} onClick={cancel}><Square size={14} />{busy === 'cancel' || state === 'cancelling' ? 'Abbruch angefordert …' : 'Versuch abbrechen'}</button>}</div><ErrorBox error={error || detail.error || records.error} /><Disclosure title="Konfiguration und Herkunft (Manifest)">{manifest ? <JsonBlock value={manifest} /> : <Loading />}</Disclosure></Panel>
+  return <div className="stack"><Panel title={<span className="title-with-pill"><span>{brief?.display_name || id}</span><Status value={state} /><Pill>{brief?.engineering_only === false ? 'CLI-Import · Laufmodus im Protokoll' : 'Mock'}</Pill></span>} subtitle={brief?.created_at ? formatDate(brief.created_at) : 'Versuch wird vorbereitet'} action={<button className="button quiet small" onClick={() => { detail.refresh(); records.refresh(); onChange(); }}><RefreshCw size={14} />Aktualisieren</button>}><div className="campaign-progress"><span><strong>{count}</strong> / {planned} Läufe protokolliert</span><span>{activeStates.has(state) ? 'Status wird automatisch aktualisiert' : 'Versuch beendet'}</span></div><progress value={count} max={Math.max(1, planned)} aria-label="Versuchsfortschritt" /><div className="button-row detail-actions"><button className="button secondary small" onClick={() => navigate('compare', { id })}><GitCompareArrows size={16} />Vergleichen</button><button className="button secondary small" disabled={Boolean(busy) || activeStates.has(state) || !rows.length} onClick={exportReview}><ClipboardCheck size={16} />{busy === 'review' ? 'Wird erstellt …' : 'Bewertungssatz erstellen'}</button><button className="button quiet small" disabled={Boolean(busy) || activeStates.has(state)} onClick={download}><ArrowDownToLine size={16} />{busy === 'download' ? 'Archiv wird geprüft …' : 'Archiv herunterladen'}</button>{activeStates.has(state) && brief?.can_cancel !== false && <button className="button danger small" disabled={Boolean(busy) || state === 'cancelling'} onClick={cancel}><Square size={14} />{busy === 'cancel' || state === 'cancelling' ? 'Abbruch angefordert …' : 'Versuch abbrechen'}</button>}</div><ErrorBox error={error || detail.error || records.error} /><Disclosure title="Konfiguration und Herkunft (Manifest)">{manifest ? <JsonBlock value={manifest} /> : <Loading />}</Disclosure></Panel>
+    {!activeStates.has(state) && <MetadataEditor id={id} />}
     <CampaignRecords loading={records.loading && !records.data} active={active} rows={rows} filtered={filtered} record={record} filter={filter} setFilter={setFilter} setSelectedRun={setSelectedRun} />
   </div>;
 }
@@ -125,11 +130,11 @@ export function RunDetail({ record }: Readonly<{ record: RunRecord }>) {
   const proposals = record.events.filter(e => e.type === 'proposal').length;
   const blocks = record.events.filter(e => ['filter_decision', 'policy_decision'].includes(e.type) && e.data.allowed === false).length;
   return <div className="stack"><Panel title={<span className="title-with-pill">{record.run_id}<Pill tone={record.is_mock ? 'green' : 'blue'}>{record.is_mock ? 'Mock' : 'LLM-Aufruf'}</Pill><Pill>{record.variant} · {variantNames[record.variant]}</Pill><Pill tone={record.source === 'attack' ? 'amber' : 'green'}>{sourceNames[record.source]}</Pill></span>} subtitle={`${record.case_id} · Wiederholung ${record.repetition}`}><div className="run-stat-row"><div><strong>{proposals}</strong><span>Vorschläge</span></div><div><strong>{blocks}</strong><span>Blockierungen</span></div><div><strong>{effects}</strong><span>Backend-Effekte</span></div><div><strong>{Number(record.duration_seconds || 0).toLocaleString('de-DE', { maximumFractionDigits: 2 })} s</strong><span>Laufzeit</span></div></div><div className="section-label">FINALE AUSGABE</div><TextBlock>{record.final_text}</TextBlock><div className="metric-chips">{['proposal_violation', 'backend_violation', 'legitimate_success', 'attacker_goal'].map(key => <span key={key}>{metricNames[key]}<MetricResult metric={key} value={record.metrics?.[key]} /></span>)}</div></Panel>
-    <Panel><div className="tabs" role="tablist" aria-label="Laufdetails">{[['trace', 'Ereignisprotokoll'], ['tickets', 'Tickets vorher / nachher'], ['input', 'Aufgabe & Quelle']].map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={tab === id ? 'active' : ''}>{label}</button>)}</div><div className="tab-content" role="tabpanel">
+    <Panel><Tabs label="Laufdetails" items={[{id: 'trace', label: 'Ereignisprotokoll'}, {id: 'tickets', label: 'Tickets vorher / nachher'}, {id: 'input', label: 'Aufgabe & Quelle'}]} selected={tab} onChange={setTab}>
       {tab === 'trace' && <div className="timeline">{record.events.map((event, index) => <TraceEvent key={`${event.seq}-${index}`} event={event} />)}{!record.events.length && <p className="muted">Keine Ereignisse protokolliert.</p>}</div>}
       {tab === 'tickets' && <TicketDiff before={record.initial_tickets} after={record.final_tickets} />}
       {tab === 'input' && <div className="stack"><div><h3>Legitime Aufgabe</h3><TextBlock>{record.user_request}</TextBlock></div><div><h3>Tatsächlich verwendete Quelle</h3><TextBlock>{record.article_text}</TextBlock></div><Disclosure title="Sitzungsrechte und Erwartungen"><DataFields value={record.session} /><DataFields value={record.expected} /></Disclosure><Disclosure title="Vollständiges Laufprotokoll"><JsonBlock value={record} /></Disclosure></div>}
-    </div></Panel>
+    </Tabs></Panel>
   </div>;
 }
 function TraceEvent({ event }: Readonly<{ event: { seq: number; type: string; data: Data } }>) {
@@ -145,4 +150,28 @@ function EventDecision({ allowed, effect }: Readonly<{ allowed: Data[string] | u
   if (allowed === true) return <Pill tone="green">Zugelassen</Pill>;
   if (effect) return <Pill tone="blue">Beobachteter Effekt</Pill>;
   return null;
+}
+
+function parseTags(text: string) { return text.split(',').map(value => value.trim()).filter(Boolean); }
+function MetadataFields({ displayName, setDisplayName, tagText, setTagText, disabled }: Readonly<{ displayName: string; setDisplayName: (value: string) => void; tagText: string; setTagText: (value: string) => void; disabled: boolean }>) {
+  return <div className="split"><label className="field"><span>Versuchsname (optional)</span><input value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={120} disabled={disabled} placeholder="Zum Beispiel: PDF-Abnahme November" /></label><label className="field"><span>Tags (durch Komma getrennt)</span><input aria-label="Tags (durch Komma getrennt)" value={tagText} onChange={event => setTagText(event.target.value)} maxLength={500} disabled={disabled} placeholder="Abnahme, PDF, Kontrolllauf" /><small>Bis zu zwölf Tags mit jeweils höchstens 40 Zeichen.</small></label></div>;
+}
+function MetadataEditor({ id }: Readonly<{ id: string }>) {
+  const stored = useResource<CampaignMetadata>(`/api/campaigns/${encodeURIComponent(id)}/metadata`);
+  const [displayName, setDisplayName] = useState(''), [tagText, setTagText] = useState('');
+  const [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false);
+  useUnsavedChanges(dirty);
+  useEffect(() => { if (stored.data) { setDisplayName(stored.data.display_name || ''); setTagText((stored.data.tags || []).join(', ')); setDirty(false); } }, [stored.data]);
+  async function save() {
+    if (!stored.data || busy) return;
+    setBusy(true); setError(''); setSaved(false);
+    try {
+      await api(`/api/campaigns/${encodeURIComponent(id)}/metadata`, {method: 'PUT', body: JSON.stringify({display_name: displayName.trim(), tags: parseTags(tagText), expected_revision: stored.data.revision})});
+      setDirty(false); setSaved(true); stored.refresh();
+      // Campaign listings poll in place. Explicitly clearing their resource
+      // would unmount this editor and erase the visible save receipt.
+    } catch (cause) { setError(message(cause)); } finally { setBusy(false); }
+  }
+  const available = Number.isSafeInteger(stored.data?.revision);
+  return <Panel><Disclosure title="Versuchsname und Tags bearbeiten"><p className="muted">Stabile ID: <code>{id}</code>. Änderungen werden als neue Metadatenversion gesichert und mit dem Archiv exportiert.</p><ErrorBox error={error || stored.error} />{saved && <p role="status">Name und Tags gespeichert.</p>}<MetadataFields displayName={displayName} setDisplayName={value => { setDisplayName(value); setDirty(true); setSaved(false); }} tagText={tagText} setTagText={value => { setTagText(value); setDirty(true); setSaved(false); }} disabled={busy || !available} /><div className="button-row"><button className="button secondary" disabled={busy || !dirty || !available} onClick={() => void save()}>Name und Tags speichern</button><button className="button quiet" disabled={busy} onClick={() => { if (confirmDiscardChanges()) { setError(''); stored.refresh(); } }}>Aktuellen Stand laden</button></div>{!available && !stored.loading && <p className="muted">Metadaten sind mit diesem Backend noch nicht verfügbar. Bitte nach der Bereitstellung erneut laden.</p>}</Disclosure></Panel>;
 }

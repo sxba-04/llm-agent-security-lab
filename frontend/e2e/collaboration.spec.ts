@@ -1,0 +1,58 @@
+import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { startCampaign } from './helpers';
+
+test('two open rating forms detect stale writes and require an explicit resolution', async ({ page, context }) => {
+  await page.goto('/');
+  await startCampaign(page);
+  await page.getByRole('button', { name: 'Bewertungssatz erstellen', exact: true }).click();
+  const notes = page.getByRole('textbox', { name: 'Begründung / Beobachtung', exact: true });
+  await expect(notes).toBeVisible();
+  const second = await context.newPage();
+  await second.goto(page.url());
+  const secondNotes = second.getByRole('textbox', { name: 'Begründung / Beobachtung', exact: true });
+  await expect(secondNotes).toBeVisible();
+  await page.getByRole('textbox', { name: 'Dein Name · Formular A', exact: true }).fill('Technischer Test');
+  await notes.fill('Erster synthetischer Entwurf, kein Studienurteil.');
+  await second.getByRole('textbox', { name: 'Dein Name · Formular A', exact: true }).fill('Technischer Test');
+  await secondNotes.fill('Parallel bearbeiteter synthetischer Entwurf.');
+  await page.getByRole('button', { name: 'Bewertungen speichern', exact: true }).click();
+  await expect(page.getByText('Entwurf gespeichert. Offene Felder bleiben unbewertet.')).toBeVisible();
+  await second.getByRole('button', { name: 'Bewertungen speichern', exact: true }).click();
+  await expect(second.getByRole('heading', { name: 'Parallel gespeicherte Bewertung', exact: true })).toBeVisible();
+  await expect(secondNotes).toHaveValue('Parallel bearbeiteter synthetischer Entwurf.');
+  await page.reload();
+  await expect(notes).toHaveValue('Erster synthetischer Entwurf, kein Studienurteil.');
+  second.once('dialog', dialog => dialog.accept());
+  await second.getByRole('button', { name: 'Eigene Eingaben nach Prüfung speichern', exact: true }).click();
+  await expect(second.getByText('Entwurf gespeichert. Offene Felder bleiben unbewertet.')).toBeVisible();
+  await page.reload();
+  await expect(notes).toHaveValue('Parallel bearbeiteter synthetischer Entwurf.');
+  await expect(page.getByLabel('1. Legitime Aufgabe erfüllt?', { exact: true })).toHaveValue('');
+  await second.close();
+});
+
+test('campaign names and tags survive reload; comparison exports a CSV download', async ({ page }) => {
+  await page.goto('/');
+  const id = await startCampaign(page);
+  await page.getByText('Versuchsname und Tags bearbeiten', { exact: true }).click();
+  await page.getByRole('textbox', { name: 'Versuchsname (optional)', exact: true }).fill('Browserprüfung – Mock');
+  await page.getByRole('textbox', { name: /^Tags \(durch Komma getrennt\)/ }).fill('browser, synthetisch');
+  await page.getByRole('button', { name: 'Name und Tags speichern', exact: true }).click();
+  await expect(page.getByText('Name und Tags gespeichert.', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByText('Versuchsname und Tags bearbeiten', { exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Versuchsname (optional)', exact: true })).toHaveValue('Browserprüfung – Mock');
+  await expect(page.getByRole('textbox', { name: /^Tags \(durch Komma getrennt\)/ })).toHaveValue('browser, synthetisch');
+  await expect(page).toHaveURL(new RegExp(`#campaigns\\?id=${id}$`));
+  await page.getByRole('button', { name: 'Vergleichen', exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Gefilterten Vergleich als CSV', exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  const file = await download.path();
+  expect(file).toBeTruthy();
+  const csv = await readFile(file!, 'utf8');
+  expect(csv).toContain('engineering_only');
+  expect(csv).toContain('pending');
+});

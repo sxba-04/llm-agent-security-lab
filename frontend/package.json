@@ -10,9 +10,13 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "browsers:install": "playwright install chromium",
+    "browsers:install": "playwright install chromium firefox webkit",
     "test:e2e:report": "playwright show-report --host 127.0.0.1 --port 9323",
-    "test:e2e:hosted": "playwright test --config playwright.hosted.config.ts"
+    "test:e2e:hosted": "playwright test --config playwright.hosted.config.ts",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "browsers:install:chromium": "playwright install chromium",
+    "test:visual": "playwright test --project=chromium visual.spec.ts",
+    "test:visual:update": "playwright test --project=chromium visual.spec.ts --update-snapshots"
   },
   "dependencies": {
     "lucide-react": "^1.65.0",
@@ -20,6 +24,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

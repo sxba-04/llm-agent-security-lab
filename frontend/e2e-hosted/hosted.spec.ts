@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { audit, noPageOverflow } from '../e2e/helpers';
 
 const API = 'https://127.0.0.1:8876';
 // Public synthetic fixture; never use this value for a deployment.
@@ -12,7 +13,7 @@ async function login(page: Page) {
   await expect(page.getByRole('note', { name: 'Flüchtiger Testbetrieb' })).toContainText('Daten werden nicht dauerhaft gespeichert');
 }
 
-test('hosted access requires a token and keeps it out of browser storage', async ({ page }) => {
+test('@smoke hosted access requires a token and keeps it out of browser storage', async ({ page }) => {
   const dataRequests: string[] = [];
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
@@ -94,7 +95,7 @@ test('an unapproved GitHub account stays outside the workbench with access-code 
   await login(page);
 });
 
-test('cross-origin PDFs, confirmed import, mock campaign and authenticated archive work', async ({ page }, testInfo) => {
+test('@smoke cross-origin PDFs, confirmed import, mock campaign and authenticated archive work', async ({ page }, testInfo) => {
   const incorrectOriginRequests: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
@@ -143,3 +144,31 @@ test('cross-origin PDFs, confirmed import, mock campaign and authenticated archi
   expect(incorrectOriginRequests).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('hosted-campaign.png'), fullPage: true, animations: 'disabled' });
 });
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`access form and mobile session menu are accessible in ${theme}`, async ({ page }, testInfo) => {
+    await page.route('https://github.com/login/oauth/authorize?*', async route => {
+      const request = new URL(route.request().url());
+      const callback = new URL(request.searchParams.get('redirect_uri')!);
+      callback.search = new URLSearchParams({ code: 'browser-approved-code', state: request.searchParams.get('state')! }).toString();
+      await route.fulfill({ status: 302, headers: { location: callback.href } });
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('./');
+    await page.getByRole('combobox', { name: 'Farbschema', exact: true }).selectOption(theme);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await noPageOverflow(page);
+    await audit(page, testInfo, `access-${theme}`);
+    await page.getByRole('button', { name: 'Mit GitHub anmelden', exact: true }).click();
+    const account = page.getByRole('button', { name: '@browser-researcher', exact: true });
+    await account.click();
+    await expect(page.getByRole('button', { name: 'Sitzungen schließen', exact: true })).toBeFocused();
+    await expect(page.getByText('Diese Sitzung', { exact: true })).toBeVisible();
+    await noPageOverflow(page);
+    await audit(page, testInfo, `sessions-${theme}`);
+    await page.screenshot({ path: testInfo.outputPath(`sessions-${theme}-mobile.png`), fullPage: true, animations: 'disabled' });
+    await page.keyboard.press('Escape');
+    await expect(account).toBeFocused();
+    await expect(page.getByRole('region', { name: 'Deine Sitzungen' })).toHaveCount(0);
+  });
+}

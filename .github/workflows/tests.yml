@@ -49,6 +49,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y poppler-utils
           command -v pdftoppm
+      - name: Python correctness lint
+        if: runner.os == 'Linux'
+        run: uv run --locked --no-sync ruff check .
       - name: Behavioral tests without API keys
         id: python_tests
         shell: bash
@@ -159,14 +162,24 @@ jobs:
         run: |
           python -m pip install --only-binary=:all: uv==0.12.23
           uv sync --project .. --locked --no-build --extra web --group dev
-      - name: Install browser
+      - name: Install Chromium on Windows
+        if: runner.os == 'Windows'
         run: node ./node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Install Chromium, Firefox and WebKit on Linux
+        if: runner.os == 'Linux'
+        run: node ./node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit
       - name: Test built React app with actual FastAPI backend
         id: browser_tests
         env:
           UV_NO_SYNC: 'true'
           UV_NO_BUILD: 'true'
-        run: npm run test:e2e
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            npm run test:e2e
+          else
+            npm run test:e2e:chromium
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -174,6 +187,7 @@ jobs:
           path: |
             frontend/playwright-report/
             frontend/test-results/
+            frontend/e2e/visual.spec.ts-snapshots/
           if-no-files-found: ignore
           retention-days: 14
       - name: Preserve the frontend build
@@ -197,7 +211,7 @@ jobs:
           from pathlib import Path
           with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
               stream.write("## Browser checks on " + os.environ["RUNNER_OS"] + "\n\n")
-              for label, key in [("React tests", "LAB_REACT_OUTCOME"), ("Production build", "LAB_BUILD_OUTCOME"), ("Chromium with FastAPI", "LAB_BROWSER_OUTCOME")]:
+              for label, key in [("React tests", "LAB_REACT_OUTCOME"), ("Production build", "LAB_BUILD_OUTCOME"), ("Browser integration (Chromium; Linux also Firefox/WebKit smoke)", "LAB_BROWSER_OUTCOME")]:
                   stream.write("- " + label + ": **" + os.environ[key] + "**.\n")
               coverage = Path("coverage/coverage-summary.json")
               if os.environ["RUNNER_OS"] == "Linux" and os.environ["LAB_REACT_OUTCOME"] == "success" and coverage.is_file():

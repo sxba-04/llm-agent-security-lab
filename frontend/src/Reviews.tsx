@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, CheckCheck, ClipboardCheck, EyeOff, GitMerge, Save } from 'lucide-react';
 import { hosted, api, ApiError, confirmDiscardChanges, message, navigate, post, useResource, useUnsavedChanges } from './api';
-import type { BinaryRating, Combined, DamagedReviewSet, Judgment, LegitimateRating, Packet, Rating, ReviewSet } from './types';
+import type { BinaryRating, Combined, DamagedReviewSet, Judgment, LegitimateRating, Packet, Rating, ReviewSet, StoredRatings } from './types';
 import { withContentKeys } from './list-identity';
 import { DataFields, Disclosure, Empty, ErrorBox, formatDate, JsonBlock, Loading, PageHeader, Panel, Pill, Status, Success, TextBlock, TicketDiff } from './ui';
 
@@ -32,18 +32,20 @@ function ReviewSelection({ loading, id, selected, list, coordinating, slot }: Re
 }
 function RatingForm({ id, slot }: Readonly<{ id: string; slot: 'a' | 'b' }>) {
   const packets = useResource<{ packets: Packet[] }>(`/api/reviews/${encodeURIComponent(id)}/packets`);
-  const stored = useResource<{ rater: string; ratings: Rating[]; locked: boolean }>(`/api/reviews/${encodeURIComponent(id)}/ratings/${slot}`);
+  const stored = useResource<StoredRatings>(`/api/reviews/${encodeURIComponent(id)}/ratings/${slot}`);
   const [ratings, setRatings] = useState<Record<string, Rating>>({}), [rater, setRater] = useState('');
   const [current, setCurrent] = useState(0), [busy, setBusy] = useState(false), [error, setError] = useState(''), [success, setSuccess] = useState(''), [dirty, setDirty] = useState(false);
+  const [revision, setRevision] = useState<number | undefined>(undefined);
+  const [conflict, setConflict] = useState<StoredRatings | null>(null);
   useUnsavedChanges(dirty);
   const rows = packets.data?.packets || [];
-  const locked = stored.data?.locked === true;
-  const readOnly = locked || !stored.data || Boolean(stored.error);
+  const locked = stored.data?.locked === true || conflict?.locked === true;
+  const readOnly = locked || !stored.data || Boolean(stored.error) || revision === undefined;
   useEffect(() => {
     if (!stored.data || !packets.data) return;
     const initial = Object.fromEntries(packets.data.packets.map(p => [p.review_id, emptyRating(p.review_id)]));
     for (const rating of stored.data.ratings) initial[rating.review_id] = rating;
-    setRatings(initial); setRater(stored.data.rater || ''); setDirty(false);
+    setRatings(initial); setRater(stored.data.rater || ''); setRevision(stored.data.revision); setDirty(false); setConflict(null);
   }, [stored.data, packets.data]);
   const packet = rows[current];
   const rating = packet ? ratings[packet.review_id] || emptyRating(packet.review_id) : null;
@@ -52,25 +54,31 @@ function RatingForm({ id, slot }: Readonly<{ id: string; slot: 'a' | 'b' }>) {
     if (!packet || !rating || readOnly || busy) return;
     setRatings({ ...ratings, [packet.review_id]: { ...rating, ...fields } }); setDirty(true); setSuccess('');
   }
-  async function save() {
+  async function save(expectedRevision = revision) {
     if (readOnly || busy) return;
     setBusy(true); setError(''); setSuccess('');
     try {
-      const result = await api<{ saved: number; complete: boolean }>(`/api/reviews/${encodeURIComponent(id)}/ratings/${slot}`, { method: 'PUT', body: JSON.stringify({ rater, ratings: rows.map(p => ratings[p.review_id] || emptyRating(p.review_id)) }) });
-      setDirty(false); setSuccess(result.complete ? 'Alle Bewertungen dieses Formulars sind vollständig gespeichert.' : 'Entwurf gespeichert. Offene Felder bleiben unbewertet.');
+      const result = await api<{ saved: number; complete: boolean; revision: number }>(`/api/reviews/${encodeURIComponent(id)}/ratings/${slot}`, { method: 'PUT', body: JSON.stringify({ rater, expected_revision: expectedRevision, ratings: rows.map(p => ratings[p.review_id] || emptyRating(p.review_id)) }) });
+      setRevision(result.revision); setConflict(null); setDirty(false); setSuccess(result.complete ? 'Alle Bewertungen dieses Formulars sind vollständig gespeichert.' : 'Entwurf gespeichert. Offene Felder bleiben unbewertet.');
     } catch (err) {
       setError(message(err));
-      if (err instanceof ApiError && err.status === 409) stored.refresh();
+      if (err instanceof ApiError && err.status === 409) {
+        // Never replace unsaved local judgments after another tab has saved.
+        try { setConflict(await api<StoredRatings>(`/api/reviews/${encodeURIComponent(id)}/ratings/${slot}`)); }
+        catch (loadError) { setError(`${message(err)} ${message(loadError)}`); }
+      }
     } finally { setBusy(false); }
   }
   const failure = error || packets.error || stored.error;
   if (packets.loading || stored.loading) return <RatingFrame error={failure}><Loading text={`Unabhängiges Formular ${slot.toUpperCase()} wird geladen …`} /></RatingFrame>;
   if (!packet || !rating) return <RatingFrame error={failure}><Empty title="Keine Bewertungspakete vorhanden" /></RatingFrame>;
   return <RatingFrame error={failure}>
+      {stored.data && revision === undefined && <div className="notice warning">Dieser Server unterstützt noch keine sichere Konflikterkennung. Bewertungen sind bis zur Aktualisierung des Backends schreibgeschützt.</div>}
+      {conflict && <Panel title="Parallel gespeicherte Bewertung" subtitle="Deine ungespeicherten Eingaben bleiben im Formular erhalten. Prüfe den aktuellen Stand vor der Entscheidung."><Disclosure title={`Aktueller Serverstand · Version ${conflict.revision ?? '?'} · ${conflict.rater || 'ohne Namen'}`} open><JsonBlock value={conflict} /></Disclosure><div className="button-row"><button className="button secondary" disabled={busy} onClick={() => { if (confirmDiscardChanges()) stored.refresh(); }}>Aktuellen Stand laden</button>{!conflict.locked && conflict.revision !== undefined && <button className="button quiet" disabled={busy} onClick={() => { if (window.confirm('Den aktuellen Serverstand geprüft? Deine Eingaben als neue Version speichern; beide bisherigen Versionen bleiben erhalten.')) void save(conflict.revision); }}>Eigene Eingaben nach Prüfung speichern</button>}</div></Panel>}
       {locked && <div className="notice info"><CheckCheck size={20} /><span>Dieser Bewertungssatz ist bereits zusammengeführt. Die ursprünglichen Einzelurteile sind schreibgeschützt. Für einen neuen unabhängigen Bewertungsdurchgang erstelle beim Versuch einen neuen Bewertungssatz. Abweichungen können weiterhin in der Koordination geklärt werden.</span></div>}
-      <Panel><div className="rating-header"><label className="field grow"><span>Dein Name · Formular {slot.toUpperCase()}</span><input readOnly={readOnly || busy} value={rater} onChange={e => { setRater(e.target.value); setDirty(true); setSuccess(''); }} placeholder="Name der bewertenden Person" autoComplete="off" /></label><div className="rating-progress"><strong>{completed} / {rows.length}</strong><span>Pakete vollständig ausgefüllt</span></div><button className="button primary" disabled={busy || readOnly} onClick={save}><Save size={16} />{busy ? 'Wird gespeichert …' : 'Entwurf speichern'}</button></div><div className="rating-save-state"><RatingSaveStatus locked={locked} dirty={dirty} /><span>{hosted ? 'Formular A und B haben getrennte Speicherstände. Angemeldete Autoren teilen denselben Arbeitsbereich; die Formulare sind keine privaten Benutzerbereiche.' : 'Formular A und B haben getrennte Speicherstände. Es gibt keine lokale Benutzeranmeldung.'}</span></div>{success && <Success>{success}</Success>}</Panel>
+      <Panel><div className="rating-header"><label className="field grow"><span>Dein Name · Formular {slot.toUpperCase()}</span><input readOnly={readOnly || busy} value={rater} onChange={e => { setRater(e.target.value); setDirty(true); setSuccess(''); }} placeholder="Name der bewertenden Person" autoComplete="off" /></label><div className="rating-progress"><strong>{completed} / {rows.length}</strong><span>Pakete vollständig ausgefüllt</span></div><button className="button primary" disabled={busy || readOnly} onClick={() => void save()}><Save size={16} />{busy ? 'Wird gespeichert …' : 'Entwurf speichern'}</button></div><div className="rating-save-state"><RatingSaveStatus locked={locked} dirty={dirty} /><span>{hosted ? 'Formular A und B haben getrennte Speicherstände. Angemeldete Autoren teilen denselben Arbeitsbereich; die Formulare sind keine privaten Benutzerbereiche.' : 'Formular A und B haben getrennte Speicherstände. Es gibt keine lokale Benutzeranmeldung.'}</span></div>{success && <Success>{success}</Success>}</Panel>
       <div className="rating-layout"><Panel title={`Paket ${current + 1} von ${rows.length}`} className="packet-evidence" action={<Pill tone="blue">Verblindet</Pill>}><div className="packet-navigator"><button className="button quiet small" disabled={current === 0} onClick={() => setCurrent(current - 1)}><ArrowLeft size={15} />Zurück</button><label className="field"><span className="sr-only">Bewertungspaket auswählen</span><select value={current} onChange={e => setCurrent(Number(e.target.value))}>{rows.map((p, i) => <option key={p.review_id} value={i}>Paket {i + 1}{ratings[p.review_id] && isComplete(ratings[p.review_id]) ? ' · ausgefüllt' : ' · offen'}</option>)}</select></label><button className="button quiet small" disabled={current >= rows.length - 1} onClick={() => setCurrent(current + 1)}>Weiter<ArrowRight size={15} /></button></div><PacketEvidence packet={packet} /></Panel>
-        <Panel title="Deine Einschätzung" subtitle="Wähle jedes Urteil bewusst und begründe es anhand der sichtbaren Evidenz." className="rating-form"><RatingFields rating={rating} update={update} disabled={readOnly || busy} /><label className="field"><span>Begründung / Beobachtung</span><textarea readOnly={readOnly || busy} rows={6} value={rating.notes} onChange={e => update({ notes: e.target.value })} placeholder="Welche konkrete Stelle stützt deine drei Urteile?" /></label><button className="button primary full-width" disabled={busy || readOnly} onClick={save}><Save size={16} />{busy ? 'Wird gespeichert …' : 'Bewertungen speichern'}</button><p className="muted small-text">Speichert alle Eingaben dieses Formulars. Unausgefüllte Pakete bleiben offen.</p></Panel>
+        <Panel title="Deine Einschätzung" subtitle="Wähle jedes Urteil bewusst und begründe es anhand der sichtbaren Evidenz." className="rating-form"><RatingFields rating={rating} update={update} disabled={readOnly || busy} /><label className="field"><span>Begründung / Beobachtung</span><textarea readOnly={readOnly || busy} rows={6} value={rating.notes} onChange={e => update({ notes: e.target.value })} placeholder="Welche konkrete Stelle stützt deine drei Urteile?" /></label><button className="button primary full-width" disabled={busy || readOnly} onClick={() => void save()}><Save size={16} />{busy ? 'Wird gespeichert …' : 'Bewertungen speichern'}</button><p className="muted small-text">Speichert alle Eingaben dieses Formulars. Unausgefüllte Pakete bleiben offen.</p></Panel>
       </div>
   </RatingFrame>;
 }
@@ -106,7 +114,7 @@ function Coordination({ id }: Readonly<{ id: string }>) {
   const judgment = combined?.judgments.find(j => j.review_id === selected) || combined?.judgments.find(j => j.status === 'disagreement');
   const packet = packets.data?.packets.find(p => p.review_id === judgment?.review_id);
   return <div className="stack"><div className="notice warning"><GitMerge size={20} /><span>Koordinationsansicht: Hier werden die beiden Einzelurteile sichtbar. Erst nach dem unabhängigen Abschluss beider Formulare verwenden.</span></div><Panel title="Zwei Bewertungen zusammenführen" subtitle="Erforderlich: zwei verschiedene benannte Personen, vollständige Urteile und Begründungen zu jedem Paket." action={<button className="button primary" disabled={loading || busy || combined !== null} onClick={combine}><GitMerge size={16} />{busy ? 'Wird geprüft …' : 'Bewertungen zusammenführen'}</button>}><ErrorBox error={error} />{success && <Success>{success}</Success>}<CombinedSummary loading={loading} combined={combined} /></Panel>
-    {combined && <><div className="notice info"><CheckCheck size={20} /><span>Dieser Satz ist bereits zusammengeführt. Die ursprünglichen Einzelurteile bleiben unverändert; erneutes Zusammenführen ist gesperrt. Offene Abweichungen können begründet geklärt werden. Für einen neuen Bewertungsdurchgang erstelle beim Versuch einen neuen Bewertungssatz.</span></div><Panel title="Gemeinsamer Bewertungsstand"><div className="table-scroll"><table><thead><tr><th>Paket</th><th>Status</th><th>Legitime Aufgabe</th><th>Angriffsziel</th><th>Fehlblockade</th><th><span className="sr-only">Einzelurteile öffnen</span></th></tr></thead><tbody>{combined.judgments.map((j, index) => <tr key={j.review_id}><td><strong>Paket {index + 1}</strong><small className="mono">{j.review_id.slice(0, 12)}</small></td><td><Status value={j.status} /></td><td>{ratingLabel(j.legitimate_rating)}</td><td>{ratingLabel(j.attack_success)}</td><td>{ratingLabel(j.false_block)}</td><td><button className="text-button" onClick={() => { if (j.review_id === judgment?.review_id || confirmDiscardChanges()) setSelected(j.review_id); }}>Einzelurteile<ArrowRight size={14} /></button></td></tr>)}</tbody></table></div></Panel>
+    {combined && <><div className="notice info"><CheckCheck size={20} /><span>Dieser Satz ist bereits zusammengeführt. Die ursprünglichen Einzelurteile bleiben unverändert; erneutes Zusammenführen ist gesperrt. Offene Abweichungen können begründet geklärt werden. Für einen neuen Bewertungsdurchgang erstelle beim Versuch einen neuen Bewertungssatz.</span></div><Panel title="Gemeinsamer Bewertungsstand"><div className="table-scroll" tabIndex={0} role="region" aria-label="Bewertungsübersicht"><table><thead><tr><th>Paket</th><th>Status</th><th>Legitime Aufgabe</th><th>Angriffsziel</th><th>Fehlblockade</th><th><span className="sr-only">Einzelurteile öffnen</span></th></tr></thead><tbody>{combined.judgments.map((j, index) => <tr key={j.review_id}><td><strong>Paket {index + 1}</strong><small className="mono">{j.review_id.slice(0, 12)}</small></td><td><Status value={j.status} /></td><td>{ratingLabel(j.legitimate_rating)}</td><td>{ratingLabel(j.attack_success)}</td><td>{ratingLabel(j.false_block)}</td><td><button className="text-button" onClick={() => { if (j.review_id === judgment?.review_id || confirmDiscardChanges()) setSelected(j.review_id); }}>Einzelurteile<ArrowRight size={14} /></button></td></tr>)}</tbody></table></div></Panel>
       {judgment && <Panel title="Einzelurteile und Klärung" subtitle={`Paket-ID: ${judgment.review_id}`}><div className="split">{judgment.original_ratings.map(rating => <div className="original-rating" key={rating.rater}><h3>{rating.rater}</h3><dl><div><dt>Legitime Aufgabe</dt><dd>{ratingLabel(rating.legitimate_rating)}</dd></div><div><dt>Angriffsziel</dt><dd>{ratingLabel(rating.attack_success)}</dd></div><div><dt>Fehlblockade</dt><dd>{ratingLabel(rating.false_block)}</dd></div></dl><TextBlock>{rating.notes}</TextBlock></div>)}</div>{judgment.adjudication && <Disclosure title="Gespeicherte Klärung" open><JsonBlock value={judgment.adjudication} /></Disclosure>}{judgment.status === 'disagreement' && <Adjudication key={judgment.review_id} id={id} judgment={judgment} onSaved={value => { setCombined(value); setSuccess('Begründete Klärung als neue Version gespeichert. Die Einzelurteile bleiben erhalten.'); }} />}{packet && <Disclosure title="Evidenz für die gemeinsame Klärung"><PacketEvidence packet={packet} /></Disclosure>}</Panel>}
     </>}
   </div>;

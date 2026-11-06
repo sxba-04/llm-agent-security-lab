@@ -45,6 +45,55 @@ Die Aufgaben werden aus der versionierten `.vscode/tasks.json` geladen; ein Koll
 
 Die Windows-Aufgaben verwenden `npm.cmd`, damit PowerShell kein `npm.ps1` laden muss. Dafür sind weder eine Änderung der Ausführungsrichtlinie noch ein Administrator-Terminal erforderlich.
 
+## Diagnose und vollständiger lokaler Check
+
+Nach der Python-Synchronisierung hilft der ausschließlich lesende Diagnosebefehl:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m security_lab.doctor
+.\.venv\Scripts\python.exe -B -m security_lab.doctor --json
+```
+
+Er prüft Python 3.12 als Referenzlaufzeit, Git/uv/Node/npm, vorhandene Webpakete,
+Frontend-Build und dessen Zeitstempel, Port 8765, freien Dateisystemspeicher und
+Zugriffsrechte. Proxy-URLs werden auf ihre Form und konfigurierte CA-Dateien auf
+Lesbarkeit geprüft. Zugangsdaten, Proxywerte und Zertifikatspfade werden nicht
+ausgegeben. Fehlende Pfade werden nicht angelegt; keine Pakete installiert und
+keine Dienste beendet. `-B` verhindert zusätzlich Python-Bytecode-Dateien.
+Die einzige Netzwerkprobe ist eine kurze TCP-Verbindung zu `127.0.0.1` ohne
+HTTP-Anfrage; es gibt keine externen Netzwerkanfragen. Ein belegter Port kann
+ein korrekt laufender eigener Laborserver sein und wird deshalb als Warnung gemeldet.
+
+Die Diagnose beweist keine Proxy-Erreichbarkeit, keine TLS-Verbindung und keine
+vollständigen Windows-ACL-/Quota-Rechte. Git-/npm-Konfigurationsdateien werden
+nicht ausgelesen. Hinweise zu deaktivierter TLS-Prüfung erfordern die Korrektur
+der persönlichen Konfiguration; der Befehl verändert sie nicht. Speicherwarnung:
+weniger als 256 MiB oder 10 Prozent frei; das Dateisystem kann größer als die
+eigene Render-Disk-/Benutzerquote sein.
+
+Installation und Test bleiben getrennt. Nach `uv sync`, `npm ci` und der
+ausdrücklichen Browserinstallation im Ordner `frontend`:
+
+```powershell
+npm.cmd run browsers:install:chromium
+cd ..
+uv run --no-sync --locked --extra web --group dev python scripts/check_all.py
+```
+
+Der Gesamtcheck führt zuerst `uv run --locked --no-sync ruff check .` mit dem
+begrenzten gemeinsamen Regelumfang aus, danach Python-Tests, React-Tests, TypeScript/Build und Chromium
+nacheinander aus und stoppt bei einem Fehler. Für Firefox und WebKit zusätzlich
+in `frontend` `npm.cmd run browsers:install` ausführen, danach den Gesamtcheck
+mit `--all-browsers`. Die VS-Code-Aufgabe **Labor: Gesamtcheck** und JetBrains-
+Terminals verwenden denselben Ablauf. Referenzlaufzeit ist Python 3.12; eine
+offene Paketangabe `>=3.12` verspricht keine Abnahme jeder neueren Version.
+
+Eine neue Windows-Installation auf Jonahs eigenem Rechner bleibt eine reale
+Abnahme: frischer Clone → Synchronisierung → Diagnose → Build → Gesamtcheck →
+24 Mock-Läufe → Archiv prüfen und in einen getrennten Pfad wiederherstellen.
+Erst tatsächlich ausgeführte Schritte mit Betriebssystem, Commit und Ergebnis
+dokumentieren. Ein Linux-Testlauf ersetzt diesen Nachweis nicht.
+
 ## IntelliJ IDEA
 
 1. Den Repository-Ordner öffnen.

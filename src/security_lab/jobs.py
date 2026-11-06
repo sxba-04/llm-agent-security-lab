@@ -18,6 +18,7 @@ import uuid
 from . import batch
 from .documents import copy_document_sources, reject_symlinks
 from .models import ScriptedModel
+from .campaign_metadata import load_metadata, save_metadata, validate_labels
 
 NEW_ID = re.compile(r"campaign-[0-9a-f]{32}\Z")
 ACTIVE_STATES = {"queued", "running", "cancelling"}
@@ -276,7 +277,8 @@ class CampaignJobs:
                     "state": manifest.get("state", "unknown"),
                     "completed_runs": manifest.get("completed_runs", len(manifest.get("runs", []))),
                     "planned_runs": manifest.get("planned_runs", len(manifest.get("schedule", []))),
-                    "engineering_only": engineering_only, "valid_evidence": True, **worker}
+                    "engineering_only": engineering_only, "valid_evidence": True, **worker,
+                    **self._display_metadata(campaign_id)}
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             # One corrupt/inaccessible campaign must not hide unrelated evidence
             # or prevent review discovery. Original files are never repaired here.
@@ -288,6 +290,10 @@ class CampaignJobs:
                     "completed_runs": 0, "planned_runs": 0, "engineering_only": False,
                     "valid_evidence": False, "error": "Die Kampagnenbelege sind beschädigt oder unvollständig. Originaldateien bleiben unverändert; vor einer Auswertung ist eine Prüfung erforderlich.",
                     **worker}
+
+    def _display_metadata(self, campaign_id: str) -> dict[str, Any]:
+        value = load_metadata(self.directory(campaign_id))
+        return {"display_name": value["display_name"], "tags": value["tags"], "metadata_revision": value["revision"]}
 
     def _listing_fingerprint(self, campaign_id: str, directory: Path) -> bytes | None:
         """Stat a bounded tree without opening file contents or following links.
@@ -360,7 +366,10 @@ class CampaignJobs:
                       key=lambda row: row.get("created_at") or "", reverse=True)
 
     def start(self, cases: list[dict[str, Any]], *, variants: list[str], sources: list[str],
-              repeats: int, seed: int, document_ids: list[str]) -> dict[str, Any]:
+              repeats: int, seed: int, document_ids: list[str],
+              display_name: str = "", tags: list[str] | None = None) -> dict[str, Any]:
+        labels = tags or []
+        validate_labels(display_name, labels)
         with self._lock:
             if self._active is not None:
                 raise RuntimeError("Es läuft bereits ein Versuch.")
@@ -390,6 +399,8 @@ class CampaignJobs:
                 if not job.get("ownership_saved"):
                     batch.write_json(path / "worker.json", owner)
                     job["ownership_saved"] = True
+                    if display_name or labels:
+                        save_metadata(path, display_name, labels, 0)
                 if document_ids and not job.get("sources_copied"):
                     copy_document_sources(self.documents, document_ids, path)
                     job["sources_copied"] = True

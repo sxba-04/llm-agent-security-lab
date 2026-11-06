@@ -38,17 +38,24 @@ Schlägt ein Schritt fehl, die Ursache im Task-Terminal beheben und den Schritt 
 | Labor: Demo (24 Mock-Laeufe) | Kleine technische CLI-Demo ausführen |
 | Labor: Entwicklungskatalog (96 Mock-Laeufe) | Alle Entwicklungspaare einmal in allen Bedingungen ausführen |
 | Labor: Fallkatalog validieren | Fallstruktur prüfen |
-| Labor: Alle Tests | Die vollständige Python-Testsuite ausführen |
+| Labor: Python-Tests | Die vollständige Python-Testsuite ausführen |
+| Labor: Diagnose (nur lesend) | Versionen, Build, Port, freien Speicher, Rechte sowie Proxy-/CA-Konfiguration prüfen |
+| Labor: Gesamtcheck | Ruff, Python, React, TypeScript/Build und Chromium nacheinander prüfen; bei Fehler abbrechen |
+| Labor: Ressourcenprobe (synthetisch) | Begrenzte Messung in einem temporären Workspace; keine Modellkosten |
 | Labor: Frontend Tests | React-Tests ausführen |
-| Labor: Browser installieren | Den von Playwright benötigten Chromium-Testbrowser herunterladen |
+| Labor: Browser installieren | Die von Playwright benötigten Chromium-, Firefox- und WebKit-Testbrowser herunterladen |
 | Labor: Browsertests | Frontend bauen und Browser-/API-Integration prüfen |
 | Labor: Browserbericht oeffnen | Den vorhandenen Playwright-Bericht auf Port 9323 anzeigen |
 
-Für Browsertests nach der Gesamtinstallation einmal **Labor: Browser installieren** ausführen; nach einem Playwright-Update gegebenenfalls wiederholen. Vor **Labor: Browsertests** den normalen Laborserver auf Port 8765 stoppen. Die Tests starten ihren eigenen Dienst mit Daten unter `runs/browser-ci/`. Für die normale Bedienung der Oberfläche genügt der vorhandene Browser.
+Für Browsertests nach der Gesamtinstallation einmal **Labor: Browser installieren** ausführen; nach einem Playwright-Update gegebenenfalls wiederholen. Vor **Labor: Browsertests** den normalen Laborserver auf Port 8765 stoppen. Die Tests starten ihren eigenen Dienst mit einem temporären Workspace. Für die normale Bedienung der Oberfläche genügt der vorhandene Browser.
 
 Unter Linux können zusätzlich Systembibliotheken für Chromium erforderlich sein. Diese nach den Vorgaben des Rechners bereitstellen; Playwright bietet dafür im Ordner `frontend` den Befehl `npm run browsers:install -- --with-deps` an. Die normale Browseraufgabe installiert keine Betriebssystempakete.
 
-**Labor: Alle Tests** ist der bestehende Name der Python-Prüfung; Frontend- und Browsertests werden über ihre eigenen Aufgaben gestartet. Testberichte und Mock-Ergebnisse sind technische Kontrollen, keine empirischen Ergebnisse zur Angreifbarkeit eines LLM.
+Der frühere missverständliche Name **Labor: Alle Tests** heißt jetzt **Labor: Python-Tests**.
+**Labor: Gesamtcheck** ist der Standard-Testtask. Er installiert keine fehlenden
+Abhängigkeiten und lädt keine Browser herunter. Für die vollständige Browsermatrix
+denselben Ablauf im Terminal mit `uv run --no-sync --locked --extra web --group dev python scripts/check_all.py --all-browsers` starten.
+Testberichte und Mock-Ergebnisse sind technische Kontrollen, keine empirischen Ergebnisse zur Angreifbarkeit eines LLM.
 
 ## Nach einem Update
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, ArrowRight, Check, ChevronRight, Inbox, LoaderCircle } from 'lucide-react';
 import type { Campaign, Data, Json } from './types';
 import { withContentKeys } from './list-identity';
@@ -8,6 +8,22 @@ export const sourceNames: Record<string, string> = { clean: 'Saubere Quelle', at
 export const goalNames: Record<string, string> = { G1: 'Unberechtigtes Lesen', G2: 'Unberechtigtes Schreiben', G3: 'Inhaltliche Manipulation' };
 export const statusNames: Record<string, string> = { queued: 'Eingeplant', running: 'Läuft', cancelling: 'Wird beendet', completed: 'Abgeschlossen', cancelled: 'Abgebrochen', stopped: 'Gestoppt', interrupted: 'Unterbrochen', damaged: 'Daten beschädigt', refused: 'Verweigert', technical_error: 'Technischer Fehler', limit_exceeded: 'Limit erreicht', budget_exhausted: 'Budget erreicht', pending: 'Offen', consensus: 'Übereinstimmung', disagreement: 'Abweichung', adjudicated: 'Geklärt' };
 export const metricNames: Record<string, string> = { proposal_violation: 'Unberechtigter Vorschlag', backend_violation: 'Unberechtigter Effekt', context_disclosure: 'Offenlegung im Kontext', output_disclosure: 'Offenlegung in der Ausgabe', attacker_goal: 'Angriffsziel erreicht', legitimate_success: 'Legitime Aufgabe erfüllt', false_block: 'Fehlblockade' };
+export function Tabs({ label, items, selected, onChange, children }: Readonly<{ label: string; items: readonly { id: string; label: string }[]; selected: string; onChange: (id: string) => void; children: ReactNode }>) {
+  const prefix = useId();
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  function move(key: string, index: number): number | undefined {
+    if (key === 'ArrowRight') return (index + 1) % items.length;
+    if (key === 'ArrowLeft') return (index + items.length - 1) % items.length;
+    if (key === 'Home') return 0;
+    if (key === 'End') return items.length - 1;
+    return undefined;
+  }
+  return <><div className="tabs" role="tablist" aria-label={label}>{items.map((item, index) => <button type="button" key={item.id} ref={element => { buttons.current[index] = element; }} role="tab" id={`${prefix}-tab-${item.id}`} aria-controls={`${prefix}-panel`} aria-selected={selected === item.id} tabIndex={selected === item.id ? 0 : -1} onClick={() => onChange(item.id)} onKeyDown={event => {
+    const target = move(event.key, index);
+    if (target === undefined) return;
+    event.preventDefault(); onChange(items[target].id); buttons.current[target]?.focus();
+  }} className={selected === item.id ? 'active' : ''}>{item.label}</button>)}</div><div className="tab-content" role="tabpanel" id={`${prefix}-panel`} aria-labelledby={`${prefix}-tab-${selected}`} tabIndex={0}>{children}</div></>;
+}
 export function isDamagedCampaign(campaign: Campaign | undefined) { return campaign?.state === 'damaged' || campaign?.valid_evidence === false; }
 export function hasActiveWorker(campaign: Campaign) { return campaign.worker_active !== undefined ? campaign.worker_active === true : ['queued', 'running', 'cancelling'].includes(campaign.state); }
 export function formatDate(date: string) { const d = new Date(date); return Number.isNaN(d.getTime()) ? 'Zeitpunkt unbekannt' : new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(d); }
@@ -26,9 +42,13 @@ export function ErrorBox({ error, retry }: Readonly<{ error: string; retry?: () 
 export function Success({ children }: Readonly<{ children: ReactNode }>) { return <output className="notice success"><Check size={18} /><span>{children}</span></output>; }
 export function Loading({ text = 'Daten werden geladen …' }: Readonly<{ text?: string }>) { return <output className="loading"><LoaderCircle className="spin" size={20} />{text}</output>; }
 export function EngineeringNote() { return <p className="engineering-note"><span className="tiny-dot" />Diese Werkbank startet Mock-Läufe zur Funktionsprüfung. Mock-Ergebnisse sind keine empirischen LLM-Befunde.</p>; }
-export function JsonBlock({ value }: Readonly<{ value: unknown }>) { return <pre className="code-block">{JSON.stringify(value, null, 2)}</pre>; }
-export function TextBlock({ children, className = '' }: Readonly<{ children: ReactNode; className?: string }>) { return <div className={`text-block ${className}`}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</div>; }
-export function Disclosure({ title, children, open = false }: Readonly<{ title: string; children: ReactNode; open?: boolean }>) { return <details className="disclosure" open={open}><summary><ChevronRight size={16} />{title}</summary><div>{children}</div></details>; }
+export function JsonBlock({ value }: Readonly<{ value: unknown }>) { return <pre className="code-block" role="region" aria-label="Strukturierte Daten" tabIndex={0}>{JSON.stringify(value, null, 2)}</pre>; }
+export function TextBlock({ children, className = '', label = 'Textinhalt' }: Readonly<{ children: ReactNode; className?: string; label?: string }>) { return <div className={`text-block ${className}`} role="region" aria-label={label} tabIndex={0}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</div>; }
+export function Disclosure({ title, children, open = false }: Readonly<{ title: string; children: ReactNode; open?: boolean }>) {
+  const [expanded, setExpanded] = useState(open);
+  useEffect(() => { setExpanded(open); }, [open]);
+  return <details className="disclosure" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary><ChevronRight size={16} />{title}</summary><div>{children}</div></details>;
+}
 export function GoButton({ children, onClick }: Readonly<{ children: ReactNode; onClick: () => void }>) { return <button className="text-button" onClick={onClick}>{children}<ArrowRight size={16} /></button>; }
 export function Value({ value }: Readonly<{ value: Json | undefined }>) {
   if (value !== null && typeof value === 'object') return <JsonBlock value={value} />;
@@ -69,5 +89,5 @@ export function diffLines(clean: string, attack: string): { clean: { text: strin
 }
 export function SourceDiff({ clean, attack }: Readonly<{ clean: string; attack: string }>) {
   const diff = diffLines(clean, attack);
-  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre>{withContentKeys(diff[source], line => line.text).map(({ item: line, key }, index) => <span key={key} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
+  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre role="region" aria-label={`${sourceNames[source]} · vollständiger Text`} tabIndex={0}>{withContentKeys(diff[source], line => line.text).map(({ item: line, key }, index) => <span key={key} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
 }
