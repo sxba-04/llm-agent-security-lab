@@ -76,7 +76,7 @@ class OperationTests(unittest.TestCase):
         report = {"mutations": []}
         triage.run(self.client, self.data, self.entries, self.digest, report)
         self.assertEqual(self.client.posts, [])
-        self.assertEqual(len(report["inventory"]), 9)
+        self.assertEqual(len(report["inventory"]), 3)
         self.assertIn("textRange", report["inventory"][0]["flows"][0]["locations"][0])
         self.assertNotIn("SECRET", json.dumps(report))
         self.assertFalse(report["revision_verified_by_server"])
@@ -109,11 +109,11 @@ class OperationTests(unittest.TestCase):
         with self.assertRaises(triage.SafeError): self.run_apply()
         self.assertEqual(self.client.posts, [])
 
-    def test_exact_nine_comments_precede_transitions_and_status_is_verified(self):
+    def test_exact_three_comments_precede_transitions_and_status_is_verified(self):
         self.approved(); report = {"mutations": []}
         self.run_apply(report)
-        self.assertEqual(len(self.client.posts), 18)
-        for index in range(0, 18, 2):
+        self.assertEqual(len(self.client.posts), 6)
+        for index in range(0, 6, 2):
             comment, transition = self.client.posts[index:index+2]
             self.assertEqual(comment[0], "issues/add_comment")
             self.assertEqual(transition[0], "issues/do_transition")
@@ -148,11 +148,17 @@ class OperationTests(unittest.TestCase):
                 row[field] = value
                 with self.assertRaises(triage.SafeError): triage.project_issue(row)
 
-    def test_allowlist_cannot_include_oauth_or_unreviewed_ids(self):
-        self.data["issues"][0]["key"] = "AaGwHn_y3f6_aqzNEjB3"
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "list.json"; path.write_text(json.dumps(self.data))
-            with self.assertRaises(triage.SafeError): triage.load_allowlist(path)
+    def test_allowlist_cannot_include_previous_batch_or_unreviewed_ids(self):
+        self.assertEqual(triage.KNOWN, {
+            "AaGwHn_y3f6_aqzNEjB3": "frontend/src/AccessGate.tsx",
+            "AaGwOUR7RVlkm00GzpSU": "frontend/src/ui.tsx",
+            "AaGwHoAJ3f6_aqzNEjCE": "frontend/e2e/visual.spec.ts",
+        })
+        for excluded in ("AaGwHoAa3f6_aqzNEjCM", "AaGwHoBS3f6_aqzNEjCX", "unreviewed"):
+            with self.subTest(excluded=excluded), tempfile.TemporaryDirectory() as directory:
+                self.data["issues"][0]["key"] = excluded
+                path = Path(directory) / "list.json"; path.write_text(json.dumps(self.data))
+                with self.assertRaises(triage.SafeError): triage.load_allowlist(path)
 
     def test_transport_is_fixed_host_form_post_no_redirects_and_bounded(self):
         client = triage.Client("TEST_TOKEN", allow_writes=True)

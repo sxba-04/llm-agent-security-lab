@@ -24,25 +24,19 @@ PROJECT = "sxba-04_llm-agent-security-lab"
 PR = "30"
 REPOSITORY = "sxba-04/llm-agent-security-lab"
 OPS_REF = "refs/heads/ops/sonar-pr30-triage"
-REVIEWED_REVISION = "6b48f567e708de55230029549fee7a27c06b3d93"
-# Deliberately empty. Root must review actual rule IDs + concrete comments, set
-# approved=true in the static file, and commit that file's exact SHA256 here.
-APPROVED_ALLOWLIST_SHA256 = "ed695968a94bc9751894ba7ecba11ff270a40920ce07bc823aae63e5a2e8f78d"
+REVIEWED_REVISION = "90667b5259fe2694734755f74cb56009be478b4b"
+# Apply stays disabled until a fresh read-only run and separate root review.
+# Root must approve the exact static file and pin its SHA256 here.
+APPROVED_ALLOWLIST_SHA256 = ""
 ALLOWLIST = Path(__file__).with_name("sonar_pr30_allowlist.json")
-OUTPUT = Path("quality-inventory/sonar-pr30-triage.json")
+OUTPUT = Path("quality-inventory/sonar-pr30-triage-final.json")
 MAX_BYTES = 4 * 1024 * 1024
 MAX_ISSUES = 500
 PAGE_SIZE = 100
 KNOWN = {
-    "AaGwHoAa3f6_aqzNEjCM": "src/security_lab/backup.py",
-    "AaGwHoAa3f6_aqzNEjCL": "src/security_lab/backup.py",
-    "AaGwHoAy3f6_aqzNEjCU": "src/security_lab/archives.py",
-    "AaGwHoAa3f6_aqzNEjCN": "src/security_lab/backup.py",
-    "AaGwHoAa3f6_aqzNEjCK": "src/security_lab/backup.py",
-    "AaGwHoBJ3f6_aqzNEjCV": "src/security_lab/study.py",
-    "AaGwHoBJ3f6_aqzNEjCW": "src/security_lab/study.py",
-    "AaGwHoBb3f6_aqzNEjCY": "scripts/sonar_inventory.py",
-    "AaGwHoAd3f6_aqzNEjCS": "src/security_lab/doctor.py",
+    "AaGwHn_y3f6_aqzNEjB3": "frontend/src/AccessGate.tsx",
+    "AaGwOUR7RVlkm00GzpSU": "frontend/src/ui.tsx",
+    "AaGwHoAJ3f6_aqzNEjCE": "frontend/e2e/visual.spec.ts",
 }
 GET_PATHS = {"issues/search", "project_pull_requests/list"}
 POST_PATHS = {"issues/add_comment", "issues/do_transition"}
@@ -100,7 +94,7 @@ class Client:
         require(endpoint in (POST_PATHS if post else GET_PATHS), "Endpoint not allowed.")
         require(not post or self.allow_writes, "Read-only mode prohibits POST.")
         if post:
-            require(parameters.get("issue") in KNOWN, "POST issue is outside the nine reviewed IDs.")
+            require(parameters.get("issue") in KNOWN, "POST issue is outside the three reviewed IDs.")
             expected = {"issue", "text"} if endpoint == "issues/add_comment" else {"issue", "transition"}
             require(set(parameters) == expected, "Unexpected POST parameters.")
             if endpoint == "issues/do_transition":
@@ -213,7 +207,7 @@ def load_allowlist(path=ALLOWLIST):
     require(data.get("project") == PROJECT and data.get("pull_request") == PR)
     require(data.get("reviewed_revision") == REVIEWED_REVISION)
     entries = data.get("issues")
-    require(isinstance(entries, list) and len(entries) == len(KNOWN), "Exactly nine reviewed issue IDs required.")
+    require(isinstance(entries, list) and len(entries) == len(KNOWN), "Exactly three reviewed issue IDs required.")
     by_key = {}
     for entry in entries:
         entry = object_value(entry); key = entry.get("key")
