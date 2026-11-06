@@ -395,18 +395,7 @@ class CampaignJobs:
             self._jobs[campaign_id] = job
             self._active = campaign_id
             def progress(manifest: dict[str, Any]) -> None:
-                # The first callback follows durable fixture/manifest writes and
-                # precedes any model step, so cancelled runs keep PDF evidence.
-                if not job.get("ownership_saved"):
-                    batch.write_json(path / "worker.json", owner)
-                    job["ownership_saved"] = True
-                    if display_name or labels:
-                        save_metadata(path, display_name, labels, 0)
-                if document_ids and not job.get("sources_copied"):
-                    copy_document_sources(self.documents, document_ids, path)
-                    job["sources_copied"] = True
-                with self._lock:
-                    job["progress"] = copy.deepcopy(manifest)
+                self._record_progress(job, owner, document_ids, display_name, labels, manifest)
             def execute() -> None:
                 try:
                     batch.run_batch(cases, path, lambda case, source: ScriptedModel(case, source),
@@ -431,6 +420,22 @@ class CampaignJobs:
                 lease.close()
                 raise
             return brief
+
+    def _record_progress(self, job: dict[str, Any], owner: dict[str, Any], document_ids: list[str],
+                         display_name: str, labels: list[str], manifest: dict[str, Any]) -> None:
+        # The first callback follows durable fixture/manifest writes and
+        # precedes any model step, so cancelled runs keep PDF evidence.
+        path = job["path"]
+        if not job.get("ownership_saved"):
+            batch.write_json(path / "worker.json", owner)
+            job["ownership_saved"] = True
+            if display_name or labels:
+                save_metadata(path, display_name, labels, 0)
+        if document_ids and not job.get("sources_copied"):
+            copy_document_sources(self.documents, document_ids, path)
+            job["sources_copied"] = True
+        with self._lock:
+            job["progress"] = copy.deepcopy(manifest)
 
     def cancel(self, campaign_id: str) -> dict[str, Any]:
         self.directory(campaign_id)

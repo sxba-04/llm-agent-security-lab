@@ -19,6 +19,7 @@ BRANCH = "main"
 PAGE_SIZE = 100
 MAX_ISSUES = 10_000
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+MAX_METRIC_PERIODS = 10
 OUTPUT = Path("quality-inventory/sonar-main.json")
 PR_OUTPUT = Path("quality-inventory/sonar-pr.json")
 ENDPOINTS = frozenset({"issues/search", "measures/component", "qualitygates/project_status",
@@ -244,25 +245,61 @@ def measures(client, pull_request: int | None = None) -> dict:
     source = object_value(response.get("component"))
     if source.get("key") != PROJECT:
         raise InventoryError("Sonar measures do not identify the configured project.")
-    result, periods, seen = {}, {}, set()
-    for entry in list_value(source.get("measures")):
+    result, periods, legacy_periods, unavailable, seen = {}, {}, {}, [], set()
+    entries = [] if source.get("measures") is None else list_value(source["measures"])
+    for entry in entries:
         entry = object_value(entry)
         metric = text_value(entry.get("metric"))
         if metric not in requested or metric in seen:
             raise InventoryError("Unexpected or duplicate Sonar metric.")
         seen.add(metric)
-        _measure_value(entry, metric, result, periods)
-    return {"values": result, "period_values": periods,
+        if not _measure_value(entry, metric, result, periods, legacy_periods):
+            unavailable.append(metric)
+    return {"values": result, "period_values": periods, "periods": legacy_periods,
+            "unavailable_metrics": unavailable,
             "missing_metrics": [metric for metric in requested if metric not in seen]}
 
 
-def _measure_value(entry: dict, metric: str, values: dict, periods: dict) -> None:
-    if "value" in entry:
+def _metric_periods(value) -> list[dict]:
+    if value is None:
+        return []
+    entries = list_value(value)
+    if len(entries) > MAX_METRIC_PERIODS:
+        raise InventoryError("Sonar metric periods exceed the inventory size limit.")
+    result = []
+    seen = set()
+    for entry in entries:
+        entry = object_value(entry)
+        item = {}
+        if "index" in entry:
+            index = integer_value(entry["index"], 1)
+            if index in seen:
+                raise InventoryError("Duplicate Sonar metric period index.")
+            seen.add(index)
+            item["index"] = index
+        if entry.get("value") not in (None, ""):
+            item["value"] = text_value(entry["value"])
+        result.append(item)
+    return result
+
+
+def _measure_value(entry: dict, metric: str, values: dict, periods: dict, legacy_periods: dict) -> bool:
+    # A returned metric can legitimately lack a value (for example no lines
+    # eligible for coverage). Missing/null is unavailable, never numeric zero.
+    if entry.get("value") not in (None, ""):
         values[metric] = text_value(entry["value"])
-    if "period" in entry:
-        periods[metric] = text_value(object_value(entry["period"]).get("value"))
-    if metric not in values and metric not in periods:
-        raise InventoryError("Sonar metric has neither a value nor a period value.")
+    single = object_value(entry["period"]) if entry.get("period") is not None else {}
+    if single.get("value") not in (None, ""):
+        periods[metric] = text_value(single["value"])
+    entries = _metric_periods(entry.get("periods"))
+    if entries:
+        legacy_periods[metric] = entries
+    available = [item["value"] for item in entries if "value" in item]
+    # Preserve all indices in periods. Flatten only an unambiguous sole entry
+    # for compatibility with readers of the singular API representation.
+    if len(entries) == 1 and len(available) == 1 and metric not in periods:
+        periods[metric] = available[0]
+    return metric in values or metric in periods or bool(available)
 
 
 def quality_gate(client, pull_request: int | None = None) -> dict:

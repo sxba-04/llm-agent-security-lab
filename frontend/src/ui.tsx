@@ -42,8 +42,12 @@ export function ErrorBox({ error, retry }: Readonly<{ error: string; retry?: () 
 export function Success({ children }: Readonly<{ children: ReactNode }>) { return <output className="notice success"><Check size={18} /><span>{children}</span></output>; }
 export function Loading({ text = 'Daten werden geladen …' }: Readonly<{ text?: string }>) { return <output className="loading"><LoaderCircle className="spin" size={20} />{text}</output>; }
 export function EngineeringNote() { return <p className="engineering-note"><span className="tiny-dot" />Diese Werkbank startet Mock-Läufe zur Funktionsprüfung. Mock-Ergebnisse sind keine empirischen LLM-Befunde.</p>; }
-export function JsonBlock({ value }: Readonly<{ value: unknown }>) { return <pre className="code-block" role="region" aria-label="Strukturierte Daten" tabIndex={0}>{JSON.stringify(value, null, 2)}</pre>; }
-export function TextBlock({ children, className = '', label = 'Textinhalt' }: Readonly<{ children: ReactNode; className?: string; label?: string }>) { return <div className={`text-block ${className}`} role="region" aria-label={label} tabIndex={0}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</div>; }
+/** Keyboard users must be able to focus and scroll overflowing evidence. */
+export function ScrollRegion({ children, className, label }: Readonly<{ children: ReactNode; className: string; label: string }>) {
+  return <section className={className} aria-label={label} tabIndex={0}>{children}</section>;
+}
+export function JsonBlock({ value }: Readonly<{ value: unknown }>) { return <ScrollRegion className="code-block" label="Strukturierte Daten"><pre>{JSON.stringify(value, null, 2)}</pre></ScrollRegion>; }
+export function TextBlock({ children, className = '', label = 'Textinhalt' }: Readonly<{ children: ReactNode; className?: string; label?: string }>) { return <ScrollRegion className={`text-block ${className}`} label={label}>{children || <span className="muted">Kein Inhalt vorhanden.</span>}</ScrollRegion>; }
 export function Disclosure({ title, children, open = false }: Readonly<{ title: string; children: ReactNode; open?: boolean }>) {
   const [expanded, setExpanded] = useState(open);
   useEffect(() => { setExpanded(open); }, [open]);
@@ -89,5 +93,5 @@ export function diffLines(clean: string, attack: string): { clean: { text: strin
 }
 export function SourceDiff({ clean, attack }: Readonly<{ clean: string; attack: string }>) {
   const diff = diffLines(clean, attack);
-  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><pre role="region" aria-label={`${sourceNames[source]} · vollständiger Text`} tabIndex={0}>{withContentKeys(diff[source], line => line.text).map(({ item: line, key }, index) => <span key={key} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></div>)}</div>;
+  return <div className="split source-diff">{(['clean', 'attack'] as const).map(source => <div key={source} className={`source-pane ${source}`}><div className="source-heading"><span className="tiny-dot" /><h3>{sourceNames[source]}</h3></div><ScrollRegion className="source-text" label={`${sourceNames[source]} · vollständiger Text`}><pre>{withContentKeys(diff[source], line => line.text).map(({ item: line, key }, index) => <span key={key} className={line.changed ? 'diff-line changed' : 'diff-line'}><span className="line-number" aria-hidden="true">{index + 1}</span><span>{line.text || '\u00a0'}</span></span>)}</pre></ScrollRegion></div>)}</div>;
 }

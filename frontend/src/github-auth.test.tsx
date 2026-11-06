@@ -42,6 +42,32 @@ describe('GitHub OAuth browser boundary', () => {
     await expect(startGitHubLogin()).rejects.toThrow('nicht korrekt konfiguriert');
     expect(window.sessionStorage.getItem(pendingKey)).toBeNull();
   });
+  it.each([
+    ['protocol', 'http:'], ['hostname', 'github.com.attacker.example'],
+    ['pathname', '/settings/profile'], ['username', 'unexpected-user'],
+    ['password', 'unexpected-password'], ['port', '444'], ['hash', '#unexpected-fragment'],
+  ])('rejects a changed OAuth URL %s even with otherwise valid PKCE parameters', async (part, value) => {
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, options: RequestInit) => {
+      const response = startResponse(options);
+      const target = new URL(response.authorization_url);
+      Object.assign(target, { [part]: value });
+      return json({ ...response, authorization_url: target.href });
+    }));
+    const { startGitHubLogin } = await import('./github-auth');
+    await expect(startGitHubLogin()).rejects.toThrow('nicht korrekt konfiguriert');
+    expect(window.sessionStorage.getItem(pendingKey)).toBeNull();
+  });
+  it.each(['state', 'redirect_uri', 'code_challenge', 'code_challenge_method'])('rejects duplicate %s parameters before navigation', async parameter => {
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, options: RequestInit) => {
+      const response = startResponse(options);
+      const target = new URL(response.authorization_url);
+      target.searchParams.append(parameter, 'conflicting-value');
+      return json({ ...response, authorization_url: target.href });
+    }));
+    const { startGitHubLogin } = await import('./github-auth');
+    await expect(startGitHubLogin()).rejects.toThrow('nicht korrekt konfiguriert');
+    expect(window.sessionStorage.getItem(pendingKey)).toBeNull();
+  });
   it.each<Record<string, string>>([{ state: 'mismatched-state' }, { code_challenge: 'different-challenge' }, { redirect_uri: 'https://evil.example/' }, { code_challenge_method: 'plain' }])('rejects mismatched OAuth parameters %j', async changes => {
     vi.stubGlobal('fetch', vi.fn(async (_url: string, options: RequestInit) => json(startResponse(options, changes))));
     const { startGitHubLogin } = await import('./github-auth');

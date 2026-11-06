@@ -126,6 +126,61 @@ class SonarInventoryTests(unittest.TestCase):
             with self.assertRaisesRegex(inventory.InventoryError, "listing and quality gate disagree"):
                 inventory.collect(client, pull_request=30, expected_revision="a" * 40)
 
+    def test_legacy_periods_preserve_indices_and_metric_only_null_values_are_unavailable(self):
+        client = MagicMock()
+        client.get.return_value = {"component": {"key": inventory.PROJECT, "measures": [
+            {"metric": "coverage"}, {"metric": "line_coverage", "value": None},
+            {"metric": "branch_coverage", "value": "", "period": None, "periods": []},
+            {"metric": "new_coverage", "periods": [{"index": 1, "value": "79.5", "private": "never export"}]},
+            {"metric": "new_line_coverage", "periods": [{"index": 1, "value": "0"}, {"index": 2, "value": "55"}]},
+            {"metric": "new_uncovered_lines", "periods": [{"index": 1, "value": None}]},
+        ]}}
+        report = inventory.measures(client, pull_request=30)
+        self.assertEqual(report["values"], {})
+        self.assertEqual(report["period_values"], {"new_coverage": "79.5"})
+        self.assertEqual(report["periods"]["new_line_coverage"], [{"index": 1, "value": "0"}, {"index": 2, "value": "55"}])
+        self.assertEqual(report["unavailable_metrics"], ["coverage", "line_coverage", "branch_coverage", "new_uncovered_lines"])
+        self.assertIn("new_conditions_to_cover", report["missing_metrics"])
+        self.assertNotIn("coverage", report["missing_metrics"])
+        self.assertNotIn("never export", json.dumps(report))
+
+    def test_missing_all_measures_preserves_unavailable_not_zero_semantics(self):
+        client = MagicMock()
+        for source in ({"key": inventory.PROJECT}, {"key": inventory.PROJECT, "measures": None}):
+            client.get.return_value = {"component": source}
+            report = inventory.measures(client)
+            self.assertEqual(report["values"], {})
+            self.assertEqual(report["missing_metrics"], list(inventory.METRICS))
+
+    def test_period_bounds_duplicates_and_malformed_values_remain_fail_closed(self):
+        values = ([{"index": 1, "value": "1"}] * 2,
+                  [{"index": index + 1, "value": "1"} for index in range(inventory.MAX_METRIC_PERIODS + 1)],
+                  [{"index": True, "value": "1"}], [{"value": {"private": "not a measurement"}}])
+        for value in values:
+            with self.subTest(value=value), self.assertRaises(inventory.InventoryError):
+                inventory._metric_periods(value)
+
+    def test_missing_metric_values_do_not_discard_pr_issues_or_failed_gate(self):
+        client = FakeSonar()
+        client.pull_request["status"]["qualityGateStatus"] = "ERROR"
+        original = client.get
+        def metric_only(endpoint, parameters):
+            result = original(endpoint, parameters)
+            if endpoint == "measures/component":
+                result["component"]["measures"] = [
+                    {"metric": "coverage", "value": None},
+                    {"metric": "new_coverage", "periods": [{"index": 1, "value": "85"}]},
+                ]
+            if endpoint == "qualitygates/project_status":
+                result["projectStatus"]["status"] = "ERROR"
+            return result
+        with patch.object(client, "get", side_effect=metric_only):
+            report = inventory.collect(client, pull_request=30, expected_revision="a" * 40)
+        self.assertEqual(report["issue_count"], 3)
+        self.assertEqual(report["quality_gate"]["status"], "ERROR")
+        self.assertEqual(report["measures"]["unavailable_metrics"], ["coverage"])
+        self.assertEqual(report["measures"]["period_values"], {"new_coverage": "85"})
+
     def test_scanner_receipt_is_bounded_and_exports_only_validated_task_identifier(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "report-task.txt"

@@ -11,7 +11,11 @@ bleibt fehlgeschlagen. Ohne Scanner-Einreichungsbeleg, bei abgebrochenem Job,
 Fork-/Dependabot-PR oder fehlender Konfiguration wird kein PR-Inventar behauptet.
 
 Unter **Actions → Read-only Sonar issue inventory → Run workflow → main** lässt
-sich der aktuelle offene Befundbestand abholen. Der Workflow analysiert keinen
+sich der aktuelle offene Befundbestand abholen. Beide optionalen Eingaben leer
+lassen für `main`; für eine PR-Inventur `pull_request` und die vollständige
+`expected_revision` angeben. Die Auswahl verändert den abgefragten Sonar-Stand,
+nicht den ausgeführten Code: der manuelle Workflow bleibt auf `main` begrenzt.
+Er läuft unabhängig von der vollständigen Testsuite. Der Workflow analysiert keinen
 Code neu und ändert keine Einstellungen, Befunde oder Quality Gates. Er nutzt
 das bereits hinterlegte GitHub-Actions-Secret `SONAR_TOKEN` ausschließlich für
 GET-Anfragen an `https://sonarcloud.io`. Der Token muss Leserechte für das Projekt
@@ -91,8 +95,16 @@ unbekannte Felder werden nicht hochgeladen. Ein Beleg beweist die Einreichung,
 nicht allein eine erfolgreich abgeschlossene Analyse oder deren Commit.
 
 Für PRs werden zusätzlich New-Code-Coverage und Duplikationswerte angefragt.
-API-`period`-Werte bleiben unter `period_values` von allgemeinen `values` getrennt;
-nicht gelieferte Größen werden weiter als `missing_metrics` ausgewiesen.
+API-`period`-Werte bleiben unter `period_values` von allgemeinen `values` getrennt.
+Auch die von Sonar verwendete `periods`-Liste wird unterstützt: alle gelieferten
+Indizes und Werte bleiben unter `periods` erhalten. Nur ein einzelner eindeutiger
+Listeneintrag wird zusätzlich in `period_values` abgebildet; mehrere Perioden
+werden weder zusammengelegt noch willkürlich ausgewählt. `bestValue` wird
+nicht als numerischer Wert interpretiert. Nicht gelieferte Größen erscheinen
+als `missing_metrics`; gelieferte Metriken ohne Wert, mit `null` oder leerem
+Wert stehen unter `unavailable_metrics`. Dies erzeugt keine Null-Prozent-Werte
+und verwirft weder die Befunde noch ein fehlgeschlagenes Gate. Unzulässige
+Datentypen, doppelte Periodenindizes oder mehr als zehn Perioden bleiben Fehler.
 Issue-IDs, Regeln und Positionen bleiben verfügbar, während Meldungstexte,
 Autoren, Kommentare, PR-Titel und Quellcode weiterhin ausgelassen werden.
 

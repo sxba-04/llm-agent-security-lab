@@ -247,6 +247,22 @@ save_metadata(Path(sys.argv[1]), 'Interrupted save', [], 1)
             load_metadata(self.path)
         self.assertEqual(residue.read_bytes(), b'{"display_name": "partial')
 
+    def test_metadata_filenames_reject_non_ascii_digits(self):
+        directory = self.path / 'campaign-metadata'
+        canonical = directory / 'metadata-000001.json'
+        original = canonical.read_bytes()
+        for digits in ('٠٠٠٠٠١', '０００００１', '00000١'):
+            for suffix in ('.json', '.json.0123456789abcdef.tmp'):
+                with self.subTest(digits=digits, suffix=suffix):
+                    unexpected = directory / ('metadata-' + digits + suffix)
+                    unexpected.write_bytes(original)
+                    try:
+                        with self.assertRaisesRegex(ValueError, 'Unbekannte'):
+                            load_metadata(self.path)
+                    finally:
+                        unexpected.unlink()
+        self.assertEqual(load_metadata(self.path)['revision'], 1)
+
     def test_parallel_rating_changes_reject_stale_writer_and_keep_original(self):
         url, body = self._review()
         revision = self.client.get(url).json()['revision']

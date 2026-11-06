@@ -28,7 +28,7 @@ describe('display preferences', () => {
     expect(document.documentElement.dataset.theme).toBe('dark');
     changeSystem(false);
     expect(document.documentElement.dataset.theme).toBe('light');
-    expect(localStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
   });
 
   it('retains an explicit choice across remounts and ignores system changes until System is chosen', async () => {
@@ -39,7 +39,7 @@ describe('display preferences', () => {
     expect(document.documentElement.dataset.theme).toBe('dark');
     changeSystem(false);
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(localStorage.length).toBe(1);
+    expect(localStorage).toHaveLength(1);
     expect(localStorage.getItem(themeStorageKey)).toBe('dark');
     first.unmount();
     render(<ThemePicker />);

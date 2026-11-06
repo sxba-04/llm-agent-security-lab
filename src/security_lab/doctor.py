@@ -11,7 +11,6 @@ from importlib import metadata
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import socket
 import ssl
@@ -27,6 +26,15 @@ def check(name: str, status: str, detail: str, action: str = "") -> dict:
     return {"name": name, "status": status, "detail": detail, "action": action}
 
 
+def _numeric_version(output: str) -> str | None:
+    """Extract a short numeric version from bounded fixed-command output."""
+    for token in output[:512].split():
+        parts = token.removeprefix("v").split(".")[:3]
+        if len(parts) >= 2 and all(part.isascii() and part.isdecimal() and len(part) <= 8 for part in parts):
+            return ".".join(parts)
+    return None
+
+
 def tool_version(name: str) -> str | None:
     """Run a fixed version query without printing stderr or arbitrary output."""
     executable = shutil.which(name + ".cmd" if os.name == "nt" and name == "npm" else name)
@@ -38,30 +46,42 @@ def tool_version(name: str) -> str | None:
                                 check=False)
     except (OSError, subprocess.SubprocessError):
         return None
-    match = re.search(r"(?<![\w.])v?(\d+\.\d+(?:\.\d+)?)\b", result.stdout[:512])
-    return match.group(1) if result.returncode == 0 and match else None
+    return _numeric_version(result.stdout) if result.returncode == 0 else None
+
+
+def _python_version_check() -> dict:
+    version = sys.version_info[:3]
+    if version[:2] == (3, 12):
+        status = "ok"
+    else:
+        status = "warning" if version >= (3, 12) else "error"
+    return check("python", status, ".".join(map(str, version)),
+                 "Referenzlaufzeit: Python 3.12 aus .python-version; weitere Versionen sind nicht zugesichert.")
+
+
+def _tool_version_check(name: str) -> dict:
+    value = tool_version(name)
+    state = "ok" if value else "error"
+    if name == "node" and value:
+        parts = tuple(map(int, value.split(".")))
+        state = "ok" if (24, 15, 0) <= parts < (25,) else "error"
+    return check(name, state, value or "Nicht verfügbar oder Versionsabfrage fehlgeschlagen.",
+                 "Node 24 ab 24.15.0 verwenden." if name == "node" else "Werkzeug über den erlaubten Installationsweg bereitstellen.")
+
+
+def _package_version_check(package: str) -> dict:
+    try:
+        value = metadata.version(package)
+    except metadata.PackageNotFoundError:
+        value = None
+    return check("package:" + package, "ok" if value else "error", value or "Nicht installiert.",
+                 "Separat ausführen: uv sync --locked --extra web --group dev")
 
 
 def version_checks() -> list[dict]:
-    version = sys.version_info[:3]
-    status = "ok" if version[:2] == (3, 12) else "warning" if version >= (3, 12) else "error"
-    rows = [check("python", status, ".".join(map(str, version)),
-                  "Referenzlaufzeit: Python 3.12 aus .python-version; weitere Versionen sind nicht zugesichert.")]
-    for name in ("git", "uv", "node", "npm"):
-        value = tool_version(name)
-        state = "ok" if value else "error"
-        if name == "node" and value:
-            parts = tuple(map(int, value.split(".")))
-            state = "ok" if (24, 15, 0) <= parts < (25,) else "error"
-        rows.append(check(name, state, value or "Nicht verfügbar oder Versionsabfrage fehlgeschlagen.",
-                          "Node 24 ab 24.15.0 verwenden." if name == "node" else "Werkzeug über den erlaubten Installationsweg bereitstellen."))
-    for package in ("fastapi", "pypdf", "python-multipart", "uvicorn", "httpx"):
-        try:
-            value = metadata.version(package)
-        except metadata.PackageNotFoundError:
-            value = None
-        rows.append(check("package:" + package, "ok" if value else "error", value or "Nicht installiert.",
-                          "Separat ausführen: uv sync --locked --extra web --group dev"))
+    rows = [_python_version_check()]
+    rows.extend(_tool_version_check(name) for name in ("git", "uv", "node", "npm"))
+    rows.extend(_package_version_check(package) for package in ("fastapi", "pypdf", "python-multipart", "uvicorn", "httpx"))
     return rows
 
 
@@ -125,7 +145,7 @@ def _certificate_check(name: str, value: str) -> dict:
     try:
         ssl.create_default_context(cafile=value)
         valid = True
-    except (OSError, ssl.SSLError, ValueError):
+    except (OSError, ValueError):
         valid = False
     return check("ca:" + name, "ok" if valid else "error",
                  "Zertifikatsdatei lesbar und als CA-Bündel ladbar." if valid else "Zertifikatsdatei fehlt oder ist kein ladbares CA-Bündel.",

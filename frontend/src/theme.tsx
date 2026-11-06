@@ -15,7 +15,8 @@ function readPreference(): ThemePreference {
 }
 
 function applyTheme(preference: ThemePreference, darkSystem: boolean) {
-  document.documentElement.dataset.theme = preference === 'system' ? (darkSystem ? 'dark' : 'light') : preference;
+  const systemTheme = darkSystem ? 'dark' : 'light';
+  document.documentElement.dataset.theme = preference === 'system' ? systemTheme : preference;
 }
 
 /** Only a display preference is persisted. Authentication and evidence stay separate. */

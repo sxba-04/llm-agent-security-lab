@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useMobileNavigation } from './mobile-navigation';
 import { Activity, ArrowDownToLine, ArrowRight, BookOpen, ChevronRight, CircleHelp, ClipboardCheck, FileText, FlaskConical, GitCompareArrows, LayoutDashboard, Menu, Play, ShieldCheck, X } from 'lucide-react';
 import { confirmDiscardChanges, hosted, navigate, signOut, useResource, useRoute } from './api';
 import { AccessGate } from './AccessGate';
@@ -37,61 +38,26 @@ function Workbench() {
   const health = useResource<Health>('/api/health', 10000);
   const cases = useResource<{ cases: LabCase[] }>('/api/cases');
   const campaigns = useResource<{ campaigns: Campaign[] }>('/api/campaigns', 2500);
-  const [menu, setMenu] = useState(false);
-  const [mobile, setMobile] = useState(() => window.matchMedia?.('(max-width: 760px)').matches ?? false);
-  const menuButton = useRef<HTMLButtonElement>(null);
-  const sidebar = useRef<HTMLElement>(null);
-  const wasMobileMenu = useRef(false);
-  const focusMainAfterClose = useRef(false);
   const current = pages.find(item => item.id === route.page) || pages[0];
-  useEffect(() => {
-    const media = window.matchMedia?.('(max-width: 760px)');
-    const update = () => { setMobile(media?.matches ?? false); if (!media?.matches) setMenu(false); };
-    media?.addEventListener('change', update);
-    return () => media?.removeEventListener('change', update);
-  }, []);
-  useEffect(() => {
-    setMenu(false); document.title = `${current.label} · Agent Security Lab`;
-    if (wasMobileMenu.current) focusMainAfterClose.current = true;
-  }, [current.label]);
-  useEffect(() => {
-    wasMobileMenu.current = mobile && menu;
-    if (!menu && focusMainAfterClose.current) {
-      focusMainAfterClose.current = false;
-      document.getElementById('main-content')?.focus();
-    }
-    if (!mobile || !menu) return;
-    sidebar.current?.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
-    const closeOrTrap = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault(); setMenu(false); menuButton.current?.focus(); return;
-      }
-      if (event.key !== 'Tab') return;
-      const items = sidebar.current?.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),select:not(:disabled)');
-      if (!items?.length) return;
-      const first = items[0], last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', closeOrTrap);
-    return () => document.removeEventListener('keydown', closeOrTrap);
-  }, [mobile, menu]);
-  function closeMenu() { setMenu(false); menuButton.current?.focus(); }
+  const { menu, mobile, menuButton, sidebar, closeMenu, selectCurrentPage, toggleMenu } = useMobileNavigation(current.label);
+  const drawerOpen = mobile && menu;
+  const drawerClosed = mobile && !menu;
+  const drawerSemantics = drawerOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } as const : {};
   const caseRows = cases.data?.cases || [];
   const campaignRows = campaigns.data?.campaigns || [];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); document.getElementById('main-content')?.focus(); }}>Zum Inhalt springen</a>
-    {mobile && menu && <button aria-label="Navigation schließen" className="sidebar-backdrop" tabIndex={-1} onClick={closeMenu} />}
-    <aside id="main-navigation" ref={sidebar} className={`sidebar ${menu ? 'open' : ''}`} inert={mobile && !menu} aria-hidden={mobile && !menu ? true : undefined} role={mobile && menu ? 'dialog' : undefined} aria-modal={mobile && menu ? true : undefined} aria-label={mobile && menu ? 'Navigation' : undefined}>
+    {drawerOpen && <button aria-label="Navigation schließen" className="sidebar-backdrop" tabIndex={-1} onClick={closeMenu} />}
+    <aside id="main-navigation" ref={sidebar} className={`sidebar ${menu ? 'open' : ''}`} inert={drawerClosed} aria-hidden={drawerClosed || undefined} {...drawerSemantics}>
       <button type="button" className="icon-button sidebar-close" aria-label="Navigation schließen" onClick={closeMenu}><X size={20} /></button>
       <a className="brand" href="#overview" aria-label="Agent Security Lab – Übersicht"><span className="brand-mark"><ShieldCheck size={25} /></span><span>Agent Security<span>RESEARCH LAB</span></span></a>
       <div className="sidebar-section-label">ARBEITSBEREICH</div>
-      <nav aria-label="Hauptnavigation">{pages.map(item => <a key={item.id} href={`#${item.id}`} onClick={() => { if (mobile && item.id === current.id) { focusMainAfterClose.current = true; setMenu(false); } }} aria-current={current.id === item.id ? 'page' : undefined} className={current.id === item.id ? 'active' : ''}><item.icon size={19} /><span>{item.label}</span>{current.id === item.id && <span className="nav-dot" />}</a>)}</nav>
+      <nav aria-label="Hauptnavigation">{pages.map(item => <a key={item.id} href={`#${item.id}`} onClick={() => { if (item.id === current.id) selectCurrentPage(); }} aria-current={current.id === item.id ? 'page' : undefined} className={current.id === item.id ? 'active' : ''}><item.icon size={19} /><span>{item.label}</span>{current.id === item.id && <span className="nav-dot" />}</a>)}</nav>
       <div className="sidebar-footer"><div className="local-indicator"><span />{hosted ? 'Online-Werkbank' : 'Lokale Werkbank'}</div><p>Kontrollierte Szenarien.<br />Nachvollziehbare Entscheidungen.</p><div className="sidebar-version"><span>Entwicklungsphase</span><span>{health.data?.version ? `v${health.data.version}` : '—'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button ref={menuButton} className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} aria-controls="main-navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span><ThemePicker />{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
-      <main id="main-content" tabIndex={-1} inert={mobile && menu}>
+      <header className="topbar"><div className="breadcrumb"><button ref={menuButton} className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} aria-controls="main-navigation" aria-expanded={menu} onClick={toggleMenu}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />MOCK-MODUS</span><ThemePicker />{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
+      <main id="main-content" tabIndex={-1} inert={drawerOpen}>
         <StorageNotice storage={health.data?.storage} />
         {health.data?.storage_mode === 'ephemeral' && <aside className="notice warning" role="note" aria-label="Flüchtiger Testbetrieb"><div><strong>Testbetrieb · Daten werden nicht dauerhaft gespeichert</strong><br />Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment des Backends verloren. Benötigte Kampagnenarchive vorher herunterladen; wichtige Studienbelege außerhalb dieser Testumgebung sichern.</div></aside>}
         {health.error && <ErrorBox error={health.error} retry={health.refresh} />}

@@ -33,6 +33,7 @@ KNOWN_ROOTS = {"campaigns", "documents", "reviews", "workers", "studies", "metad
 OPERATIONAL_EVIDENCE_DIRS = {"persistence-20261102"}
 MAX_SOURCE_COMMITS = 32
 SOURCE_LOCKFILES = ("pyproject.toml", "uv.lock", "frontend/package-lock.json")
+SOURCE_PREFIX = "source/"
 
 
 def _git(root: Path, *arguments: str) -> bytes:
@@ -359,7 +360,7 @@ def export_workspace(workspace: str | Path, source_root: str | Path, output_path
         check = _check_workspace(workspace)
         temporary = Path(scratch)
         source_info = _freeze_sources(source_root, temporary, check)
-        source_files = [("source/" + name, path, stamp) for name, path, stamp in archives._export_files(temporary / "source")]
+        source_files = [(SOURCE_PREFIX + name, path, stamp) for name, path, stamp in archives._export_files(temporary / "source")]
         handle, name = tempfile.mkstemp(prefix=".workspace-", suffix=".zip", dir=output_path.parent)
         os.close(handle)
         candidate = Path(name)
@@ -386,7 +387,7 @@ def _workspace_index(archive: zipfile.ZipFile, names: dict) -> dict:
     files = index.get("files")
     if not isinstance(files, dict) or set(files) != set(names) - {INDEX_NAME}:
         raise ValueError("Workspace backup inventory mismatch")
-    if any(not name.startswith(("workspace/", "source/")) for name in files):
+    if any(not name.startswith(("workspace/", SOURCE_PREFIX)) for name in files):
         raise ValueError("Unexpected workspace backup path")
     _validate_source_info(index.get("sources"), files)
     return index
@@ -402,7 +403,7 @@ def _validate_source_info(sources: Any, files: dict) -> None:
     included = set(sources["included_commits"])
     if sources["current_commit"] not in included or included.intersection(sources["missing_commits"]):
         raise ValueError("Inconsistent source snapshot revisions")
-    actual = {name.split("/")[1] for name in files if name.startswith("source/")}
+    actual = {name.split("/")[1] for name in files if name.startswith(SOURCE_PREFIX)}
     if actual != included:
         raise ValueError("Source snapshot inventory mismatch")
 

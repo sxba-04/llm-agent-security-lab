@@ -39,8 +39,8 @@ eines damals schon vorhandenen vollständigen Workspace-Exports.
 ## Prüfungen und noch laufende Releaseprüfung
 
 Die Baseline bestand unter Linux 337 Python-Tests mit einem erwarteten
-Windows-spezifischen Skip. Der erste integrierte Kandidat bestand lokal
-407 Python-Tests (ein Windows-spezifischer Skip), 96 React-Tests, Ruff und den
+Windows-spezifischen Skip. Der zuletzt lokal geprüfte Stand bestand
+413 Python-Tests (ein Windows-spezifischer Skip), 107 React-Tests, Ruff und den
 Produktionsbuild mit Python 3.12.14, Node 24 und den Lockdateien. Nach den dabei
 gefundenen Bedienkorrekturen bestanden über die gezielten Nachläufe alle 13
 funktionalen lokalen Firefox-Fälle und sechs HTTPS-Fälle. Chromium konnte in
@@ -76,6 +76,21 @@ beforeunload, UTF-8-Validierung, reproduzierbare Zufallsreihenfolge und sicheren
 TLS-Standardkontext. Regeln und Quality Gate wurden nicht abgeschaltet.
 Der direkte Sonar-Zugang lieferte in dieser Sitzung einen CloudFront-Fehler;
 die GitHub-Analyseartefakte bleiben auswertbar.
+
+Die erste vollständige PR-Analyse auf `6b48f567` meldete 45 Annotationen,
+darunter Sicherheitsmeldungen mit behaupteter LLM-gesteuerter CLI-Eingabe.
+Die einzelnen tatsächlichen Datenflüsse wurden erneut geprüft; der Modellkern
+stellt ausschließlich die beiden synthetischen Ticket-Tools bereit. Konkrete
+Einordnungen stehen unter [Backup/Archivpfade](sonar-triage/pr30-backup-cli.md),
+[Studien-/Scanner-CLI](sonar-triage/pr30-study-cli.md),
+[Portdiagnose](sonar-triage/doctor-pr30.md) und
+[Frontend-Semantik](sonar-triage/pr30-frontend.md).
+Diese Quellprüfungen sind keine Behauptung eines bereits bestandenen erneuten
+Quality Gates. Berechtigte Wartbarkeitshinweise wurden korrigiert; notwendige
+Tastaturfokussierung bleibt erhalten. OAuth-Ziele werden nach strikter Prüfung
+aus der festen GitHub-Adresse aufgebaut, doppelte OAuth-Parameter abgelehnt.
+Der Inventarparser erhält fehlende Werte und Periodenangaben ausdrücklich,
+statt fehlende Messungen als null auszugeben.
 
 Der zusätzliche [GitHub-AI-Scan vom 4. November](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/41799108962)
 scheiterte wegen ausgeschöpfter monatlicher Copilot-Quote. Das ist weder ein

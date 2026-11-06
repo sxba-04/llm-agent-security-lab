@@ -51,7 +51,7 @@ jobs:
           command -v pdftoppm
       - name: Python correctness lint
         if: runner.os == 'Linux'
-        run: uv run --locked --no-sync ruff check .
+        run: uv run --locked --no-sync --no-build ruff check .
       - name: Behavioral tests without API keys
         id: python_tests
         shell: bash

@@ -92,6 +92,23 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(doctor.tool_version("node"), "24.22.1")
         self.assertEqual(execute.call_args.args[0], ["/tools/node", "--version"])
 
+    def test_version_parser_accepts_platform_outputs_and_bounds_unstructured_output(self):
+        examples = {
+            "git version 2.52.0.windows.1\n": "2.52.0",
+            "uv 0.9.1 (build information)\n": "0.9.1",
+            "v24.15.0\n": "24.15.0",
+            "11.6.2\n": "11.6.2",
+            "private-invalid-output ２４.１５.０": None,
+            "9" * 512 + ".1": None,
+            "secret-output " * 40 + "v24.15.0": None,
+        }
+        for output, expected in examples.items():
+            with self.subTest(output=output[:40]):
+                result = type("Result", (), {"returncode": 0, "stdout": output})()
+                with patch.object(doctor.shutil, "which", return_value="/tools/fixed-command"), \
+                     patch.object(doctor.subprocess, "run", return_value=result):
+                    self.assertEqual(doctor.tool_version("node"), expected)
+
     def test_file_in_workspace_path_is_an_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "file"

@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 MIB = 1024 * 1024
+CAMPAIGNS_ENDPOINT = "/api/campaigns"
 
 
 def timed(operation):
@@ -53,11 +54,11 @@ def request(client, path: str):
 
 def list_probe(client, jobs, count: int, samples: int) -> dict:
     jobs._list_cache.clear()  # Explicit cold application cache; OS caches stay warm.
-    response, cold = timed(lambda: request(client, "/api/campaigns"))
+    response, cold = timed(lambda: request(client, CAMPAIGNS_ENDPOINT))
     rows = response.json()["campaigns"]
     if len(rows) != count or any(not row["valid_evidence"] for row in rows):
         raise ValueError("Synthetic list evidence is not valid")
-    values = [timed(lambda: request(client, "/api/campaigns"))[1] for _ in range(samples)]
+    values = [timed(lambda: request(client, CAMPAIGNS_ENDPOINT))[1] for _ in range(samples)]
     return {"campaigns": count, "cold_application_cache_ms": cold,
             "warm_median_ms": round(statistics.median(values), 3), "warm_max_ms": max(values),
             "warm_samples_ms": values, "response_bytes": len(response.content)}
@@ -77,11 +78,11 @@ def concurrent_probe(client, jobs, case: dict) -> dict:
     body = {"case_ids": [case["case_id"]], "variants": ["B"], "sources": ["clean"], "repeats": 1, "seed": 42}
     headers = {"X-Lab-Token": request(client, "/api/health").json()["csrf_token"]}
     with patch("security_lab.jobs.ScriptedModel", side_effect=gated_model):
-        first = client.post("/api/campaigns", json=body, headers=headers)
+        first = client.post(CAMPAIGNS_ENDPOINT, json=body, headers=headers)
         try:
             if first.status_code != 202 or not entered.wait(timeout=10):
                 raise ValueError("Synthetic worker did not start")
-            second, elapsed = timed(lambda: client.post("/api/campaigns", json=body, headers=headers))
+            second, elapsed = timed(lambda: client.post(CAMPAIGNS_ENDPOINT, json=body, headers=headers))
             if second.status_code != 409:
                 raise ValueError("Concurrent start was not rejected")
         finally:

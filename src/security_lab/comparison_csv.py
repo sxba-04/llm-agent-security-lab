@@ -35,18 +35,27 @@ def comparison_csv(summary: dict[str, Any], campaign_id: str, *, display_name: s
     stream = io.StringIO(newline="")
     writer = csv.DictWriter(stream, fieldnames=FIELDS)
     writer.writeheader()
-    paired = summary.get("paired_comparisons", {})
-    for kind, rows in (("group", summary["groups"]), ("pair", paired.get("comparisons", [])),
-                       ("case", paired.get("case_profiles", []))):
-        for row in rows:
-            if (source and row["source"] != source) or (goal and row["goal"] != goal):
-                continue
-            for name, counts in row["metrics"].items():
-                if metric and metric != name:
-                    continue
-                identity = {key: row[key] for key in FIELDS if key in row}
-                values = {**identity, **{key: counts[key] for key in FIELDS if key in counts},
-                          "row_type": kind, "campaign_id": campaign_id, "display_name": display_name,
-                          "review_set_id": review_set_id, "metric": name}
-                writer.writerow({key: _cell(value) for key, value in values.items()})
+    context = {"campaign_id": campaign_id, "display_name": display_name, "review_set_id": review_set_id}
+    for kind, rows in _comparison_sections(summary):
+        _write_section(writer, kind, rows, context, metric, source, goal)
     return stream.getvalue()
+
+
+def _comparison_sections(summary: dict[str, Any]):
+    paired = summary.get("paired_comparisons", {})
+    return (("group", summary["groups"]), ("pair", paired.get("comparisons", [])),
+            ("case", paired.get("case_profiles", [])))
+
+
+def _write_section(writer, kind: str, rows: list[dict[str, Any]], context: dict[str, str],
+                   metric: str, source: str, goal: str) -> None:
+    for row in rows:
+        if (source and row["source"] != source) or (goal and row["goal"] != goal):
+            continue
+        identity = {key: row[key] for key in FIELDS if key in row}
+        for name, counts in row["metrics"].items():
+            if metric and metric != name:
+                continue
+            values = {**identity, **{key: counts[key] for key in FIELDS if key in counts},
+                      "row_type": kind, **context, "metric": name}
+            writer.writerow({key: _cell(value) for key, value in values.items()})

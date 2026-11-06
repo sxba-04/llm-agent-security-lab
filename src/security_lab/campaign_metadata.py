@@ -13,8 +13,8 @@ from .batch import write_json_new
 from .documents import reject_symlinks
 
 DIRECTORY = "campaign-metadata"
-VERSION_FILE = re.compile(r"metadata-[0-9]{6}\.json\Z")
-UNPUBLISHED_FILE = re.compile(r"metadata-([0-9]{6})\.json\.[0-9a-f]{16}\.tmp\Z")
+VERSION_FILE = re.compile(r"metadata-\d{6}\.json\Z", re.ASCII)
+UNPUBLISHED_FILE = re.compile(r"metadata-(\d{6})\.json\.[0-9a-f]{16}\.tmp\Z", re.ASCII)
 MAX_UNPUBLISHED = 128
 MAX_REVISIONS = 10_000
 # The supported runtime is one process. Readers must not mistake the atomic
