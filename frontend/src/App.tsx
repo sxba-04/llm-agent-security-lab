@@ -61,8 +61,8 @@ function Workbench() {
         <StorageNotice storage={health.data?.storage} />
         {health.data?.storage_mode === 'ephemeral' && <aside className="notice warning" role="note" aria-label="Flüchtiger Testbetrieb"><div><strong>Testbetrieb · Daten werden nicht dauerhaft gespeichert</strong><br />Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment des Backends verloren. Benötigte Kampagnenarchive vorher herunterladen; wichtige Studienbelege außerhalb dieser Testumgebung sichern.</div></aside>}
         {health.error && <ErrorBox error={health.error} retry={health.refresh} />}
-        {cases.error && <ErrorBox error={cases.error} retry={cases.refresh} />}
-        {campaigns.error && <ErrorBox error={campaigns.error} retry={campaigns.refresh} />}
+        {cases.error && <ErrorBox error={cases.error} retry={() => { if (confirmDiscardChanges()) cases.refresh(); }} />}
+        {campaigns.error && <ErrorBox error={campaigns.error} retry={() => { if (confirmDiscardChanges()) campaigns.refresh(); }} />}
         {cases.loading && !cases.data ? <Loading text="Werkbank wird geladen …" /> : <>
           {current.id === 'overview' && <Overview cases={caseRows} campaigns={campaignRows} />}
           {current.id === 'cases' && <CasesPage cases={caseRows} selected={route.params.get('id')} />}

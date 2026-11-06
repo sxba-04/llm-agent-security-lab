@@ -40,7 +40,7 @@ eines damals schon vorhandenen vollständigen Workspace-Exports.
 
 Die Baseline bestand unter Linux 337 Python-Tests mit einem erwarteten
 Windows-spezifischen Skip. Der zuletzt lokal geprüfte Stand bestand
-417 Python-Tests (ein Windows-spezifischer Skip), 107 React-Tests, Ruff und den
+417 Python-Tests (ein Windows-spezifischer Skip), 112 React-Tests, Ruff und den
 Produktionsbuild mit Python 3.12.14, Node 24 und den Lockdateien. Nach den dabei
 gefundenen Bedienkorrekturen bestanden über die gezielten Nachläufe alle 13
 funktionalen lokalen Firefox-Fälle und sechs HTTPS-Fälle. Chromium konnte in
@@ -61,6 +61,7 @@ Integration prüfte außerdem API-/Sperrinteraktionen, Studienprovenienz,
 Bewertungsrevisionen und den Versionsübergang. Der lokale Gesamtcheck reicht
 seine Installationssperre auch an den von Playwright gestarteten Backendprozess
 weiter; dies wurde separat mit einem instrumentierten Unterprozess geprüft.
+Manuelles Aktualisieren und Wiederholen fehlgeschlagener Fall- oder Versuchsabfragen fragen vor dem Verwerfen ungespeicherter Namen/Tags nach; fünf React-Regressionen prüfen Abbruch, Zustimmung, Speicherkonflikt und bereits gespeicherte Eingaben.
 Bekannte Metadaten-Schreibreste nach einem harten Prozessabbruch bleiben mit
 sichtbarer Warnung und Originalbytes exportierbar. Die historischen technischen
 Persistenzbelege werden getrennt von wissenschaftlichen Kampagnen gesichert.
