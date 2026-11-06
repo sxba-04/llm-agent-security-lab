@@ -73,6 +73,7 @@ jobs:
           test -s coverage/python/coverage.xml
           test -s frontend/coverage/lcov.info
       - name: Scan the tested revision and wait for its quality gate
+        id: sonar_scan
         uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -82,8 +83,29 @@ jobs:
             -Dsonar.scanner.autoconfig.enabled=false
             -Dproject.settings=.github/sonar-project.properties
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha || github.sha }}
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=300
+      - name: Collect sanitized PR diagnostics after scanner submission
+        id: pr_inventory
+        if: ${{ always() && !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]' && (steps.sonar_scan.outcome == 'success' || steps.sonar_scan.outcome == 'failure') && hashFiles('.scannerwork/report-task.txt') != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          LAB_SONAR_PR: ${{ github.event.pull_request.number }}
+          LAB_EXPECTED_REVISION: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          python3 scripts/sonar_inventory.py
+          --pull-request "$LAB_SONAR_PR"
+          --expected-revision "$LAB_EXPECTED_REVISION"
+          --scanner-report .scannerwork/report-task.txt
+      - name: Preserve sanitized PR inventory even when the quality gate failed
+        if: ${{ always() && !cancelled() && steps.pr_inventory.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sonar-pr-inventory
+          path: quality-inventory/sonar-pr.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Collect the analyzed main-branch issue inventory
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:

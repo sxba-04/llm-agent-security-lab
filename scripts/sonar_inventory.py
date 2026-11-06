@@ -1,6 +1,7 @@
-"""Read-only, bounded SonarCloud main-branch inventory; no scanner or mutations."""
+"""Read-only, bounded SonarCloud main/PR inventory; no scanner or mutations."""
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, timezone
 import json
 import os
@@ -19,9 +20,28 @@ PAGE_SIZE = 100
 MAX_ISSUES = 10_000
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 OUTPUT = Path("quality-inventory/sonar-main.json")
-ENDPOINTS = frozenset({"issues/search", "measures/component", "qualitygates/project_status", "project_analyses/search"})
+PR_OUTPUT = Path("quality-inventory/sonar-pr.json")
+ENDPOINTS = frozenset({"issues/search", "measures/component", "qualitygates/project_status",
+                       "project_analyses/search", "project_pull_requests/list"})
 METRICS = ("coverage", "line_coverage", "branch_coverage", "lines_to_cover", "uncovered_lines",
            "conditions_to_cover", "uncovered_conditions", "duplicated_lines_density", "ncloc")
+PR_METRICS = METRICS + ("new_coverage", "new_line_coverage", "new_branch_coverage", "new_lines_to_cover",
+                        "new_uncovered_lines", "new_conditions_to_cover", "new_uncovered_conditions",
+                        "new_duplicated_lines_density", "new_lines")
+
+
+def revision_value(value: str) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", value):
+        raise InventoryError("Expected a complete Git revision.")
+    return value.lower()
+
+
+def analysis_scope(pull_request: int | None) -> dict:
+    if pull_request is None:
+        return {"branch": BRANCH}
+    if type(pull_request) is not int or not 1 <= pull_request <= 2**31 - 1:
+        raise InventoryError("Pull request must be a positive integer.")
+    return {"pullRequest": str(pull_request)}
 
 
 class InventoryError(Exception):
@@ -146,10 +166,55 @@ def latest_analysis(client) -> dict:
     return result
 
 
-def unresolved_issues(client) -> list[dict]:
+def pull_request_analysis(client, pull_request: int) -> dict:
+    response = client.get("project_pull_requests/list", {"project": PROJECT})
+    entries = list_value(response.get("pullRequests"))
+    if len(entries) > MAX_ISSUES:
+        raise InventoryError("Sonar PR listing exceeds the inventory size limit.")
+    matching = [object_value(entry) for entry in entries if object_value(entry).get("key") == str(pull_request)]
+    if len(matching) != 1:
+        raise InventoryError("Exactly one analyzed Sonar pull request is required.")
+    source = matching[0]
+    date = text_value(source.get("analysisDate"))
+    try:
+        parsed = datetime.fromisoformat(date)
+    except ValueError:
+        raise InventoryError("Sonar PR analysis date is malformed.") from None
+    if parsed.tzinfo is None:
+        raise InventoryError("Sonar PR analysis date must include its timezone.")
+    return {"pull_request": pull_request, "analysis_date": date,
+            "quality_gate_status": text_value(object_value(source.get("status")).get("qualityGateStatus"))}
+
+
+def scanner_submission(path: Path) -> dict:
+    with path.open("rb") as stream:
+        raw = stream.read(32769)
+    if len(raw) > 32768:
+        raise InventoryError("Scanner submission receipt exceeds the size limit.")
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeError:
+        raise InventoryError("Scanner submission receipt is malformed.") from None
+    fields = {}
+    for line in lines:
+        key, separator, value = line.partition("=")
+        if key not in {"projectKey", "serverUrl", "ceTaskId"}:
+            continue
+        if not separator or key in fields:
+            raise InventoryError("Scanner submission receipt has duplicate or missing fields.")
+        fields[key] = value
+    if fields.get("projectKey") != PROJECT or fields.get("serverUrl", "").rstrip("/") != HOST:
+        raise InventoryError("Scanner submission receipt does not match the configured project/host.")
+    task = fields.get("ceTaskId", "")
+    if not re.fullmatch(r"[a-zA-Z0-9_-]{1,200}", task):
+        raise InventoryError("Scanner submission receipt has no valid task identifier.")
+    return {"ce_task_id": task, "source": "local scanner submission receipt; task not queried on server"}
+
+
+def unresolved_issues(client, pull_request: int | None = None) -> list[dict]:
     result, seen, total, page = [], set(), None, 1
     while True:
-        response = client.get("issues/search", {"componentKeys": PROJECT, "branch": BRANCH,
+        response = client.get("issues/search", {"componentKeys": PROJECT, **analysis_scope(pull_request),
                               "resolved": "false", "p": page, "ps": PAGE_SIZE})
         paging = object_value(response.get("paging"))
         current_total = integer_value(paging.get("total"))
@@ -172,24 +237,36 @@ def unresolved_issues(client) -> list[dict]:
         page += 1
 
 
-def measures(client) -> dict:
-    response = client.get("measures/component", {"component": PROJECT, "branch": BRANCH,
-                                                "metricKeys": ",".join(METRICS)})
+def measures(client, pull_request: int | None = None) -> dict:
+    requested = PR_METRICS if pull_request is not None else METRICS
+    response = client.get("measures/component", {"component": PROJECT, **analysis_scope(pull_request),
+                                                "metricKeys": ",".join(requested)})
     source = object_value(response.get("component"))
     if source.get("key") != PROJECT:
         raise InventoryError("Sonar measures do not identify the configured project.")
-    result = {}
+    result, periods, seen = {}, {}, set()
     for entry in list_value(source.get("measures")):
         entry = object_value(entry)
         metric = text_value(entry.get("metric"))
-        if metric not in METRICS or metric in result:
+        if metric not in requested or metric in seen:
             raise InventoryError("Unexpected or duplicate Sonar metric.")
-        result[metric] = text_value(entry.get("value"))
-    return {"values": result, "missing_metrics": [metric for metric in METRICS if metric not in result]}
+        seen.add(metric)
+        _measure_value(entry, metric, result, periods)
+    return {"values": result, "period_values": periods,
+            "missing_metrics": [metric for metric in requested if metric not in seen]}
 
 
-def quality_gate(client) -> dict:
-    response = client.get("qualitygates/project_status", {"projectKey": PROJECT, "branch": BRANCH})
+def _measure_value(entry: dict, metric: str, values: dict, periods: dict) -> None:
+    if "value" in entry:
+        values[metric] = text_value(entry["value"])
+    if "period" in entry:
+        periods[metric] = text_value(object_value(entry["period"]).get("value"))
+    if metric not in values and metric not in periods:
+        raise InventoryError("Sonar metric has neither a value nor a period value.")
+
+
+def quality_gate(client, pull_request: int | None = None) -> dict:
+    response = client.get("qualitygates/project_status", {"projectKey": PROJECT, **analysis_scope(pull_request)})
     source = object_value(response.get("projectStatus"))
     result = {"status": text_value(source.get("status")), "conditions": []}
     for condition in list_value(source.get("conditions")):
@@ -198,20 +275,39 @@ def quality_gate(client) -> dict:
     return result
 
 
-def collect(client) -> dict:
-    before = latest_analysis(client)
-    issues = unresolved_issues(client)
-    metric_values = measures(client)
-    gate = quality_gate(client)
-    if latest_analysis(client) != before:
+def collect(client, *, pull_request: int | None = None, expected_revision: str | None = None,
+            scanner_report: Path | None = None) -> dict:
+    analysis_scope(pull_request)  # Validate scope before any network request.
+    expected = revision_value(expected_revision) if expected_revision is not None else None
+    if pull_request is not None and expected is None:
+        raise InventoryError("PR inventory requires an explicit expected revision.")
+    receipt = scanner_submission(scanner_report) if scanner_report is not None else None
+    observe = latest_analysis if pull_request is None else lambda api: pull_request_analysis(api, pull_request)
+    before = observe(client)
+    if pull_request is None and expected is not None and before["revision"].lower() != expected:
+        raise InventoryError("Sonar main analysis does not match the expected revision.")
+    issues = unresolved_issues(client, pull_request)
+    metric_values = measures(client, pull_request)
+    gate = quality_gate(client, pull_request)
+    if pull_request is not None and gate["status"] != before["quality_gate_status"]:
+        raise InventoryError("Sonar PR listing and quality gate disagree; rerun the inventory.")
+    if observe(client) != before:
         raise InventoryError("Sonar analysis changed during collection; rerun the inventory.")
-    return {"schema_version": 1, "project": PROJECT, "branch": BRANCH,
+    report = {"schema_version": 1, "project": PROJECT,
+            **({"branch": BRANCH} if pull_request is None else {"pull_request": pull_request}),
             "collected_at": datetime.now(timezone.utc).isoformat(), "source": HOST,
             "analysis": before, "issue_filter": {"resolved": False}, "issue_count": len(issues),
             "issues": issues, "measures": metric_values, "quality_gate": gate,
             "limitations": ["A read-only observation, not a security verdict or immutable server snapshot.",
                             "Concurrent issue edits may occur without a new analysis.",
-                            "Only unresolved main-branch issues are included; no PR, closed-issue or source-code export."]}
+                            "Only unresolved issues in the selected scope are included; no closed-issue or source-code export."]}
+    if pull_request is not None:
+        report["scan_context"] = {"expected_revision": expected, "server_revision_verified": False,
+                                  "revision_source": "explicit CI/caller input, not supplied by PR listing API"}
+        report["limitations"].append("PR analysis may predate the current scanner submission; expected revision and CE receipt do not prove server revision identity.")
+    if receipt is not None:
+        report["scanner_submission"] = receipt
+    return report
 
 
 def publish(report: dict, token: str, output: Path) -> None:
@@ -231,20 +327,40 @@ def publish(report: dict, token: str, output: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def main() -> int:
+def options(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pull-request", type=int)
+    parser.add_argument("--expected-revision")
+    parser.add_argument("--scanner-report", type=Path)
+    args = parser.parse_args(argv)
     try:
-        if OUTPUT.exists() or OUTPUT.is_symlink():
+        analysis_scope(args.pull_request)
+        if args.expected_revision is not None:
+            revision_value(args.expected_revision)
+        if args.pull_request is not None and args.expected_revision is None:
+            raise InventoryError("PR inventory requires --expected-revision.")
+    except InventoryError as error:
+        parser.error(str(error))
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = options(argv)
+    output = PR_OUTPUT if args.pull_request is not None else OUTPUT
+    try:
+        if output.exists() or output.is_symlink():
             raise InventoryError("Inventory output already exists; it will not be replaced.")
         token = os.environ.get("SONAR_TOKEN", "")
-        report = collect(SonarClient(token))
-        publish(report, token, OUTPUT)
+        report = collect(SonarClient(token), pull_request=args.pull_request,
+                         expected_revision=args.expected_revision, scanner_report=args.scanner_report)
+        publish(report, token, output)
     except InventoryError as error:
         print(str(error), file=sys.stderr)
         return 1
     except OSError:
         print("Inventory output could not be published.", file=sys.stderr)
         return 1
-    print("Sonar main inventory complete; sanitized JSON artifact is ready.")
+    print("Sonar inventory complete for the selected scope; sanitized JSON artifact is ready.")
     return 0
 
 

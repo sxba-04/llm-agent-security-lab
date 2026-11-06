@@ -293,7 +293,8 @@ class CampaignJobs:
 
     def _display_metadata(self, campaign_id: str) -> dict[str, Any]:
         value = load_metadata(self.directory(campaign_id))
-        return {"display_name": value["display_name"], "tags": value["tags"], "metadata_revision": value["revision"]}
+        return {"display_name": value["display_name"], "tags": value["tags"], "metadata_revision": value["revision"],
+                "metadata_unpublished_writes": len(value.get("unpublished_writes", []))}
 
     def _listing_fingerprint(self, campaign_id: str, directory: Path) -> bytes | None:
         """Stat a bounded tree without opening file contents or following links.

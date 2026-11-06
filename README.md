@@ -13,6 +13,13 @@ Der Assistent kann Tickets lesen und Notizen ergänzen. Ein externer Wissensarti
 
 **Projektstand 0.2:** Lokale FastAPI-/React-Laboroberfläche, zwölf überarbeitete Fallpaare, kontrolliertes Testmodell, PDF-Wissensartikel, prüfbare Laufarchive und unabhängige Bewertung mit gepaarten Vergleichen. Der endgültige Testkatalog und empirische Ergebnisse mit einem echten LLM liegen noch nicht vor. Ausgaben des Testmodells sind **keine Forschungsergebnisse zur Wirksamkeit der Schutzmaßnahmen**.
 
+Der [Roadmap-Ausbau](docs/roadmap-implementation-2026-11-06.md) ergänzt
+Hell/Dunkel/System, mobile Tastaturbedienung, Kampagnennamen und Tags,
+Vergleichs-CSV und Konflikterkennung bei Bewertungen. Eine
+[Gesamtsicherung](docs/workspace-backup.md) bewahrt auch unzugeordnete PDFs und
+Quellstände. [Studienpläne und Pilot-Vorprüfung](docs/study-preflight.md) verbinden
+Teilkampagnen, ohne echte Modellaufrufe freizuschalten.
+
 ## Online-Werkbank
 
 Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/) und **Mit GitHub anmelden** wählen. Freigegeben sind die bestätigten Konten `sxba-04` und `Jonah199`; der persönliche Labor-Zugangscode bleibt ebenfalls nutzbar. Konten, Sitzungen und Prüfgrenzen sind unter [GitHub-Anmeldung](docs/github-login.md) beschrieben.

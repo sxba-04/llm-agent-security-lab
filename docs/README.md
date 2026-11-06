@@ -9,7 +9,9 @@ Die Dokumentation gehört zum Code und wird gemeinsam mit Änderungen über Pull
 | Die Anwendung online verwenden oder den Zugang erneuern | [Hosting, Anmeldung und Speicher](hosting.md), [GitHub-Login und Sitzungen](github-login.md) |
 | Die Anwendung lokal installieren und starten | [Windows-Einrichtung](setup-windows.md), [VS-Code-Aufgaben](vscode.md) |
 | Fälle, PDFs, Kampagnen und Bewertungen bedienen | [Werkbank](workbench.md), [PDF-Quellen](pdf-sources.md) |
+| Kampagnen benennen, vergleichen und parallel bewerten | [Namen, Tags, CSV und Konflikterkennung](campaign-organization.md) |
 | Daten sichern und wiederherstellen | [Vollständige Workspace-Sicherung](workspace-backup.md), [Kampagnenarchive](archives.md) |
+| Eine Änderung veröffentlichen oder zurücknehmen | [Release- und Rollback-Ablauf](release-rollback.md) |
 | Die erste gemeinsame Abnahme durchführen | [Klickanleitung](manual-acceptance.md), [leeres Prüfprotokoll](manual-acceptance-record-template.md) |
 | Den Aufbau und die Ordner verstehen | [Architektur und Modulgrenzen](architecture.md) |
 | Die Versuche und ihre Aussagegrenzen verstehen | [Versuchsablauf und Bewertung](experiment.md) |
@@ -19,6 +21,7 @@ Die Dokumentation gehört zum Code und wird gemeinsam mit Änderungen über Pull
 | Eine Änderung beitragen oder einen Fehler beheben | [CONTRIBUTING](../CONTRIBUTING.md), [Arbeitsablauf](workflow.md), [Projektanweisungen](../AGENTS.md) |
 | Tests und Sicherheitsbefunde nachvollziehen | [Qualitätswerkzeuge](quality-tooling.md), [GitHub Actions](github-actions.md), [Validierungsnachweise](validation.md) |
 | Weitere Verbesserungen priorisieren | [Ausbauplan für Oberfläche, Tests, Betrieb und Datenhaltung](roadmap-2026-11.md) |
+| Die Umsetzung der November-Roadmap prüfen | [Änderungen und Nachweise vom 6. November](roadmap-implementation-2026-11-06.md) |
 | Sicherheitsgrenzen oder Review-Anforderungen prüfen | [Security Policy](../SECURITY.md), [Bedrohungsmodell](threat-model.md), [Reviews](review-settings.md), [Branchschutz](branch-protection.md) |
 | Entscheidungen und KI-Unterstützung nachverfolgen | [Entscheidungen](decisions.md), [Beiträge](contributions.md) |
 

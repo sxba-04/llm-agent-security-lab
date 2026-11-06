@@ -14,6 +14,8 @@ from .documents import reject_symlinks
 
 DIRECTORY = "campaign-metadata"
 VERSION_FILE = re.compile(r"metadata-[0-9]{6}\.json\Z")
+UNPUBLISHED_FILE = re.compile(r"metadata-([0-9]{6})\.json\.[0-9a-f]{16}\.tmp\Z")
+MAX_UNPUBLISHED = 128
 MAX_REVISIONS = 10_000
 # The supported runtime is one process. Readers must not mistake the atomic
 # publisher's temporary file for damaged history; cross-process writers still
@@ -81,11 +83,7 @@ def _load_metadata(campaign: Path) -> dict[str, Any]:
                               "updated_at": None, "previous_sha256": None}
     if not directory.exists():
         return current
-    paths = []
-    for path in directory.iterdir():
-        if len(paths) >= MAX_REVISIONS or not VERSION_FILE.fullmatch(path.name):
-            raise ValueError("Unbekannte oder zu viele Dateien in der Metadatenhistorie.")
-        paths.append(path)
+    paths, unpublished = _metadata_files(directory, campaign)
     previous = None
     for revision, path in enumerate(sorted(paths), 1):
         reject_symlinks(path, campaign)
@@ -94,7 +92,40 @@ def _load_metadata(campaign: Path) -> dict[str, Any]:
                 or current["previous_sha256"] != previous):
             raise ValueError("Die Metadatenhistorie ist unvollständig oder verändert.")
         previous = checksum
+    if any(int(UNPUBLISHED_FILE.fullmatch(path.name)[1]) not in range(1, current["revision"] + 2)
+           for path in unpublished):
+        raise ValueError("Temporäre Metadaten gehören nicht zur vorhandenen Versionshistorie.")
+    if unpublished:
+        # These bytes may be partial or may duplicate an already published hard
+        # link. Never parse/promote/delete them: the immutable final filenames
+        # alone define the committed history, and archives preserve all bytes.
+        current = {**current, "unpublished_writes": sorted(path.name for path in unpublished)}
     return current
+
+
+def _metadata_files(directory: Path, campaign: Path) -> tuple[list[Path], list[Path]]:
+    versions, unpublished = [], []
+    for path in directory.iterdir():
+        reject_symlinks(path, campaign)
+        if not path.is_file() or path.stat().st_size > 8192:
+            raise ValueError("Die Metadatenhistorie enthält einen ungültigen Dateityp oder überschreitet die Größenbegrenzung.")
+        if VERSION_FILE.fullmatch(path.name) and len(versions) < MAX_REVISIONS:
+            versions.append(path)
+        elif UNPUBLISHED_FILE.fullmatch(path.name) and len(unpublished) < MAX_UNPUBLISHED:
+            unpublished.append(path)
+        else:
+            raise ValueError("Unbekannte oder zu viele Dateien in der Metadatenhistorie.")
+    return versions, unpublished
+
+
+def is_unpublished_metadata_file(path: Path) -> bool:
+    """Narrow archive exception for retained publisher residue inside a campaign."""
+    if path.parent.name != DIRECTORY or not UNPUBLISHED_FILE.fullmatch(path.name):
+        return False
+    campaign = path.parent.parent
+    if not (campaign / "manifest.json").is_file():
+        return False
+    return path.name in load_metadata(campaign).get("unpublished_writes", [])
 
 
 def save_metadata(campaign: Path, display_name: str, tags: list[str], expected_revision: int) -> dict[str, Any]:
@@ -114,7 +145,7 @@ def _save_metadata(campaign: Path, display_name: str, tags: list[str], expected_
     previous = None
     directory = reject_symlinks(campaign / DIRECTORY, campaign)
     if expected_revision:
-        previous = hashlib.sha256((directory / f"metadata-{expected_revision:06d}.json").read_bytes()).hexdigest()
+        _, previous = _read_version(directory / f"metadata-{expected_revision:06d}.json")
     value = {"schema_version": 1, "revision": expected_revision + 1, "previous_sha256": previous,
              "display_name": display_name, "tags": tags, "updated_at": datetime.now(timezone.utc).isoformat()}
     try:

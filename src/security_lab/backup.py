@@ -29,7 +29,8 @@ from .jobs import ACTIVE_STATES, _worker_lease
 INDEX_NAME = "workspace-index.json"
 FORMAT_KIND = "security-lab-workspace"
 COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
-KNOWN_ROOTS = {"campaigns", "documents", "reviews", "workers", "studies", "metadata"}
+KNOWN_ROOTS = {"campaigns", "documents", "reviews", "workers", "studies", "metadata", "operations"}
+OPERATIONAL_EVIDENCE_DIRS = {"persistence-20261102"}
 MAX_SOURCE_COMMITS = 32
 SOURCE_LOCKFILES = ("pyproject.toml", "uv.lock", "frontend/package-lock.json")
 
@@ -83,10 +84,41 @@ def _check_workspace(workspace: Path) -> dict[str, Any]:
             documents.append(path.name)
     root_reviews = _check_root_reviews(workspace)
     return {"campaigns": campaigns, "documents": documents, "verified_root_reviews": root_reviews,
+            "supplementary_operations": _operational_evidence(workspace),
             "evidence_complete": all(value["evidence_complete"] for value in campaigns.values()),
             "campaigns_complete": all(value["campaign_state"] == "completed" and value["completed_runs"] == value["planned_runs"]
                                       for value in campaigns.values()),
             "engineering_only": all(value["engineering_only"] for value in campaigns.values())}
+
+
+def _operational_directories(workspace: Path) -> list[Path]:
+    """Only the separately documented historical persistence proof is in scope."""
+    root = workspace / "operations"
+    reject_symlinks(root, workspace)
+    if not root.exists():
+        return []
+    if not root.is_dir():
+        raise ValueError("Operational evidence root must be a directory")
+    directories = []
+    for child in sorted(root.iterdir()):
+        reject_symlinks(child, workspace)
+        if child.name not in OPERATIONAL_EVIDENCE_DIRS or not child.is_dir():
+            raise ValueError("Unknown operational evidence; review its scope before backup")
+        directories.append(child)
+    return directories
+
+
+def _operational_evidence(workspace: Path) -> list[dict[str, Any]]:
+    evidence = []
+    for directory in _operational_directories(workspace):
+        files = archives._export_files(directory)
+        evidence.append({"path": directory.relative_to(workspace).as_posix(),
+                         "files": [name for name, _, _ in files], "file_count": len(files),
+                         "bytes": sum(stamp[0] for _, _, stamp in files),
+                         "verification": "backup_inventory_and_sha256_only",
+                         "semantic_evidence_verified": False,
+                         "included_in_scientific_campaign_totals": False})
+    return evidence
 
 
 def _workspace_children(workspace: Path) -> list[Path]:
@@ -101,6 +133,8 @@ def _workspace_children(workspace: Path) -> list[Path]:
         reject_symlinks(child, workspace)
         if not child.is_dir() or (child.name not in KNOWN_ROOTS and not (child / MANIFEST_FILE).is_file()):
             raise ValueError("Unknown workspace entry; inspect it before creating a full backup")
+        if child.name == "operations":
+            _operational_directories(workspace)
         children.append(child)
     return sorted(children)
 

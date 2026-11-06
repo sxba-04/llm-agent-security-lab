@@ -29,6 +29,7 @@ for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 420 });
     await notes.fill('Automatisierter technischer Entwurf, keine menschliche Studienbewertung.');
     await expect(notes).toBeFocused();
+    await expect(notes).toBeInViewport();
     await noPageOverflow(page);
     if (width === 390) await audit(page, testInfo, 'mobile-review');
     await page.getByRole('textbox', { name: 'Dein Name · Formular A', exact: true }).fill('Browserprüfung');

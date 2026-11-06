@@ -2,16 +2,19 @@
 from pathlib import Path
 import tempfile
 
-from security_lab.web_cli import main
+from security_lab.web_cli import main as launch_workbench
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
-if __name__ == "__main__":
-    base = ROOT / "runs" / "browser-ci"
-    base.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="workspace-", dir=base) as directory:
-        raise SystemExit(main([
+
+def main() -> int:
+    with tempfile.TemporaryDirectory(prefix="security-lab-browser-local-") as directory:
+        return launch_workbench([
             "--workspace", directory, "--cases", str(ROOT / "cases" / "dev"),
             "--frontend-dir", str(ROOT / "frontend" / "dist"),
-        ]))
+        ])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

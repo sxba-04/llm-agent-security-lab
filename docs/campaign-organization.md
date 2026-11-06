@@ -76,3 +76,22 @@ vereinbarte Bewertungsrubrik.
 
 Downloads sind authentifiziert wie andere Datenendpunkte. Eine neue Capability
 aktiviert weder echte Modellaufrufe noch eine neue kostenpflichtige Ressource.
+
+## Unterbrochene Metadatenspeicherung
+
+Ein hart beendeter Prozess kann eine temporäre Datei des atomaren Schreibers
+hinterlassen. Nur das genaue Muster
+`campaign-metadata/metadata-NNNNNN.json.<16 Hexzeichen>.tmp` wird als
+unveröffentlichter Schreibrest erkannt: reguläre Datei, höchstens 8192 Bytes,
+höchstens 128 Reste und eine Revisionsnummer zwischen 1 und der nächsten
+veröffentlichbaren Revision. Unbekannte Dateien, Links, beschädigte
+veröffentlichte Revisionen und unmögliche Revisionsnummern bleiben Fehler.
+
+Der letzte vollständig veröffentlichte Metadatenstand bleibt benutzbar.
+Schreibreste werden weder als neue Version übernommen noch gelöscht oder
+inhaltlich als gültiges JSON ausgegeben. Die Oberfläche zeigt einen Hinweis;
+Prüfberichte nennen sie unter `unpublished_metadata_writes`. Kampagnenarchive
+und vollständige Sicherungen erhalten ihre ursprünglichen Bytes samt
+Prüfsummen. Eine Wiederherstellung und ein späteres reguläres Speichern sind
+weiter möglich. Die Warnung betrifft die Metadatenspeicherung, nicht die
+Vollständigkeit wissenschaftlicher Laufbelege.

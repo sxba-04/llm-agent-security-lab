@@ -63,3 +63,16 @@ it('preserves explicit decision precedence and separately displays observed effe
   expect(rows[2]).toHaveTextContent('Beobachteter Effekt');
   expect(rows[3].querySelector('.pill')).toBeNull();
 });
+
+
+it('keeps a campaign usable and explains preserved uncommitted metadata residue', async () => {
+  const campaign = { campaign_id: 'campaign-residue', created_at: '2026-11-06T10:00:00Z', state: 'completed', completed_runs: 0, planned_runs: 0, engineering_only: true, valid_evidence: true, display_name: 'Published name', metadata_unpublished_writes: 1 };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+    url.endsWith('/records') ? {records: []} : url.endsWith('/metadata') ? {revision: 1, display_name: campaign.display_name, tags: [], unpublished_writes: ['metadata-000002.json.0123456789abcdef.tmp']} : {manifest: {state: 'completed', schedule: [], runs: []}, summary: null}
+  ), {headers: {'Content-Type': 'application/json'}})));
+  render(<CampaignsPage cases={[]} campaigns={[campaign]} selected={campaign.campaign_id} showNew={false} onChange={vi.fn()} />);
+  expect(await screen.findByText(/temporäre Metadatendateien wurden nach einer unterbrochenen Speicherung erhalten/)).toBeInTheDocument();
+  expect(screen.getByRole('button', {name: 'Archiv herunterladen'})).toBeEnabled();
+  expect(screen.getByRole('button', {name: 'Vergleichen'})).toBeEnabled();
+  expect(screen.queryByText(/Integritätsprüfung.*fehlgeschlagen/)).not.toBeInTheDocument();
+});

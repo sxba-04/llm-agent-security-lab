@@ -13,6 +13,7 @@ keine Bewertungen und führt keine Modellaufrufe aus.
 | PDF-Bestand | Auch unzugeordnete und noch nicht bestätigte Originale, Extraktion und Metadaten; vorhandene Bestätigung bleibt erhalten |
 | Bewertungen | Original-CSV, Entwürfe, Versionen und Klärungen; auch ältere Bewertungssätze im Workspace-Hauptverzeichnis |
 | Kampagnennamen, Tags und Studienmanifest | Kanonische Dateien werden mitgesichert |
+| Dokumentierter Betriebsnachweis | Ausschließlich `operations/persistence-20261102/`: alle begrenzten regulären Originaldateien werden bytegleich mitgesichert; gesonderter Nachweis, keine wissenschaftliche Kampagne |
 | Code und Lockdateien | Unveränderliche Git-Snapshots des aktuellen Commits und der verfügbaren, in Kampagnen vermerkten älteren Commits; keine Installation oder Ausführung beim Prüfen |
 | Downloadcache und Betriebssperren | `exports/` und `workers/*.lock` sind ausdrücklich ausgeschlossen; sie sind keine Forschungsbelege |
 | Secrets und Sitzungen | Keine Konfiguration aus Umgebungsvariablen, Git-Zugangsdaten oder OAuth-/Laborsitzungen; unbekannte Workspace-Einträge führen zum Abbruch statt zur stillen Aufnahme |
@@ -31,6 +32,19 @@ Die Grenzen entsprechen dem bestehenden Archivformat: höchstens 10.000 Dateien,
 64 MiB je Datei, 512 MiB entpackte Daten und 512 MiB ZIP. Maximal 32 verschiedene
 Code-Commits werden in einem Backup berücksichtigt. Die Sicherung braucht freien
 Platz für temporäre Prüfung und ZIP; sie ist kein Speichererweiterungsmechanismus.
+
+Der historische [Persistenznachweis vom 2. November](validation.md) liegt bewusst
+außerhalb der UI-Kampagnenablage. Seine verschachtelten technischen Mock-Läufe,
+der unbestätigte PDF-Import, das Kampagnen-ZIP und der damalige Prüfplan werden
+erhalten, aber bei diesem Backup nicht erneut semantisch als Forschungsbelege
+validiert. `supplementary_operations` nennt die Dateien und ihren Umfang sowie
+`verification: backup_inventory_and_sha256_only` und
+`semantic_evidence_verified: false`. Diese Dateien fließen nicht in die
+Kampagnen-, PDF-, Bewertungs- oder Codevollständigkeitsangaben der regulären
+Forschungsbelege ein. Eine erfolgreiche Gesamtsicherung ersetzt daher keine
+erneute Betriebsprüfung. Weitere Unterverzeichnisse in `operations/` werden
+bis zu einer ausdrücklich geprüften Erweiterung abgelehnt; Links, Sonderdateien
+und die bestehenden Größenbegrenzungen bleiben auch hier verboten.
 
 ## Sicherung aus der laufenden Werkbank
 
@@ -60,13 +74,15 @@ Erfolg wird über Prüfung und Wiederherstellungsprotokoll belegt.
 
 ## Lokaler Wartungsablauf
 
-PowerShell-Beispiel aus einem sauberen Repository-Klon; `D:\Studienbelege` ist
-ein vom Betreiber gewählter Ablageort außerhalb des Workspace. Zuerst alle
+PowerShell-Beispiel aus einem sauberen Repository-Klon mit dem regulären lokalen
+Workspace `runs/`; bei einem abweichenden Startparameter auch hier den tatsächlich
+verwendeten Workspace einsetzen. `D:\Studienbelege` ist ein vom Betreiber gewählter
+Ablageort außerhalb des Workspace. Zuerst alle
 Programme stoppen, die denselben Workspace verändern. Die Bestätigungsoption
 `--writers-stopped` stoppt selbst keine Prozesse.
 
 ```powershell
-uv run --locked --extra web python -m security_lab.backup export --workspace .lab-workspace --source . --output D:\Studienbelege\gesamt-2026-11-06.zip --writers-stopped
+uv run --locked --extra web python -m security_lab.backup export --workspace runs --source . --output D:\Studienbelege\gesamt-2026-11-06.zip --writers-stopped
 uv run --locked --extra web python -m security_lab.backup verify D:\Studienbelege\gesamt-2026-11-06.zip
 uv run --locked --extra web python -m security_lab.backup restore D:\Studienbelege\gesamt-2026-11-06.zip D:\Studienbelege\wiederherstellung-2026-11-06
 ```
@@ -96,6 +112,7 @@ Workspace-Pfad aus. Alte Sitzungen werden damit nicht wiederhergestellt.
 | `campaigns_complete` | Alle enthaltenen Kampagnen haben alle geplanten Läufe abgeschlossen; ein zulässig abgebrochener Versuch bleibt hier unvollständig |
 | `source_evidence_complete` | Alle aufgezeichneten Code-Prüfsummen der Kampagnen passen zu mitgesicherten Git-Snapshots |
 | `campaign_source_verified` | Zeigt fehlende/abweichende Originalstände je Kampagne |
+| `supplementary_operations` | Getrennt aufgeführte historische Betriebsdateien; nur ZIP-Inventar und Byte-Prüfsummen geprüft, keine erneute semantische Freigabe |
 | `engineering_only` | Ausschließlich Mock-Belege; kein empirischer Nachweis realer Modelle |
 
 Abbruch oder fehlender historischer Code sind deshalb nicht automatisch ein

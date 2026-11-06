@@ -19,6 +19,9 @@ def main(argv: list[str] | None = None) -> int:
     if not npm or not uv:
         print("uv and npm must already be installed. Run the separate setup steps first.")
         return 1
+    # The Playwright webServer starts uv too. Propagate the same no-install
+    # boundary into that child, rather than only protecting direct uv calls.
+    environment = {**os.environ, "UV_NO_SYNC": "true", "UV_NO_BUILD": "true"}
     steps = [
         ("Python lint (bounded rule set)", ROOT, [uv, "run", "--no-sync", "--locked", "ruff", "check", "."]),
         ("Python tests", ROOT, [uv, "run", "--no-sync", "--locked", "--extra", "web", "--group", "dev", "python", "-m", "unittest", "discover", "-s", "tests", "-v"]),
@@ -29,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     for title, directory, command in steps:
         print("\n" + title, flush=True)
         try:
-            result = subprocess.run(command, cwd=directory, check=False)
+            result = subprocess.run(command, cwd=directory, check=False, env=environment)
         except OSError:
             print("Unable to start this check. No successful overall result is claimed.")
             return 1

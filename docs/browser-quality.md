@@ -2,9 +2,10 @@
 
 Die Prüfungen verwenden synthetische Fälle und Mock-Läufe. Sie ersetzen keine
 menschliche Studienbewertung und führen keine kostenpflichtigen Modellaufrufe aus.
-Jeder lokale Playwright-Start erzeugt einen eigenen temporären Workspace unter
-`runs/browser-ci/`. Die HTTPS-Tests verwenden getrennte temporäre Verzeichnisse
-unter `runs/browser-hosted/`; Zugangscode und GitHub-Identität sind Test-Fixtures.
+Jeder lokale Playwright-Start erzeugt einen eigenen Workspace im temporären
+Verzeichnis des Betriebssystems. Auch die HTTPS-Tests verwenden dort getrennte
+temporäre Verzeichnisse, einschließlich Zertifikaten. Sie legen keine Testordner
+im Forschungsbestand `runs/` an; Zugangscode und GitHub-Identität sind Test-Fixtures.
 
 ## Abdeckung
 
@@ -17,6 +18,8 @@ unter `runs/browser-hosted/`; Zugangscode und GitHub-Identität sind Test-Fixtur
 | Theme-Präferenz, Systemwechsel, geschlossene Navigation und Fokus | Windows und Linux | – |
 | HTTPS-Anmeldung mit Zugangscode; PDF-/Archivdownload | Linux | Linux-Smoke |
 | Synthetischer GitHub-Callback und eigene Sitzungsverwaltung über HTTPS | Linux | – |
+| Anmeldeformular und Sitzungsmenü mobil mit axe in beiden Themes | Linux | – |
+| Zwei parallel geöffnete Bewertungsformulare; Namens-/Tagänderung und CSV-Download | Windows und Linux | – |
 | Zwei visuelle Referenzen: Quellenvergleich Hell/Dunkel | Linux | – |
 
 Die Einschränkung der zusätzlichen Engines auf wenige kritische Abläufe hält die
@@ -71,9 +74,16 @@ npm run test:visual:update
 
 Anschließend beide Bilder visuell vergleichen, den Anlass dokumentieren und die
 PNG-Dateien unter `frontend/e2e/visual.spec.ts-snapshots/` mit dem geprüften Code
-versionieren. CI aktualisiert niemals automatisch Referenzen. Bei der ersten
+versionieren. CI übernimmt neue oder geänderte Referenzen niemals automatisch als akzeptiert. Bei der ersten
 Erstellung auf GitHub kann ein fehlgeschlagener Lauf die Bilder als
 `browser-evidence-Linux` liefern; sie werden vor der Übernahme geprüft.
+
+Die ersten beiden Referenzen stammen aus dem Linux-Lauf
+[42189030187, Job 127803182067](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/42189030187/job/127803182067)
+auf `e9eaad0751f4322438d9fe4a766a05c6be47b11d`. Beide vollständigen Ausschnitte
+wurden nach verifiziertem Artefaktdownload visuell geprüft und unverändert
+übernommen. Die 15 funktionalen Fälle dieses Laufs bestanden; erst der nächste
+Lauf mit versionierten Bildern kann auch die zwei Pixelvergleiche bestehen.
 
 ## Nachweise und Grenzen
 

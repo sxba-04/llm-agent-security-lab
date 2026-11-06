@@ -1,5 +1,16 @@
 # Beiträge und KI-Unterstützung
 
+Am 6. November 2026 beauftragte Sebastian die Umsetzung der November-Roadmap.
+ChatGPT/Codex implementierte Oberfläche, Tests, Gesamtsicherung, lokale Diagnose,
+Studienmanifest, Kampagnenkomfort und Ressourcenmessung mit getrennten
+Implementierungs- und Gegenprüfungsaufgaben. Die unabhängigen Prüfungen fanden
+unter anderem konkurrierende Metadatenzugriffe, unvollständige Sicherungsinventare,
+ein Rennen beim Wiederherstellungsziel und zu schwache Manifestvalidierung;
+die Korrekturen erhielten Regressionstests. Die
+[Umsetzungsnachweise](roadmap-implementation-2026-11-06.md) unterscheiden lokale
+Tests, GitHub-CI und tatsächliche Live-Prüfungen. Keine menschlichen Urteile,
+Autorenfreigaben oder empirischen Modellbefunde wurden erzeugt.
+
 Die Studienarbeit wird von Sebastian Herrmann und Jonah Häuser verantwortet. Eine technische Aufgabenübernahme durch ChatGPT/Codex ersetzt weder die eigenständige Prüfung noch die Erklärung der verwendeten Methode und Implementierung.
 
 ## Dokumentierter Ausgangsstand

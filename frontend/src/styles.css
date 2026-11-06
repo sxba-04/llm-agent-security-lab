@@ -91,6 +91,8 @@ input[type=checkbox] { width: 20px; height: 20px; }
 .table-scroll, .record-list, .tabs { overscroll-behavior-inline: contain; }
 .page-heading, .panel-header, .notice, .timeline-event summary { overflow-wrap: anywhere; }
 @media(max-width:1100px) { .connection-state { display: none; } .topbar { gap: 10px; } }
+/* A short viewport must scroll the entire form into view, including its notes. */
+@media(max-height:800px) { .rating-form { position: static; } }
 @media(max-width:760px) {
   .sidebar { visibility: hidden; max-height: 100dvh; overflow-y: auto; }
   .sidebar.open { visibility: visible; }

@@ -6,6 +6,8 @@ import csv
 import io
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import threading
@@ -163,6 +165,87 @@ class CampaignComfortTests(unittest.TestCase):
         first.write_bytes(b' ' * 8193)
         with self.assertRaisesRegex(ValueError, 'Größenbegrenzung'):
             load_metadata(self.path)
+
+    def test_process_death_residue_preserves_listing_archive_and_further_appends(self):
+        script = """
+import os, sys
+from pathlib import Path
+from security_lab import batch
+from security_lab.campaign_metadata import save_metadata
+original = batch.os.link
+def interrupted(source, destination):
+    if sys.argv[2] == 'after':
+        original(source, destination)
+    os._exit(23)
+batch.os.link = interrupted
+save_metadata(Path(sys.argv[1]), 'Interrupted save', [], 1)
+"""
+        for phase in ('before', 'after'):
+            with self.subTest(phase=phase):
+                campaign = self.workspace / ('crash-' + phase)
+                shutil.copytree(self.path, campaign)
+                result = subprocess.run([sys.executable, '-c', script, str(campaign), phase],
+                                        capture_output=True, check=False, timeout=10)
+                self.assertEqual(result.returncode, 23, result.stderr.decode(errors='replace'))
+                residue = next((campaign / 'campaign-metadata').glob('*.tmp'))
+                original_bytes = residue.read_bytes()
+                metadata = load_metadata(campaign)
+                expected_revision = 1 if phase == 'before' else 2
+                self.assertEqual(metadata['revision'], expected_revision)
+                self.assertEqual(metadata['unpublished_writes'], [residue.name])
+                rows = self.app.state.jobs.list()
+                brief = next(row for row in rows if row['campaign_id'] != self.campaign
+                             and row['display_name'] == metadata['display_name']
+                             and row['metadata_unpublished_writes'] == 1)
+                self.assertTrue(brief['valid_evidence'])
+                self.assertEqual(brief['state'], 'completed')
+                output = self.root / (phase + '.zip')
+                report = export_campaign(campaign, output)
+                relative = 'campaign-metadata/' + residue.name
+                self.assertEqual(report['unpublished_metadata_writes'], [relative])
+                restored = self.root / ('restored-' + phase)
+                import_campaign(output, restored)
+                self.assertEqual((restored / relative).read_bytes(), original_bytes)
+                updated = save_metadata(restored, 'Continued after inspection', [], expected_revision)
+                self.assertEqual(updated['revision'], expected_revision + 1)
+                self.assertEqual((restored / relative).read_bytes(), original_bytes)
+                self.assertEqual(load_metadata(restored)['display_name'], 'Continued after inspection')
+
+    def test_only_bounded_known_publisher_residue_is_tolerated(self):
+        directory = self.path / 'campaign-metadata'
+        residue = directory / 'metadata-000002.json.0123456789abcdef.tmp'
+        residue.write_bytes(b'{"display_name": "partial')
+        self.assertEqual(load_metadata(self.path)['revision'], 1)
+        self.assertEqual(load_metadata(self.path)['unpublished_writes'], [residue.name])
+        self.assertEqual(residue.read_bytes(), b'{"display_name": "partial')
+        cases = [('arbitrary.tmp', b'preserve unknown'),
+                 ('metadata-000002.json.not-a-publisher.tmp', b'unknown publisher'),
+                 ('metadata-000999.json.0123456789abcdef.tmp', b'impossible revision'),
+                 ('metadata-000002.json.abcdef0123456789.tmp', b'x' * 8193)]
+        for name, content in cases:
+            with self.subTest(name=name):
+                path = directory / name
+                path.write_bytes(content)
+                try:
+                    with self.assertRaises(ValueError):
+                        load_metadata(self.path)
+                    with self.assertRaises(ValueError):
+                        export_campaign(self.path, self.root / 'invalid.zip')
+                    self.assertEqual(path.read_bytes(), content)
+                finally:
+                    path.unlink()
+        outside = self.path / 'records' / residue.name
+        outside.write_bytes(b'not a metadata publisher location')
+        try:
+            with self.assertRaisesRegex(ValueError, 'unfinished temporary write'):
+                export_campaign(self.path, self.root / 'outside.zip')
+        finally:
+            outside.unlink()
+        committed = directory / 'metadata-000001.json'
+        committed.write_text('{"corrupt":')
+        with self.assertRaises(ValueError):
+            load_metadata(self.path)
+        self.assertEqual(residue.read_bytes(), b'{"display_name": "partial')
 
     def test_parallel_rating_changes_reject_stale_writer_and_keep_original(self):
         url, body = self._review()

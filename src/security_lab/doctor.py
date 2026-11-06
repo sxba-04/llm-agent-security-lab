@@ -175,7 +175,7 @@ def diagnose(root: Path, workspace: Path, ports: list[int]) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
-    parser.add_argument("--workspace", type=Path, default=Path("runs/workbench"))
+    parser.add_argument("--workspace", type=Path, default=Path("runs"))
     parser.add_argument("--port", type=int, action="append", help="Loopback port; repeat for more ports (default 8765).")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)

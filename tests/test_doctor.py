@@ -1,6 +1,7 @@
 """Read-only setup diagnostics and credential-safe failure messages."""
 from __future__ import annotations
 
+import io
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,27 @@ from security_lab import doctor
 
 
 class DoctorTests(unittest.TestCase):
+    def test_cli_defaults_to_the_existing_local_workbench_workspace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "runs").mkdir()
+            built = root / "frontend" / "dist" / "index.html"
+            built.parent.mkdir(parents=True)
+            built.write_text("build", encoding="utf-8")
+            previous = Path.cwd()
+            output = io.StringIO()
+            try:
+                os.chdir(root)
+                with patch.object(doctor, "version_checks", return_value=[]), \
+                     patch.object(doctor, "port_check", return_value=doctor.check("port", "ok", "test fixture")), \
+                     patch.dict(os.environ, {}, clear=True), patch("sys.stdout", output):
+                    self.assertEqual(doctor.main(["--root", str(root), "--json"]), 0)
+            finally:
+                os.chdir(previous)
+            report = json.loads(output.getvalue())
+            self.assertEqual(next(row for row in report["checks"] if row["name"] == "workspace-present")["status"], "ok")
+            self.assertFalse((root / "runs" / "workbench").exists())
+
     def test_missing_workspace_and_build_are_reported_without_creating_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

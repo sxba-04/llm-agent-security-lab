@@ -1,5 +1,6 @@
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -90,6 +91,28 @@ class WorkspaceBackupTests(unittest.TestCase):
                 backup.restore_workspace_backup(archive, root / "restored")
             with self.assertRaises(FileExistsError):
                 backup.export_workspace(workspace, source, archive)
+
+    def test_metadata_publisher_residue_is_preserved_and_reported_through_backup_restore(self):
+        from security_lab.campaign_metadata import load_metadata, save_metadata
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, campaign, _ = self.fixture(root)
+            save_metadata(campaign, "Published name", [], 0)
+            relative = Path("campaign-metadata/metadata-000002.json.0123456789abcdef.tmp")
+            content = b'{"display_name": "interrupted bytes'
+            (campaign / relative).write_bytes(content)
+            result = backup.export_workspace(workspace, source, root / "backup.zip")
+            campaign_key = campaign.relative_to(workspace).as_posix()
+            self.assertEqual(result["campaigns"][campaign_key]["unpublished_metadata_writes"], [relative.as_posix()])
+            self.assertTrue(result["verified"])
+            restored = backup.restore_workspace_backup(root / "backup.zip", root / "restored")
+            recovered = Path(restored["workspace"]) / campaign_key
+            self.assertEqual((recovered / relative).read_bytes(), content)
+            self.assertEqual(load_metadata(recovered)["display_name"], "Published name")
+            save_metadata(recovered, "New published name", [], 1)
+            self.assertEqual(load_metadata(recovered)["revision"], 2)
+            self.assertEqual((recovered / relative).read_bytes(), content)
+            self.assertEqual((campaign / relative).read_bytes(), content)
 
     def test_rejects_changed_bytes_extra_members_schema_and_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -293,3 +316,84 @@ class WorkspaceBackupTests(unittest.TestCase):
             (root / "reviews").mkdir()
             with patch.object(backup, "load_results", side_effect=AssertionError("unnecessary full load")):
                 self.assertEqual(backup._check_root_reviews(root), [])
+
+    def test_documented_operational_evidence_roundtrip_is_reported_separately(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, _, document_id = self.fixture(root)
+            proof = workspace / "operations/persistence-20261102"
+            technical_campaign = proof / "campaign"
+            run_batch(self.cases, technical_campaign, ScriptedModel, variants=["B", "F", "P"], sources=["clean"])
+            shutil.copytree(workspace / "documents" / document_id, proof / "documents" / document_id)
+            backup.archives.export_campaign(technical_campaign, proof / "campaign.zip")
+            checksums = {path.relative_to(proof).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                         for path in proof.rglob("*") if path.is_file()}
+            (proof / "checksums.json").write_text(json.dumps(checksums))
+            originals = {path.relative_to(workspace): path.read_bytes()
+                         for path in proof.rglob("*") if path.is_file()}
+            archive = root / "operational.zip"
+            result = backup.export_workspace(workspace, source, archive)
+            self.assertEqual(list(result["campaigns"]), ["campaigns/campaign-fixture"])
+            self.assertEqual(result["documents"], [document_id])
+            self.assertTrue(result["source_evidence_complete"])
+            self.assertEqual(len(result["supplementary_operations"]), 1)
+            operational = result["supplementary_operations"][0]
+            self.assertEqual(operational["path"], "operations/persistence-20261102")
+            self.assertEqual(operational["file_count"], len(originals))
+            self.assertEqual(operational["verification"], "backup_inventory_and_sha256_only")
+            self.assertFalse(operational["semantic_evidence_verified"])
+            self.assertFalse(operational["included_in_scientific_campaign_totals"])
+            restored = backup.restore_workspace_backup(archive, root / "restored")
+            for path, content in originals.items():
+                self.assertEqual((Path(restored["workspace"]) / path).read_bytes(), content)
+            self.assertEqual(backup.verify_workspace_backup(archive)["supplementary_operations"], result["supplementary_operations"])
+            self.assertFalse((Path(restored["workspace"]) / "operations/persistence-20261102/documents" / document_id / "confirmation.json").exists())
+
+    def test_operational_evidence_remains_byte_checked_without_semantic_claims(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, _, _ = self.fixture(root)
+            proof = workspace / "operations/persistence-20261102"
+            proof.mkdir(parents=True)
+            (proof / "checksums.json").write_text("historical opaque diagnostic record")
+            archive = root / "opaque-proof.zip"
+            result = backup.export_workspace(workspace, source, archive)
+            self.assertFalse(result["supplementary_operations"][0]["semantic_evidence_verified"])
+            name = "workspace/operations/persistence-20261102/checksums.json"
+            self.rewrite(archive, root / "changed-proof.zip", lambda content: content.__setitem__(name, b"changed"))
+            with self.assertRaisesRegex(ValueError, "hash mismatch"):
+                backup.verify_workspace_backup(root / "changed-proof.zip")
+
+    def test_other_operational_roots_and_symlinks_are_not_implicitly_authorized(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, _, _ = self.fixture(root)
+            unknown = workspace / "operations/secrets"
+            unknown.mkdir(parents=True)
+            (unknown / "credentials.json").write_text("synthetic unexpected entry")
+            with self.assertRaisesRegex(ValueError, "Unknown operational"):
+                backup.export_workspace(workspace, source, root / "unknown-operations.zip")
+            shutil.rmtree(unknown)
+            proof = workspace / "operations/persistence-20261102"
+            proof.mkdir()
+            outside = root / "outside.txt"
+            outside.write_text("must not be read into the archive")
+            link = proof / "linked.txt"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("File symlinks unavailable on this platform")
+            with self.assertRaises(ValueError):
+                backup.export_workspace(workspace, source, root / "linked-operations.zip")
+
+    def test_legacy_campaign_named_like_canonical_root_still_gets_validated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, campaign, _ = self.fixture(root)
+            legacy = workspace / "studies"
+            shutil.copytree(campaign, legacy)
+            result = backup.export_workspace(workspace, source, root / "legacy-name.zip")
+            self.assertIn("studies", result["campaigns"])
+            next((legacy / "records").glob("*.json")).write_text("damaged original")
+            with self.assertRaises(ValueError):
+                backup.export_workspace(workspace, source, root / "damaged-legacy-name.zip")

@@ -41,7 +41,7 @@ test('system preference tracks changes while explicit choice survives reload', a
     .toEqual({ local: { 'security-lab.theme': 'dark' }, session: {} });
 });
 
-test('closed mobile navigation is absent from keyboard order; Escape restores trigger focus', async ({ page }) => {
+test('closed mobile navigation is absent from keyboard order; Escape restores trigger focus', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/');
   const menu = page.getByRole('button', { name: 'Menü öffnen', exact: true });
@@ -53,6 +53,14 @@ test('closed mobile navigation is absent from keyboard order; Escape restores tr
   await expect(menu).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('link', { name: 'Übersicht', exact: true })).toBeFocused();
+  const drawer = page.getByRole('dialog', { name: 'Navigation', exact: true });
+  const close = drawer.getByRole('button', { name: 'Navigation schließen', exact: true });
+  await close.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(drawer.getByRole('link', { name: 'PDF-Quellen', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await audit(page, testInfo, 'mobile-navigation');
   await page.keyboard.press('Escape');
   await expect(menu).toBeFocused();
   await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toHaveCount(0);
