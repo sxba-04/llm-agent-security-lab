@@ -40,7 +40,7 @@ eines damals schon vorhandenen vollständigen Workspace-Exports.
 
 Die Baseline bestand unter Linux 337 Python-Tests mit einem erwarteten
 Windows-spezifischen Skip. Der zuletzt lokal geprüfte Stand bestand
-413 Python-Tests (ein Windows-spezifischer Skip), 107 React-Tests, Ruff und den
+417 Python-Tests (ein Windows-spezifischer Skip), 107 React-Tests, Ruff und den
 Produktionsbuild mit Python 3.12.14, Node 24 und den Lockdateien. Nach den dabei
 gefundenen Bedienkorrekturen bestanden über die gezielten Nachläufe alle 13
 funktionalen lokalen Firefox-Fälle und sechs HTTPS-Fälle. Chromium konnte in
@@ -64,6 +64,10 @@ weiter; dies wurde separat mit einem instrumentierten Unterprozess geprüft.
 Bekannte Metadaten-Schreibreste nach einem harten Prozessabbruch bleiben mit
 sichtbarer Warnung und Originalbytes exportierbar. Die historischen technischen
 Persistenzbelege werden getrennt von wissenschaftlichen Kampagnen gesichert.
+Die abschließende Backup-Prüfung erhält auch ältere Kampagnen namens `exports`
+und verschachtelte Belegdateien mit der Endung `.lock`. Ungültige Manifesttypen
+werden abgelehnt; ein Vergleich der Kampagneninventare vor und nach der
+Archivprüfung verhindert die Veröffentlichung bei einer ausgelassenen Kampagne.
 Der [Release- und Rollback-Ablauf](release-rollback.md) beschreibt die
 Vorab-Sicherung, getrennte Pages-/Render-Kontrolle und einen geordneten Rückweg.
 

@@ -47,14 +47,21 @@ def _campaign_directories(workspace: Path) -> list[Path]:
         if not parent.is_dir():
             continue
         for child in sorted(parent.iterdir()):
-            reject_symlinks(child, workspace)
-            manifest = child / MANIFEST_FILE
-            reject_symlinks(manifest, workspace)
-            if parent == workspace / "campaigns" and (not child.is_dir() or not manifest.is_file()):
-                raise ValueError("Managed campaign has missing manifest; preserve and inspect the original evidence")
-            if child.is_dir() and manifest.is_file():
+            if _has_campaign_manifest(child, workspace, required=parent == workspace / "campaigns"):
                 directories.append(child)
     return directories
+
+
+def _has_campaign_manifest(directory: Path, workspace: Path, *, required: bool = False) -> bool:
+    reject_symlinks(directory, workspace)
+    manifest = directory / MANIFEST_FILE
+    reject_symlinks(manifest, workspace)
+    if manifest.exists() and not manifest.is_file():
+        raise ValueError("Campaign manifest is not a regular file; preserve and inspect the original evidence")
+    present = directory.is_dir() and manifest.is_file()
+    if required and not present:
+        raise ValueError("Managed campaign has missing manifest; preserve and inspect the original evidence")
+    return present
 
 
 def _check_worker_ownership(workspace: Path) -> None:
@@ -126,10 +133,7 @@ def _workspace_children(workspace: Path) -> list[Path]:
     """Fail on unknown roots instead of silently omitting research or secrets."""
     children = []
     for child in workspace.iterdir():
-        if child.name == "exports":
-            reject_symlinks(child, workspace)
-            if not child.is_dir():
-                raise ValueError("Workspace export cache is not a directory")
+        if child.name == "exports" and _is_download_cache(child, workspace):
             continue
         reject_symlinks(child, workspace)
         if not child.is_dir() or (child.name not in KNOWN_ROOTS and not (child / MANIFEST_FILE).is_file()):
@@ -140,10 +144,23 @@ def _workspace_children(workspace: Path) -> list[Path]:
     return sorted(children)
 
 
+def _is_download_cache(directory: Path, workspace: Path) -> bool:
+    """A legacy campaign named exports takes precedence over the ZIP cache."""
+    if _has_campaign_manifest(directory, workspace):
+        return False
+    if not directory.is_dir():
+        raise ValueError("Workspace export cache is not a directory")
+    for path in directory.iterdir():
+        reject_symlinks(path, workspace)
+        if not path.is_file() or path.suffix.lower() != ".zip":
+            raise ValueError("Ambiguous exports directory; preserve and inspect files before backup")
+    return True
+
+
 def _workspace_child_files(child: Path) -> list[tuple[str, Path, tuple]]:
     return [("workspace/" + child.name + "/" + name, path, stamp)
             for name, path, stamp in archives._export_files(child)
-            if not (child.name == "workers" and name.endswith(".lock"))]
+            if not (child.name == "workers" and "/" not in name and name.endswith(".lock"))]
 
 
 def _workspace_files(workspace: Path) -> list[tuple[str, Path, tuple]]:
@@ -316,7 +333,8 @@ def _assert_unchanged(workspace: Path, files: list[tuple], indexed: dict) -> Non
 def _write_snapshot(path: Path, files: list[tuple], source_info: dict) -> dict:
     index = {"schema_version": 1, "kind": FORMAT_KIND,
              "created_at": datetime.now(timezone.utc).isoformat(),
-             "excluded": ["exports (regenerable download cache)", "workers/*.lock (live OS locks)"],
+             "excluded": ["exports without a campaign manifest (regular ZIP download cache only)",
+                          "workers/*.lock (live OS locks)"],
              "sources": source_info, "files": {}}
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         total = 0
@@ -370,6 +388,8 @@ def export_workspace(workspace: str | Path, source_root: str | Path, output_path
             if _git(source_root, "rev-parse", "HEAD").decode().strip() != source_info["current_commit"] or _git(source_root, "status", "--porcelain", "--untracked-files=no").strip():
                 raise ValueError("Source checkout changed during backup")
             report = verify_workspace_backup(candidate)
+            if set(report["campaigns"]) != set(check["campaigns"]):
+                raise ValueError("Workspace campaign inventory differs from the verified backup")
             with candidate.open("rb+") as stream:
                 os.fsync(stream.fileno())
             os.link(candidate, output_path)

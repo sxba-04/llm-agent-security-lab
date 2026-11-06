@@ -15,7 +15,7 @@ keine Bewertungen und führt keine Modellaufrufe aus.
 | Kampagnennamen, Tags und Studienmanifest | Kanonische Dateien werden mitgesichert |
 | Dokumentierter Betriebsnachweis | Ausschließlich `operations/persistence-20261102/`: alle begrenzten regulären Originaldateien werden bytegleich mitgesichert; gesonderter Nachweis, keine wissenschaftliche Kampagne |
 | Code und Lockdateien | Unveränderliche Git-Snapshots des aktuellen Commits und der verfügbaren, in Kampagnen vermerkten älteren Commits; keine Installation oder Ausführung beim Prüfen |
-| Downloadcache und Betriebssperren | `exports/` und `workers/*.lock` sind ausdrücklich ausgeschlossen; sie sind keine Forschungsbelege |
+| Downloadcache und Betriebssperren | `exports/` nur ohne Kampagnenmanifest und mit ausschließlich regulären ZIP-Dateien sowie direkte `workers/*.lock` werden ausgeschlossen; gleichnamige Belege in Unterordnern bleiben erhalten |
 | Secrets und Sitzungen | Keine Konfiguration aus Umgebungsvariablen, Git-Zugangsdaten oder OAuth-/Laborsitzungen; unbekannte Workspace-Einträge führen zum Abbruch statt zur stillen Aufnahme |
 
 Ein älterer Commit kann beispielsweise in einem flachen Hosting-Klon fehlen.
@@ -32,6 +32,14 @@ Die Grenzen entsprechen dem bestehenden Archivformat: höchstens 10.000 Dateien,
 64 MiB je Datei, 512 MiB entpackte Daten und 512 MiB ZIP. Maximal 32 verschiedene
 Code-Commits werden in einem Backup berücksichtigt. Die Sicherung braucht freien
 Platz für temporäre Prüfung und ZIP; sie ist kein Speichererweiterungsmechanismus.
+
+Eine ältere CLI-Kampagne kann selbst `exports` heißen. Enthält dieser Ordner
+ein gültiges Kampagnenmanifest, wird er vollständig wie jede andere Kampagne
+gesichert und wiederhergestellt, einschließlich seiner Originalbewertungen.
+Uneindeutige Cache-Inhalte ohne Manifest oder vorhandene Manifeste, die keine
+regulären Dateien sind, führen zum Abbruch. Vor der Veröffentlichung müssen
+die zuvor erkannten Kampagnen mit dem Inventar des geprüften Backups
+übereinstimmen; eine ausgelassene Kampagne darf kein erfolgreiches Backup ergeben.
 
 Der historische [Persistenznachweis vom 2. November](validation.md) liegt bewusst
 außerhalb der UI-Kampagnenablage. Seine verschachtelten technischen Mock-Läufe,

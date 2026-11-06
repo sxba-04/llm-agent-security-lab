@@ -397,3 +397,76 @@ class WorkspaceBackupTests(unittest.TestCase):
             next((legacy / "records").glob("*.json")).write_text("damaged original")
             with self.assertRaises(ValueError):
                 backup.export_workspace(workspace, source, root / "damaged-legacy-name.zip")
+
+    def test_exports_campaign_roundtrip_preserves_originals_while_plain_cache_is_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, campaign, _ = self.fixture(root)
+            cache_only = root / "cache-only.zip"
+            initial = backup.export_workspace(workspace, source, cache_only)
+            self.assertEqual(len(initial["campaigns"]), 1)
+            with zipfile.ZipFile(cache_only) as archive:
+                self.assertFalse(any(name.startswith("workspace/exports/") for name in archive.namelist()))
+            legacy = workspace / "exports"
+            shutil.copytree(campaign, legacy, dirs_exist_ok=True)
+            originals = {path.relative_to(workspace): hashlib.sha256(path.read_bytes()).hexdigest()
+                         for directory in (campaign, legacy)
+                         for path in directory.rglob("*") if path.is_file()}
+            before = backup._check_workspace(workspace)
+            self.assertEqual(set(before["campaigns"]), {"campaigns/campaign-fixture", "exports"})
+            result = backup.export_workspace(workspace, source, root / "two-campaigns.zip")
+            self.assertEqual(set(result["campaigns"]), set(before["campaigns"]))
+            restored = backup.restore_workspace_backup(root / "two-campaigns.zip", root / "restored")
+            recovered = Path(restored["workspace"])
+            self.assertEqual(set(restored["campaigns"]), set(before["campaigns"]))
+            for relative, expected in originals.items():
+                self.assertEqual(hashlib.sha256((recovered / relative).read_bytes()).hexdigest(), expected)
+            self.assertEqual(load_results(recovered / "exports"), load_results(legacy))
+
+    def test_ambiguous_export_cache_and_nonfile_manifests_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, _, _ = self.fixture(root)
+            records = workspace / "exports/records"
+            records.mkdir()
+            (records / "original.json").write_text("preserve possible crash evidence")
+            with self.assertRaisesRegex(ValueError, "Ambiguous exports"):
+                backup.export_workspace(workspace, source, root / "ambiguous.zip")
+            self.assertEqual((records / "original.json").read_text(), "preserve possible crash evidence")
+            for name in ("exports", "studies", "metadata"):
+                with self.subTest(directory=name):
+                    manifest = workspace / name / "manifest.json"
+                    manifest.mkdir(parents=True)
+                    with self.assertRaisesRegex(ValueError, "manifest is not a regular file"):
+                        backup.export_workspace(workspace, source, root / (name + "-bad.zip"))
+                    self.assertTrue(manifest.is_dir())
+                    manifest.rmdir()
+
+    def test_inventory_omission_never_publishes_verified_backup_with_fewer_campaigns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, campaign, _ = self.fixture(root)
+            shutil.copytree(campaign, workspace / "exports", dirs_exist_ok=True)
+            real_inventory = backup._workspace_files
+            def omit_legacy(directory):
+                return [item for item in real_inventory(directory) if not item[0].startswith("workspace/exports/")]
+            with patch.object(backup, "_workspace_files", side_effect=omit_legacy):
+                with self.assertRaisesRegex(ValueError, "campaign inventory differs"):
+                    backup.export_workspace(workspace, source, root / "omitted.zip")
+            self.assertFalse((root / "omitted.zip").exists())
+
+    def test_nested_lock_named_evidence_is_preserved_while_direct_worker_locks_are_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace, source, _, _ = self.fixture(root)
+            nested = workspace / "workers/audit/proof.lock"
+            nested.parent.mkdir()
+            content = b"original audit evidence; not a direct worker lease"
+            nested.write_bytes(content)
+            backup.export_workspace(workspace, source, root / "locks.zip")
+            with zipfile.ZipFile(root / "locks.zip") as archive:
+                self.assertEqual(archive.read("workspace/workers/audit/proof.lock"), content)
+                self.assertNotIn("workspace/workers/retired.lock", archive.namelist())
+            restored = backup.restore_workspace_backup(root / "locks.zip", root / "restored")
+            recovered = Path(restored["workspace"]) / nested.relative_to(workspace)
+            self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), hashlib.sha256(content).hexdigest())
