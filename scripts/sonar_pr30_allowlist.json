@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "project": "sxba-04_llm-agent-security-lab",
+  "pull_request": "30",
+  "reviewed_revision": "6b48f567e708de55230029549fee7a27c06b3d93",
+  "approved": false,
+  "expected_analysis_date": null,
+  "issues": [
+    {
+      "key": "AaGwHoAa3f6_aqzNEjCM",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/backup.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAa3f6_aqzNEjCM, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. restore_workspace_backup cleanup receives the explicit operator destination. rmdir removes only the exclusively reserved empty container; rival contents are retained. Neither archive entries nor model output choose this outer destination. Existing racing-destination and failed-publication regressions cover the boundary. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-backup-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-backup-cli.md",
+      "evidence_document_sha256": "8c9d5d8fb900153c69f46987be03a98de59c36f41f548e061227830aea07e1a7"
+    },
+    {
+      "key": "AaGwHoAa3f6_aqzNEjCL",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/backup.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAa3f6_aqzNEjCL, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. export_workspace publishes a verified temporary ZIP to an explicit operator output or fixed server-generated temporary path. Outputs inside the live workspace and existing destinations are rejected; os.link does not overwrite a rival. The authenticated HTTP endpoint takes no path parameter. Existing archive publication and internal-output tests cover these constraints. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-backup-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-backup-cli.md",
+      "evidence_document_sha256": "8c9d5d8fb900153c69f46987be03a98de59c36f41f548e061227830aea07e1a7"
+    },
+    {
+      "key": "AaGwHoAy3f6_aqzNEjCU",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/archives.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAy3f6_aqzNEjCU, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. _sha only reads an explicitly selected operator archive or files from an inventoried campaign/validated extraction tree. Archive member names pass safe-name/type/hash validation before extraction. This helper is not exposed as a model tool. Traversal, symlink, duplicate-path and tamper regressions exercise the untrusted archive boundary. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-backup-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-backup-cli.md",
+      "evidence_document_sha256": "8c9d5d8fb900153c69f46987be03a98de59c36f41f548e061227830aea07e1a7"
+    },
+    {
+      "key": "AaGwHoAa3f6_aqzNEjCN",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/backup.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAa3f6_aqzNEjCN, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. restore_workspace_backup creates a new explicitly selected operator destination with exist_ok=False after symlink/parent validation. An external absolute restore target is intended functionality. Existing and racing targets are rejected. No model argument or archive member is used as this outer destination. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-backup-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-backup-cli.md",
+      "evidence_document_sha256": "8c9d5d8fb900153c69f46987be03a98de59c36f41f548e061227830aea07e1a7"
+    },
+    {
+      "key": "AaGwHoAa3f6_aqzNEjCK",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/backup.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAa3f6_aqzNEjCK, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. restore_workspace_backup renames the fully verified staging tree to the literal snapshot child of the exclusively reserved operator destination. Archive member text cannot replace that destination or child name. Invalid archive inventory, hashes and paths fail before publication; originals are retained. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-backup-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-backup-cli.md",
+      "evidence_document_sha256": "8c9d5d8fb900153c69f46987be03a98de59c36f41f548e061227830aea07e1a7"
+    },
+    {
+      "key": "AaGwHoBJ3f6_aqzNEjCV",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/study.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoBJ3f6_aqzNEjCV, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. export_part_cases receives --output directly from the operator CLI after frozen-plan and partition validation. It requires a new destination and derives case filenames only from a local numeric counter. Neither case IDs nor article/model text become output paths. Existing frozen-export and no-overwrite regressions verify the intended export behavior. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-study-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-study-cli.md",
+      "evidence_document_sha256": "a1f73d916c925b708eefd2f8c2653b317ea871816eba10452e3819fbab806577"
+    },
+    {
+      "key": "AaGwHoBJ3f6_aqzNEjCW",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/study.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoBJ3f6_aqzNEjCW, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. _read_json receives operator-selected plan/config/evidence paths or the literal manifest.json below operator campaign paths. JSON/model text does not select secondary file reads. Input size/type/duplicate-field checks are input validation, not a claim of filesystem confinement against another process with the same OS account. No model or HTTP entry point invokes this CLI parser. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-study-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-study-cli.md",
+      "evidence_document_sha256": "a1f73d916c925b708eefd2f8c2653b317ea871816eba10452e3819fbab806577"
+    },
+    {
+      "key": "AaGwHoBb3f6_aqzNEjCY",
+      "component": "sxba-04_llm-agent-security-lab:scripts/sonar_inventory.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoBb3f6_aqzNEjCY, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. scanner_submission receives the literal .scannerwork/report-task.txt in trusted CI, or an explicit operator CLI argument. It reads at most32769 bytes, rejects oversized/invalid input, validates the fixed project and host, and emits only a constrained task ID. It never follows a report URL or exports raw contents. Existing scanner-receipt regression covers bounded projection and foreign-server rejection. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/pr30-study-cli.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/pr30-study-cli.md",
+      "evidence_document_sha256": "a1f73d916c925b708eefd2f8c2653b317ea871816eba10452e3819fbab806577"
+    },
+    {
+      "key": "AaGwHoAd3f6_aqzNEjCS",
+      "component": "sxba-04_llm-agent-security-lab:src/security_lab/doctor.py",
+      "rule": null,
+      "transition": "falsepositive",
+      "comment": "Individual false-positive disposition for Sonar issue AaGwHoAd3f6_aqzNEjCS, project sxba-04_llm-agent-security-lab, PR30. Statically reviewed source revision: 6b48f567e708de55230029549fee7a27c06b3d93. port_check receives a validated integer port from the explicit operator CLI. Destination address is the literal127.0.0.1 with AF_INET and a0.3-second timeout. connect_ex sends no HTTP request or application payload and performs no attacker-selected DNS/host lookup. No FastAPI/provider/model execution path calls doctor. A future model/HTTP integration would require a new review. The claimed LLM-to-CLI authority path is absent: the lab exposes only read_ticket and append_note, rejects unknown tool names, and never converts article/PDF/model content into argv or shell commands. This disposition is limited to this issue and reviewed call graph; it does not exempt future callers, trusted operator mistakes or a compromised host. Detailed evidence: docs/sonar-triage/doctor-pr30.md. No rule or quality-gate change is requested.",
+      "evidence_document": "docs/sonar-triage/doctor-pr30.md",
+      "evidence_document_sha256": "27a98db7fc9c80a3ae476310dd5ca2a1fb177fad191509d0f547c7b7e7549e4a"
+    }
+  ]
+}

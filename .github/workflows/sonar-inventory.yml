@@ -1,16 +1,30 @@
-name: Read-only Sonar issue inventory
+name: Scoped PR 30 Sonar operations
 
 on:
   workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply only the separately reviewed and SHA256-pinned nine dispositions'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: sonar-pr30-triage
+  cancel-in-progress: false
+
 jobs:
-  inventory:
-    if: github.ref == 'refs/heads/main'
+  triage:
+    if: >-
+      github.repository == 'sxba-04/llm-agent-security-lab' &&
+      github.repository_owner == 'sxba-04' &&
+      github.actor == 'sxba-04' &&
+      github.ref == 'refs/heads/ops/sonar-pr30-triage'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -18,14 +32,24 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - name: Collect unresolved main issues and analysis metadata without mutations
+      - name: Test operation boundaries without credentials or network
+        run: python -B -m unittest discover -s tests -p test_sonar_pr30_triage.py -v
+      - name: Read PR 30 or apply separately pinned dispositions
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: python scripts/sonar_inventory.py
-      - name: Preserve sanitized inventory for individual review
+          LAB_APPLY: ${{ inputs.apply }}
+        shell: bash
+        run: |
+          args=()
+          if [ "$LAB_APPLY" = 'true' ]; then
+            args+=(--apply)
+          fi
+          python -B scripts/sonar_pr30_triage.py "${args[@]}"
+      - name: Preserve bounded sanitized receipt, including partial failure
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sonar-main-inventory
-          path: quality-inventory/sonar-main.json
+          name: sonar-pr30-triage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: quality-inventory/sonar-pr30-triage.json
           if-no-files-found: error
           retention-days: 14
