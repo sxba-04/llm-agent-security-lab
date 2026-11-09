@@ -27,7 +27,7 @@ Es werden null zusätzliche formale **Approvals** verlangt. Damit bleibt der aus
 1. Repository öffnen, **Settings → Rules → Rulesets** auswählen.
 2. Zuerst bestehende Regeln prüfen. Eine bereits passende Regel nicht doppelt anlegen.
 3. Unter **New ruleset** die Funktion **Import a ruleset** wählen und `configs/github-main-ruleset.json` hochladen. Alternativ **New branch ruleset** wählen und die obige Tabelle manuell übernehmen.
-4. Vor dem Speichern **Active**, Ziel `main`, leere Bypass-Liste und alle vier Checks samt GitHub-Actions-Herkunft kontrollieren.
+4. Vor dem Speichern **Active**, Ziel `main` und die leere Bypass-Liste kontrollieren. Bei allen sieben Pflichtprüfungen Name und zugehörige Integration mit `configs/github-main-ruleset.json` abgleichen.
 5. Speichern und die angelegte Regel nochmals öffnen. Eine nur deaktiviert gespeicherte Regel schützt den Branch nicht.
 6. Auf der Repository-Seite beziehungsweise in der Branchansicht prüfen, ob `main` nun als geschützt erscheint. Die aktive Regelliste muss die oben genannten Anforderungen enthalten.
 

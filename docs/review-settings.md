@@ -1,6 +1,6 @@
 # Review-Einstellungen und Übergaben
 
-Stand: 29. Oktober 2026. Empfehlungen für dieses Repository; Kontoeinstellungen wurden dadurch nicht verändert. Sebastian hat die Umsetzung der empfohlenen Kontoeinstellungen zurückgemeldet; der Branchschutz wurde gesondert eingerichtet und geprüft.
+Die Konfigurationsempfehlungen stammen vom 29. Oktober 2026. Sebastian hat ihre Umsetzung zurückgemeldet. Der Abschnitt zum Review-Ablauf wurde am 9. November 2026 anhand der PR-Verläufe aktualisiert.
 
 ## Drei getrennte Nachweise
 
@@ -15,7 +15,7 @@ Credits sind Abrechnungseinheiten; Tokens sind verarbeitete Informationseinheite
 | Einstellung | Empfehlung und Zweck |
 |---|---|
 | Automatisches Codex Code Review | Aktiviert lassen; beim Öffnen beziehungsweise Bereitstellen eines PRs starten. |
-| Nach Korrekturen | Änderungen bündeln und vor dem Merge auf dem endgültigen Commit erneut anfordern. Reviews bei jedem Push sind eine mögliche Alternative mit höherem Verbrauch. |
+| Nach Korrekturen | Änderungen bündeln und für den endgültigen Commit den Stand beider Reviews prüfen. Ob ein weiterer Push automatisch einen Lauf startet, hängt von den Einstellungen ab. |
 | Vollständiger Code Review | Gezielter Einsatz bei größeren Umbauten und vor einem Meilenstein; keine Zusage vollständiger Fehlerfreiheit. |
 | Automatische Security Reviews | Aktiviert lassen, gemeinsam mit Code Review auslösen. |
 | Security-Meldeschwelle | Für dieses Labor automatisch und manuell **Medium** erwägen. Das steuert veröffentlichte Befunde, nicht die Prüftiefe. Den Status und gegebenenfalls vollständigen Bericht prüfen. |
@@ -27,11 +27,17 @@ Die wichtigsten dauerhaften Review-Regeln stehen in `AGENTS.md` unter **Code Rev
 
 ## Repository-Regeln
 
-Am 29.10.2026 wurde im inzwischen öffentlichen Repository das [Ruleset „Protect main“](branch-protection.md) aktiviert. GitHub bestätigt `protected: true`, vier erforderliche GitHub-Actions-Checks, Pull-Request-Pflicht, aktuellen Basisstand, erledigte Review-Gespräche und eine leere Bypass-Liste. Force-Push und Löschen sind gesperrt. Kontingentabhängige Bot-Kommentare sind keine harten CI-Checks; die vereinbarte inhaltliche Review-Pflicht gilt zusätzlich. Null zusätzliche formale Approvals vermeiden eine unbeabsichtigte Sperre von PRs aus demselben Konto; Details und Grenzen stehen in der Branchschutz-Dokumentation.
+Das am 29. Oktober 2026 aktivierte Ruleset „Protect main“ verlangt am 9. November sieben Statusprüfungen, einen Pull Request auf aktuellem Basisstand und erledigte Review-Gespräche. Force-Push und Löschen sind gesperrt, die Bypass-Liste ist leer. Die vereinbarte inhaltliche Review-Pflicht gilt zusätzlich. [Aktives Ruleset](https://github.com/sxba-04/llm-agent-security-lab/rules/26123924) · [Branchschutz-Dokumentation](branch-protection.md)
+
+## Automatische Reviews abwarten
+
+Einen prüffertigen PR direkt zur Prüfung öffnen. Bei laufender Arbeit die Änderungen im Draft bündeln und den fertigen Stand auf **Ready for review** setzen. Im **Codex Review Summary** für Code Review und Security Review jeweils Commit, Status und **Review trigger** mit dem aktuellen PR-Stand abgleichen. Einen bereits eingeplanten oder laufenden Review bis zum Abschluss verfolgen. Nach einem weiteren Push den Abgleich für den neuen Commit wiederholen.
+
+In PR #21 meldete Codex für beide Prüfungen **PR opened**. In PR #30 war der finale Commit `00de369` am 6. November um 10:24 UTC bereit. Beide Prüfungen endeten um 10:28 UTC mit dem Auslöser **Draft marked ready**. [Review-Nachweis #21](https://github.com/sxba-04/llm-agent-security-lab/pull/21#issuecomment-6566506902) · [Review-Nachweis #30](https://github.com/sxba-04/llm-agent-security-lab/pull/30#issuecomment-6680850426)
 
 ## Manueller Neustart
 
-In der PR-Diskussion kann `@codex review` einen neuen Code-Review und `@codex security review` einen neuen Sicherheitsreview anfordern. Wenn automatische Sicherheitsreviews bereits an Code-Reviews gekoppelt sind, zuerst prüfen, ob der Sicherheitsjob gestartet wurde; keinen zusätzlichen doppelten Lauf erzeugen. Copilot wird über die Reviewer-Auswahl erneut angefordert.
+Fehlt nach der Aktualisierung des Summary ein benötigter Review für den aktuellen Commit, kann er einmal gezielt in der PR-Diskussion angefordert werden. `@codex review` startet den Code-Review, `@codex security review` den Sicherheitsreview. Bei gekoppelten Prüfungen zuerst den Status beider Zeilen nach dem Start des Code-Reviews prüfen. Copilot wird über die Reviewer-Auswahl erneut angefordert.
 
 Den jeweiligen Befehl als eigenen Kommentar ohne zusätzlichen Erläuterungstext senden und danach im **Codex Review Summary** prüfen, welcher Review tatsächlich für welchen Commit gestartet wurde. Bei PR #5 aktualisierten kommentierte Security-Anforderungen zunächst nur den Code-Review; erst der alleinstehende Security-Befehl startete nachweislich den Security-Review am aktuellen Head. Ein abgeschlossener Code-Review ist kein Ersatz für dessen Security-Status.
 
