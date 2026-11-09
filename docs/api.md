@@ -66,7 +66,13 @@ Ereignisse, zurückgemeldetes Modell, Tokenverbrauch und Laufstatus.
 Die technische Abnahme erfordert eine abgeschlossene Antwort mit Text und den
 belegten Rückweg der A17-Daten in den Modellkontext. Eine unvollständige
 Verbrauchsmeldung, Budgetüberschreitung oder unerwartete Modellkennung stoppt
-den Lauf vor weiteren Werkzeugen und Modellanfragen.
+den Lauf vor weiteren Werkzeugen und Modellanfragen. Der Pilot fordert stets
+den Alias `gpt-6-luna` an. Die erste Antwort darf diesen Alias oder einen
+Snapshot derselben Familie im Format `gpt-6-luna-YYYY-MM-DD` mit gültigem
+Kalenderdatum melden. Ihre genaue Kennung wird für alle weiteren Antworten
+dieses Ticketlaufs festgehalten. Ein späterer Wechsel beendet den Lauf vor der
+Ausführung weiterer Werkzeuge. Die jeweilige Originalkennung steht im
+Ereignisprotokoll.
 `receipt.json` bindet die gespeicherten Dateien über Hashwerte zusammen.
 Bei fehlendem Ergebnis oder offener Reservierung die Originalbelege erhalten
 und die Nutzung beim Anbieter abgleichen. Die Autoren bewerten die inhaltliche

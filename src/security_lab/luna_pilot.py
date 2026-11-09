@@ -45,12 +45,27 @@ def make_config(input_eur_per_million: str, output_eur_per_million: str, price_c
     if checked > date.today():
         raise ValueError("Price verification date cannot be in the future")
     return validate_config({
-        "enabled": True, "model": MODEL, "expected_returned_model": MODEL,
+        "enabled": True, "model": MODEL,
         "max_input_tokens": 32768, "max_completion_tokens": 1024,
         "timeout_seconds": 45, "max_requests": MAX_REQUESTS, "run_budget_eur": RUN_BUDGET_EUR,
         "input_eur_per_million": input_eur_per_million, "output_eur_per_million": output_eur_per_million,
         "price_reference": PRICE_REFERENCE, "price_checked_on": checked.isoformat(),
     })
+
+
+def _is_luna_identifier(value: str | None) -> bool:
+    if value == MODEL:
+        return True
+    prefix = MODEL + "-"
+    if not isinstance(value, str) or not value.startswith(prefix):
+        return False
+    suffix = value[len(prefix):]
+    try:
+        # Round-trip to the canonical ASCII YYYY-MM-DD representation. Python
+        # also parses ISO week dates and dates without hyphens.
+        return date.fromisoformat(suffix).isoformat() == suffix
+    except ValueError:
+        return False
 
 
 def run_first(workspace: Path, config: dict, api_key: str, *, transport: Transport | None = None) -> dict:
@@ -68,7 +83,7 @@ def run_first(workspace: Path, config: dict, api_key: str, *, transport: Transpo
             usage = reply.usage
             raw = usage.get("raw_response") or {}
             if (usage["accounting"] != "reported_usage" or usage["budget_overrun"]
-                    or usage["model"] != MODEL or raw.get("service_tier", "default") != "default"):
+                    or not _is_luna_identifier(usage["model"]) or raw.get("service_tier", "default") != "default"):
                 raise ReceivedResponseError({**usage, "pilot_receipt_invalid": True})
             return reply
 

@@ -16,7 +16,7 @@ from security_lab import luna_pilot as pilot
 TEST_CREDENTIAL = "offline-only-pilot-credential"
 
 
-def reply(*, ticket_id=None):
+def reply(*, ticket_id=None, model="gpt-6-luna"):
     message = {"role": "assistant", "content": "Synthetische Testantwort."}
     reason = "stop"
     if ticket_id is not None:
@@ -28,10 +28,15 @@ def reply(*, ticket_id=None):
         }])
     return {
         "id": "offline-response",
-        "model": "gpt-6-luna",
+        "model": model,
         "choices": [{"message": message, "finish_reason": reason}],
         "usage": {"prompt_tokens": 120, "completion_tokens": 20, "total_tokens": 140},
     }
+
+
+def response_receipts(record):
+    return [event["data"]["usage"]["raw_response"] for event in record["events"]
+            if event["type"] == "model_response"]
 
 
 class LunaPilotTests(unittest.TestCase):
@@ -93,6 +98,51 @@ class LunaPilotTests(unittest.TestCase):
         for path in self.workspace.rglob("*"):
             if path.is_file():
                 self.assertNotIn(TEST_CREDENTIAL.encode(), path.read_bytes())
+
+    def test_alias_and_consistent_dated_snapshot_preserve_receipt_and_request_alias(self):
+        for reported in ("gpt-6-luna", "gpt-6-luna-2024-02-29"):
+            with self.subTest(reported=reported):
+                responses = [reply(model=reported, ticket_id="A17"), reply(model=reported)]
+                transport = Mock(side_effect=responses)
+                record = pilot.run_first(self.workspace / reported, self.config, TEST_CREDENTIAL, transport=transport)
+                self.assertEqual([call.args[0]["model"] for call in transport.call_args_list], ["gpt-6-luna"] * 2)
+                self.assertEqual(record["observed_models"], [reported])
+                self.assertTrue(record["technical_acceptance"])
+                self.assertEqual(record["status"], "completed")
+                self.assertEqual(response_receipts(record), responses)
+
+    def test_changed_reported_identity_stops_before_the_next_ticket_action(self):
+        alias = "gpt-6-luna"
+        snapshot = "gpt-6-luna-2026-11-01"
+        pairs = ((snapshot, "gpt-6-luna-2026-11-02"), (snapshot, alias), (alias, snapshot))
+        for index, (first, second) in enumerate(pairs):
+            with self.subTest(first=first, second=second):
+                responses = [reply(model=first, ticket_id="A17"), reply(model=second, ticket_id="A17")]
+                transport = Mock(side_effect=responses)
+                record = pilot.run_first(self.workspace / str(index), self.config, TEST_CREDENTIAL,
+                                         transport=transport)
+                self.assertEqual(transport.call_count, 2)
+                self.assertEqual(record["status"], "technical_error")
+                self.assertFalse(record["technical_acceptance"])
+                reads = [event for event in record["events"] if event["type"] == "backend_read"]
+                self.assertEqual(len(reads), 1)
+                self.assertEqual(response_receipts(record), responses)
+
+    def test_foreign_family_or_invalid_dated_suffix_has_no_ticket_effect(self):
+        names = ("gpt-6-sol-2026-11-01", "gpt-6-luna-２０２６-１１-０１",
+                 "gpt-6-luna-2026-W45-1", "gpt-6-luna-2026-02-29", "gpt-6-luna-20261101")
+        for index, reported in enumerate(names):
+            with self.subTest(reported=reported):
+                response = reply(model=reported, ticket_id="A17")
+                transport = Mock(return_value=response)
+                record = pilot.run_first(self.workspace / str(index), self.config, TEST_CREDENTIAL,
+                                         transport=transport)
+                transport.assert_called_once()
+                self.assertEqual(record["status"], "technical_error")
+                self.assertFalse(record["technical_acceptance"])
+                self.assertEqual(record["tool_calls"], 0)
+                self.assertEqual(record["observed_models"], [reported])
+                self.assertEqual(response_receipts(record), [response])
 
     def test_policy_rejects_unassigned_ticket_before_it_can_be_read(self):
         transport = Mock(side_effect=[reply(ticket_id="B08"), reply()])
