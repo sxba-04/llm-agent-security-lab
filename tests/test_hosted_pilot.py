@@ -88,6 +88,31 @@ class HostedPilotTests(unittest.TestCase):
             self.assertEqual([r["state"] for r in ledger["reservations"].values()], ["settled"] * 2)
             self.assertEqual(transport.call_count, 2)
 
+    def test_rates_depend_on_reported_model_and_tier_even_when_tokens_are_known(self):
+        overrun = {**reply(), "usage": {"prompt_tokens": 100000, "completion_tokens": 20, "total_tokens": 100020}}
+        for name, payload, input_tokens, cost in [
+            ("foreign-model", reply(model="other-model"), 120, None),
+            ("priority", {**reply(), "service_tier": "priority"}, 120, None),
+            ("overrun", overrun, 100000, "0.012012"),
+        ]:
+            with self.subTest(name=name), patch("security_lab.providers._http_transport", return_value=payload):
+                self.workspace = self.workspace.parent / name
+                client, headers = self.connection()
+                response = client.post(PILOT, headers=headers).json()
+                self.assertEqual(response["state"], "failed")
+                result = response["result"]
+                self.assertEqual((result["input_tokens"], result["output_tokens"]), (input_tokens, 20))
+                self.assertEqual(result["estimated_cost_eur"], cost)
+
+    def test_unsettled_receipt_preserves_reported_tokens(self):
+        with (patch("security_lab.providers._http_transport", return_value=reply()),
+              patch("security_lab.budget.BudgetLedger.settle", side_effect=OSError)):
+            response = self.client.post(PILOT, headers=self.headers).json()
+        self.assertEqual(response["state"], "failed")
+        result = response["result"]
+        self.assertEqual((result["input_tokens"], result["output_tokens"]), (120, 20))
+        self.assertIsNone(result["estimated_cost_eur"])
+
     def test_uncertain_outcome_or_corrupt_evidence_never_becomes_ready(self):
         with patch("security_lab.providers._http_transport", side_effect=TimeoutError) as transport:
             response = self.client.post(PILOT, headers=self.headers).json()

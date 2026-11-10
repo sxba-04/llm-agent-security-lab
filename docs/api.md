@@ -31,7 +31,9 @@ Kampagnen, Fallauswahl und PDF-Importe verwenden das Testmodell.
 Das geschützte `GET /api/pilot/luna` zeigt den Zustand und nach Abschluss die
 Antwort, beobachtete Modellkennung, Anzahlen der Modell- und Werkzeugaufrufe,
 Eingabe- und Ausgabetokens sowie die aus den Planraten ermittelten Kosten.
-Ohne lückenlose Verbrauchsbelege bleiben Tokensummen und Kosten offen. Die
+Fehlt ein Verbrauchsbeleg, bleiben Tokensummen und Kosten offen. Bestätigte
+Tokenzahlen bleiben auch bei abweichendem Modell, Tarif oder gescheiterter
+Budgetbuchung sichtbar. In diesen Fällen entfällt die Kostenschätzung. Die
 Abrechnung des Anbieters ist für die endgültige Kostenprüfung maßgebend.
 
 `POST /api/pilot/luna` ist der explizite einmalige Start. Die Anfrage hat

@@ -31,10 +31,13 @@ def _usage_totals(result: dict) -> tuple[int | None, int | None, str | None]:
                 if event["type"] == "model_response"]
     if len(receipts) != result["model_calls"] or not receipts:
         return None, None, None
-    if any(item.get("accounting") != "reported_usage" for item in receipts):
+    if any(item.get("accounting") not in {"reported_usage", "settlement_failed"} for item in receipts):
         return None, None, None
     input_tokens = sum(item["prompt_tokens"] for item in receipts)
     output_tokens = sum(item["completion_tokens"] for item in receipts)
+    if not all(item["accounting"] == "reported_usage" and luna_pilot.has_luna_standard_rate(item)
+               for item in receipts):
+        return input_tokens, output_tokens, None
     cost = sum((euros(item["estimated_cost_eur"], allow_zero=True) for item in receipts), Decimal("0"))
     return input_tokens, output_tokens, format(cost, "f")
 
