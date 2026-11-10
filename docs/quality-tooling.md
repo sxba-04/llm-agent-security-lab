@@ -152,6 +152,13 @@ und mit konkreter Begründung als False Positive abgeschlossen. Die TLS-Meldung
 bleibt bis zur verifizierten ausdrücklichen Mindestversion im Testserver offen.
 Die Analyseregeln bleiben aktiv; es gibt keine pauschale Unterdrückung.
 
+Am 10. November meldete CodeQL drei Pfadverwendungen im lokalen Frontendserver
+(Alerts #34 bis #36). Die mit Codex entwickelte Korrektur wählt jede URL-Komponente
+aus den vorhandenen Einträgen des jeweiligen Build-Verzeichnisses aus und prüft
+diese Pfade auf symbolische Links und Junctions. Unbekannte SPA-Routen erhalten
+weiterhin die feste `index.html`. Der Regressionstest erfasst auch neu gebaute
+und wieder entfernte, verschachtelte Assets bei laufendem Server.
+
 Sinnvolle nächste Schritte sind gezielte verhaltensbewahrende Refactorings der
 dokumentierten Wartbarkeitshinweise und die gemeinsame fachliche Abnahme von
 Fällen und Bewertungsrubrik. Erst vor echten Modellversuchen folgen Nachweis der

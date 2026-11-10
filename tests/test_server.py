@@ -164,6 +164,22 @@ class ServerTests(unittest.TestCase):
                     self.assertIn(response.status_code, (400, 404))
                     self.assertNotIn(outside.read_text(encoding="utf-8"), response.text)
 
+    def test_frontend_serves_nested_assets_from_the_current_build(self):
+        frontend = Path(self.temp.name) / "frontend"
+        frontend.mkdir()
+        app = create_app(self.workspace, CASES, frontend)
+        with TestClient(app, base_url="http://127.0.0.1") as client:
+            self.assertEqual(client.get("/").status_code, 404)
+            (frontend / "index.html").write_text("current index", encoding="utf-8")
+            assets = frontend / "assets" / "fonts"
+            assets.mkdir(parents=True)
+            font = assets / "labels.txt"
+            font.write_text("current asset", encoding="utf-8")
+            self.assertEqual(client.get("/assets/fonts/labels.txt").text, "current asset")
+            self.assertEqual(client.get("/assets/fonts").text, "current index")
+            font.unlink()
+            self.assertEqual(client.get("/assets/fonts/labels.txt").text, "current index")
+
     def test_frontend_rejects_symlink_inserted_after_startup(self):
         frontend = Path(self.temp.name) / "frontend"
         frontend.mkdir()
