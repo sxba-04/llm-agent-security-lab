@@ -662,6 +662,20 @@ class _WorkbenchAPI:
         return report
 
 
+def _frontend_asset(frontend: Path, parts: tuple[str, ...]) -> Path | None:
+    """Only serve paths discovered inside the build; URL components select names."""
+    candidate = reject_symlinks(frontend)
+    for name in parts:
+        if not candidate.is_dir():
+            return None
+        # Path equality follows the host's filename case rules (including Windows).
+        entry = next((child for child in candidate.iterdir() if Path(child.name) == Path(name)), None)
+        if entry is None:
+            return None
+        candidate = reject_symlinks(entry, frontend)
+    return candidate if candidate.is_file() else None
+
+
 def _register_frontend(app: FastAPI, frontend_dir: Path) -> None:
     frontend = checked_tree(Path(frontend_dir))
 
@@ -669,15 +683,16 @@ def _register_frontend(app: FastAPI, frontend_dir: Path) -> None:
     def frontend_file(requested: str):
         if requested.startswith("api/") or requested == "api":
             raise HTTPException(404, "API-Endpunkt nicht gefunden.")
-        parts = Path(requested).parts
-        if any(part in {"..", "."} for part in parts) or "\\" in requested:
+        route = Path(requested)
+        if route.anchor or ".." in route.parts or "\\" in requested:
             raise HTTPException(404, "Datei nicht gefunden.")
-        candidate = reject_symlinks(frontend / requested, frontend)
-        if not candidate.is_file():
-            candidate = reject_symlinks(frontend / "index.html", frontend)
-        if not candidate.is_file():
+        candidate = _frontend_asset(frontend, route.parts)
+        if candidate is not None:
+            return FileResponse(candidate)
+        index = reject_symlinks(frontend / "index.html", frontend)
+        if not index.is_file():
             raise HTTPException(404, "Frontend-Build fehlt.")
-        return FileResponse(candidate)
+        return FileResponse(index)
 
 
 def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = None,

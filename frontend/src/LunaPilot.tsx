@@ -85,7 +85,7 @@ export function LunaPilotPage() {
     <div className="stack"><Panel title="Einmaliger Pilotlauf">
       <p>Der Start auf Render kann bis zu vier Modellanfragen auslösen. Das Budget für den gesamten Versuch beträgt höchstens <strong>0,50 €</strong>.</p>
       <ErrorBox error={error || (data && !stateText ? 'Der Server hat keinen gültigen Pilotstatus geliefert.' : '')} />
-      {stateText ? <p role="status">Status: <strong>{stateText}</strong></p> : loading && <Loading text="Pilotstatus wird geladen …" />}
+      {stateText ? <p><output>Status: <strong>{stateText}</strong></output></p> : loading && <Loading text="Pilotstatus wird geladen …" />}
       {notice && (!state || state === 'ready' || state === 'disabled') && <p role="alert">{notice}</p>}
       {state === 'disabled' && <p>Der Pilot ist im Backend noch nicht für den Start freigegeben.</p>}
       {state === 'failed' && !data?.result && <p>Der gespeicherte Versuch enthält keinen vollständigen Ergebnisbeleg. Budgetprotokoll und Anbieternutzung müssen abgeglichen werden.</p>}

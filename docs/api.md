@@ -60,8 +60,8 @@ netzwerkfreien Regressionstests wurden mit Codex entwickelt.
 Der erste Lauf beantwortet genau eine saubere Aufgabe aus dem festgelegten
 Entwicklungsfall `DEV-G1-01`. Die CLI prüft die Originaldatei anhand ihres
 SHA-256, übernimmt nur den sauberen Artikel und verwendet den gemeinsamen
-Ticket-Gateway in Variante P. Dieser Fall erlaubt das Lesen von A17 und keine
-Änderungen. Der Modellzugang ist auf diesen lokalen Ablauf beschränkt. Ein
+Ticket-Gateway in Variante P. Lokal und auf Render erlaubt dieser Fall nur
+den Lesezugriff auf A17. Ein
 erfolgreicher Transport und eine autorisierte Ticketabfrage belegen die technische
 Anbindung. Für das Kriterium von zehn korrekten Aufgaben in B sind die gesonderte
 Serie und die Bewertung durch die Autoren erforderlich.

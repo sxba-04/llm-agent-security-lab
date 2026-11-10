@@ -55,7 +55,7 @@ Beschädigte PDF-Quellen werden einzeln mit einem Fehler angezeigt. Sie können 
 
 Die Startfunktion bindet ausschließlich an `127.0.0.1`, verwendet einen Prozess und keinen automatischen Code-Reload. Der Backenddienst prüft Host/Origin und verlangt für Änderungen ein Sitzungstoken. Pfade werden nicht vom Browser frei vorgegeben. Experimentelle Artikel und Modelltexte werden als Text dargestellt, nicht als ausführbares HTML.
 
-Die HTTP-Schnittstelle erlaubt ausschließlich Mock-Serien. Die gesonderte CLI-Modellanbindung bleibt hinter ihren vorhandenen expliziten Freigaben. Eine Einstellung im Browser kann sie nicht aktivieren.
+Die lokale HTTP-Schnittstelle führt Mock-Serien aus. Die gesonderte CLI-Modellanbindung erfordert eine ausdrückliche Freigabe. Auf Render können angemeldete Betreiber den [festen A17-Piloten](api.md) nach serverseitiger Freigabe einmal starten.
 
 ## Entwicklung und Prüfungen
 

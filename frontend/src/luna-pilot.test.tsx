@@ -119,11 +119,23 @@ it('recovers a running attempt with a read and labels incomplete billing evidenc
   await signIn(code);
   render(<LunaPilotPage />);
   expect(await screen.findByText('Läuft')).toBeVisible();
+  expect(screen.getByRole('status')).toHaveTextContent('Status: Läuft');
   running = false;
   await userEvent.setup().click(screen.getByRole('button', { name: 'Status aktualisieren' }));
   expect(await screen.findByText('Nicht bestanden')).toBeVisible();
   expect(screen.getAllByText('Unvollständig belegt')).toHaveLength(4);
   expect(fetch.mock.calls.some(([, options]) => options.method === 'POST')).toBe(false);
+});
+
+it('shows reported tokens when the applied tariff cannot be priced', async () => {
+  backend(() => reply({ state: 'failed', result: { ...finished.result, status: 'technical_error',
+    technical_acceptance: false, estimated_cost_eur: null } }));
+  await signIn(code);
+  render(<LunaPilotPage />);
+  expect(await screen.findByText('Beendet mit Fehler')).toBeVisible();
+  expect(screen.getByText('300')).toBeVisible();
+  expect(screen.getByText('22')).toBeVisible();
+  expect(screen.getByText('Unvollständig belegt')).toBeVisible();
 });
 
 it.each(['disabled', 'failed'])('prevents starting in state %s even without a result', async state => {
