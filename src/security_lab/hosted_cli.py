@@ -18,6 +18,7 @@ def configuration(environment: Mapping[str, str]) -> tuple[HostedSettings, Path,
                            if value.strip()),
         storage_mode=environment.get("LAB_STORAGE_MODE", "persistent"),
         github=GitHubSettings.from_environment(environment),
+        luna_pilot_enabled=environment.get("LAB_LUNA_PILOT_ENABLED") == "true",
     )
     workspace_value = environment.get("LAB_WORKSPACE", "")
     workspace = Path(workspace_value)
@@ -33,7 +34,7 @@ def configuration(environment: Mapping[str, str]) -> tuple[HostedSettings, Path,
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Gehostete Labor-API mit Zugangstoken (nur Mock)")
+    parser = argparse.ArgumentParser(description="Gehostete Labor-API mit Zugangstoken und optionalem, festem Luna-Pilot")
     parser.add_argument("--cases", type=Path, default=Path("cases/dev"))
     args = parser.parse_args(argv)
     try:
@@ -44,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     from .server import create_app
 
     app = create_app(workspace, args.cases, hosted_settings=settings)
-    print("Security Lab: geschützte gehostete API, ausschließlich Mock-Versuche; ein Prozess.")
+    print("Security Lab: geschützte gehostete API, Mock-Kampagnen und gesonderter Luna-Pilot; ein Prozess.")
     if settings.storage_mode == "ephemeral":
         print("Testbetrieb mit flüchtigem Speicher: PDFs, Versuche und Bewertungen können bei Ruhezustand, "
               "Neustart oder Deployment verloren gehen. Benötigte Archive vorher herunterladen.")

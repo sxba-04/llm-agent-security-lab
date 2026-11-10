@@ -2,6 +2,57 @@
 
 Das Labor startet standardmäßig mit einem lokalen Testmodell. Echte Modellaufrufe sind eine gesonderte Betriebsart. Im ersten Entwicklungsstand wurden kein Modell ausgewählt, kein API-Schlüssel eingerichtet und keine kostenpflichtigen Messungen durchgeführt.
 
+## Einmaliger A17-Pilot auf dem gehosteten Backend
+
+GitHub Pages zeigt die Bedienoberfläche. Der vorhandene Render-Dienst führt
+den gleichen sauberen A17-Lauf in Variante P aus wie die lokale CLI. Eigene
+Kampagnen, Fallauswahl und PDF-Importe verwenden das Testmodell.
+
+1. Den projektgebundenen Dienstkontoschlüssel für `gpt-6-luna` als
+   `OPENAI_API_KEY` in der Umgebung des Render-Backends bereitstellen. Der
+   automatisierte Build, das Frontend und die Offline-Tests benötigen ihn
+   nicht. Vor jedem Deployment den Workspace extern sichern und die
+   Wiederherstellung prüfen.
+2. Autorenabnahme und äußere Isolation gemäß [Pilotvorprüfung](study-preflight.md)
+   dokumentieren. Guthaben, aktuellen Preis, installierte Revision und den
+   freigegebenen Einzelversuch prüfen. Die im Pilotcode hinterlegten
+   Planraten beruhen auf der Preisprüfung vom 9. November 2026 und gelten
+   jeweils pro Million Tokens (0,12 EUR Eingabe und 0,60 EUR Ausgabe).
+3. Für den vereinbarten Ausführungsort den persistenten Mount, die vorhandenen
+   Belege und den gemeinsamen Ledger abgleichen. Das Backend erwartet
+   `LAB_STORAGE_MODE=persistent`. Erst für den überprüften Lauf
+   `LAB_LUNA_PILOT_ENABLED=true` auf dem Backend aktivieren. Ein
+   Konfigurationsschalter ersetzt die Prüfung der äußeren Isolation nicht.
+4. Ein angemeldeter Labor-Operator startet den festgelegten Pilot über die
+   Weboberfläche einmal. Vier Modellanfragen, drei Werkzeugaufrufe und
+   0,50 EUR bilden die Obergrenze. Für die fachliche Bewertung prüfen die
+   Autoren die Antwort auf die drei verlangten Fakten.
+
+Das geschützte `GET /api/pilot/luna` zeigt den Zustand und nach Abschluss die
+Antwort, beobachtete Modellkennung, Anzahlen der Modell- und Werkzeugaufrufe,
+Eingabe- und Ausgabetokens sowie die aus den Planraten ermittelten Kosten.
+Ohne lückenlose Verbrauchsbelege bleiben Tokensummen und Kosten offen. Die
+Abrechnung des Anbieters ist für die endgültige Kostenprüfung maßgebend.
+
+`POST /api/pilot/luna` ist der explizite einmalige Start. Die Anfrage hat
+keinen Body und keine Query-Parameter und benötigt die zugelassene Origin,
+Operator-Anmeldung und das Sitzungstoken. Bei belegtem Versuch oder laufender
+Sicherung liefert sie HTTP 409, bei deaktiviertem Pilot HTTP 503. Nach einem
+Verbindungsabbruch den Status mit GET abfragen. Ein zweiter Start, auch nach
+einem Dienstneustart, bleibt gesperrt, sobald ein Versuchsordner existiert.
+Bei fehlenden oder beschädigten Belegen bleibt der Status offen bzw.
+fehlgeschlagen. Nach dem Deaktivieren bleiben vorhandene Ergebnisse lesbar.
+
+Auf dem konfigurierten Mount liegen `studies/budget.json` und
+`studies/luna-clean-first/` unter `LAB_WORKSPACE`. Für einen Abgleich mit der
+CLI ist exakt dieser `studies`-Ordner deren Budget-Workspace. Eine
+Workspace-Sicherung wartet keine Modellantwort ab und weist sich überschneidende
+Pilotstarts oder Sicherungen zurück. Sie enthält die Pilotbelege getrennt von
+den wissenschaftlichen Kampagnen. Ein nach einem Abbruch völlig leerer
+Versuchsordner verhindert eine Sicherung, weil ein reines Dateiarchiv seine
+Startsperre nicht wiederherstellen könnte. Die gehostete Anbindung und die
+netzwerkfreien Regressionstests wurden mit Codex entwickelt.
+
 ## Lokale technische Abnahme mit GPT-6 Luna
 
 Der erste Lauf beantwortet genau eine saubere Aufgabe aus dem festgelegten

@@ -23,6 +23,29 @@ class WorkspaceBackupTests(unittest.TestCase):
     def setUpClass(cls):
         cls.cases = load_cases(Path(__file__).parents[1] / "cases/dev")[:1]
 
+    def test_snapshot_preserves_luna_attempt_and_prior_source_or_rejects_empty_marker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace, source, *_ = self.fixture(root)
+            attempt = workspace / "studies" / "luna-clean-first"
+            attempt.mkdir(parents=True)
+            archive = root / "full.zip"
+            with self.assertRaisesRegex(ValueError, "Empty or invalid Luna attempt"):
+                backup.export_workspace(workspace, source, archive)
+            original_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip()
+            (attempt / "attempt.json").write_text(json.dumps({"provenance": {"git_commit": original_commit}}))
+            (attempt.parent / "budget.json").write_text('{"fixture":"retained reservation"}')
+            subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                            "commit", "--allow-empty", "-qm", "subsequent source"], cwd=source, check=True)
+            backup.export_workspace(workspace, source, archive)
+            restored = backup.restore_workspace_backup(archive, root / "restored")
+            self.assertEqual(restored["luna_pilot_source_commit"], original_commit)
+            self.assertIn(original_commit, restored["source_snapshots"]["included_commits"])
+            restored_studies = Path(restored["workspace"]) / "studies"
+            self.assertEqual((restored_studies / "budget.json").read_bytes(),
+                             (attempt.parent / "budget.json").read_bytes())
+            self.assertTrue((restored_studies / "luna-clean-first" / "attempt.json").is_file())
+
     def fixture(self, root):
         source = root / "code"
         source.mkdir()

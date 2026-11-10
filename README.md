@@ -28,7 +28,7 @@ Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die O
 
 **Der Workspace unter `/var/data/security-lab` bleibt bei Neustarts und Deployments erhalten; dies wurde mit synthetischen Belegen nach einem kontrollierten Neustart geprüft.** Die Disk kostet zusätzlich 0,25 USD pro Monat. Wichtige Studienbelege weiterhin als geprüfte Archive herunterladen: Die Disk ersetzt keine externe Sicherung. Laufende Versuche können bei Deployments unterbrochen werden; GitHub-Sitzungen werden bei einem Serverneustart widerrufen. Die Oberfläche bleibt im Mock-Betrieb.
 
-Für spätere echte Modellversuche kann das Sprachmodell beim API-Anbieter laufen. Das eigene Backend steuert die Versuche, prüft Toolvorschläge und wertet Belege aus; es benötigt dafür keine lokalen Modellgewichte oder GPU. Echte API-Aufrufe und ihre Kosten bleiben dem separat freizugebenden Pilotbetrieb vorbehalten.
+Der [Luna-Pilot](docs/api.md) dient der technischen Abnahme am synthetischen Ticket A17. Nach serverseitiger Freigabe können angemeldete Betreiber den sauberen Fall einmal über die gehostete Oberfläche starten. Render ruft das Modell auf, prüft die Ticketberechtigung und erfasst den Verbrauch. Reguläre Webkampagnen verwenden das Testmodell.
 
 [Dokumentationsübersicht](docs/README.md) · [Zugangscode wiederherstellen](docs/hosting.md#verlorener-code-und-ungültige-sitzung) · [Projektstruktur](docs/architecture.md#verzeichnisstruktur-und-modulgrenzen)
 

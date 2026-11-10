@@ -77,6 +77,26 @@ def _check_worker_ownership(workspace: Path) -> None:
             raise ValueError("Worker ownership refers to missing campaign evidence")
 
 
+def _pilot_source_commit(workspace: Path) -> str | None:
+    """Preserve the consumed attempt and its code revision in a full snapshot."""
+    directory = reject_symlinks(workspace / "studies" / "luna-clean-first", workspace)
+    if not directory.exists():
+        return None
+    # The archive stores files. Restoring an empty attempt directory as absent
+    # would silently re-enable a consumed attempt.
+    if not directory.is_dir() or not any(path.is_file() for path in directory.iterdir()):
+        raise ValueError("Empty or invalid Luna attempt cannot be preserved by a file-based backup")
+    attempt = reject_symlinks(directory / "attempt.json", workspace)
+    if not attempt.is_file() or attempt.stat().st_size > 1024 * 1024:
+        return None
+    try:
+        commit = archives._json(attempt.read_bytes())["provenance"]["git_commit"]
+    except (ValueError, TypeError, KeyError, RecursionError):
+        # A partial attempt can be preserved even if its revision is unknown.
+        return None
+    return commit if isinstance(commit, str) and COMMIT_PATTERN.fullmatch(commit) else None
+
+
 def _check_workspace(workspace: Path) -> dict[str, Any]:
     _check_worker_ownership(workspace)
     campaigns = {}
@@ -92,6 +112,7 @@ def _check_workspace(workspace: Path) -> dict[str, Any]:
             documents.append(path.name)
     root_reviews = _check_root_reviews(workspace)
     return {"campaigns": campaigns, "documents": documents, "verified_root_reviews": root_reviews,
+            "luna_pilot_source_commit": _pilot_source_commit(workspace),
             "supplementary_operations": _operational_evidence(workspace),
             "evidence_complete": all(value["evidence_complete"] for value in campaigns.values()),
             "campaigns_complete": all(value["campaign_state"] == "completed" and value["completed_runs"] == value["planned_runs"]
@@ -242,6 +263,8 @@ def _check_no_active_workers(workspace: Path, stack: ExitStack) -> None:
 
 def _requested_commits(check: dict, current: str) -> list[str]:
     requested = {current}
+    if check.get("luna_pilot_source_commit"):
+        requested.add(check["luna_pilot_source_commit"])
     for campaign in check["campaigns"].values():
         commit = campaign["source_provenance"].get("git_commit")
         if isinstance(commit, str) and COMMIT_PATTERN.fullmatch(commit):

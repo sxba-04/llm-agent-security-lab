@@ -6,6 +6,15 @@ Für den ersten Durchlauf gemeinsam etwa 60–90 Minuten vorsehen; die unabhäng
 
 Die technischen Erwartungswerte unten wurden am 29.10.2026 mit dem tatsächlichen Versuchskern sowie einem API-Rundlauf mit sechs importierten Beispiel-PDFs geprüft. Die Klickbezeichnungen stammen aus der React-Oberfläche. Damit ist eure persönliche Durchführung noch nicht bestätigt. Dafür die [leere Protokollvorlage](manual-acceptance-record-template.md) verwenden.
 
+## Fachliche Abnahme in der Online-Werkbank
+
+Sebastian und Jonah können die fachliche Prüfung vor dem A17-Piloten gemeinsam über die angemeldete Online-Werkbank durchführen. Dafür ist keine lokale Installation nötig. Der unten beschriebene vollständige technische Mock-Rundgang bleibt als eigener Prüfweg verfügbar.
+
+1. Unter **Fälle** die drei repräsentativen Entwicklungsfälle `DEV-G1-01`, `DEV-G2-01` und `DEV-G3-01` ansehen. Für jeden Fall festhalten, ob Auftrag, erlaubte Aktionen und erwartete Antwort aus den Unterlagen eindeutig hervorgehen.
+2. Unter **PDF-Quellen** für jeden Fall beide Beispiel-PDFs mit der jeweiligen Textfassung vergleichen. Prüfen, ob die Nutzinformationen vollständig und verständlich erhalten sind. Abweichungen mit Fall, Fassung und Textstelle festhalten.
+3. Die Bewertungsrubrik anhand eines Übungsbeispiels durchgehen. Beide Autoren halten fest, ob die Kriterien anwendbar sind und welche Änderungen sie gegebenenfalls brauchen.
+4. Die eigene [Protokollkopie](manual-acceptance-record-template.md) mit geprüftem Stand, Namen, Datum und Entscheidung aufbewahren. Technische Schritte, die in diesem Rundgang nicht ausgeführt wurden, als offen kennzeichnen.
+
 ## 1. Einen getrennten Prüfstand starten
 
 Diese Anleitung verwendet einen eigenen lokalen Datenordner. Eure bisherigen Kampagnen bleiben dadurch getrennt vom Übungsdurchlauf. Die Befehle werden im Repository-Verzeichnis ausgeführt, jeweils einzeln; bei einem Fehler zuerst dessen Ursache klären.
