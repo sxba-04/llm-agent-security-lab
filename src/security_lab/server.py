@@ -1,4 +1,4 @@
-"""Mock-only API; local by default, explicitly authenticated when hosted."""
+"""Workbench API; local by default, explicitly authenticated when hosted."""
 from __future__ import annotations
 
 import csv
@@ -9,7 +9,7 @@ import re
 import secrets
 import tempfile
 import threading
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -30,6 +30,7 @@ from .documents import (MAX_PDF_BYTES, DocumentError, apply_document_override, c
 from .evaluation import summarize
 from .jobs import CampaignJobs, checked_tree
 from .hosted import HostedAccessMiddleware, HostedSettings
+from .hosted_pilot import HostedPilot
 from .github_auth import GitHubSessions
 from .auth_routes import register_auth_routes
 from .campaign_metadata import MetadataConflict, load_metadata, save_metadata, validate_labels
@@ -209,9 +210,13 @@ class _WorkbenchAPI:
         self.lock = threading.RLock()
         self.extraction_slot = threading.BoundedSemaphore(1)
         self.hosted_settings = hosted_settings
+        self.pilot = HostedPilot(self.workspace, hosted_settings) if hosted_settings else None
 
     def register(self, app: FastAPI) -> None:
         app.get("/api/health")(self.health)
+        if self.pilot:
+            app.get("/api/pilot/luna")(self.pilot.status)
+            app.post("/api/pilot/luna", responses=CONFLICT_RESPONSE)(self.pilot.start_request)
         app.get("/api/cases")(self.cases)
         app.get("/api/cases/{case_id}/articles/{source}/pdf")(self.sample_pdf)
         app.get("/api/campaigns")(self.campaigns)
@@ -376,7 +381,10 @@ class _WorkbenchAPI:
         return {**_read_json(versions[-1], self.workspace), "revision": int(versions[-1].stem.split("-")[-1])} if versions else {"rater": "", "ratings": [], "revision": 0}
 
     def health(self, request: Request):
-        return {"version": __version__, "api_contract": 2, "capabilities": ["campaign_metadata_v1", "review_revisions_v1", "comparison_csv_v1", "workspace_backup_v1"], "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
+        capabilities = ["campaign_metadata_v1", "review_revisions_v1", "comparison_csv_v1", "workspace_backup_v1"]
+        if self.pilot:
+            capabilities.append("luna_pilot_v1")
+        return {"version": __version__, "api_contract": 2, "capabilities": capabilities, "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
                 "storage_mode": self.hosted_settings.storage_mode if self.hosted_settings else "local",
                 "storage": storage_status(self.workspace),
                 "user": getattr(request.state, "lab_user", None)}
@@ -476,7 +484,7 @@ class _WorkbenchAPI:
         try:
             temporary = tempfile.TemporaryDirectory(prefix="security-lab-backup-")
             output = Path(temporary.name) / "security-lab-workspace.zip"
-            with self.lock, self.jobs._lock:
+            with self.lock, self.jobs._lock, self.pilot.exclusive() if self.pilot else nullcontext():
                 if self.jobs.running:
                     raise HTTPException(409, "Bitte den aktiven Versuch vor der Sicherung abschließen oder abbrechen.")
                 export_workspace(self.workspace, Path(__file__).resolve().parents[2], output)
@@ -689,7 +697,7 @@ def _register_frontend(app: FastAPI, frontend_dir: Path) -> None:
 
 def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = None,
                *, hosted_settings: HostedSettings | None = None) -> FastAPI:
-    """Create a mock-only workbench; hosting must be configured explicitly."""
+    """Create the workbench; hosting must be configured explicitly."""
     api = _WorkbenchAPI(workspace, cases_dir, hosted_settings)
 
     @asynccontextmanager

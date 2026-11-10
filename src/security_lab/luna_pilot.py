@@ -68,6 +68,12 @@ def _is_luna_identifier(value: str | None) -> bool:
         return False
 
 
+def has_luna_standard_rate(usage: dict) -> bool:
+    raw = usage.get("raw_response")
+    return (isinstance(raw, dict) and _is_luna_identifier(usage.get("model"))
+            and raw.get("service_tier", "default") == "default")
+
+
 def run_first(workspace: Path, config: dict, api_key: str, *, transport: Transport | None = None) -> dict:
     checked = make_config(config["input_eur_per_million"], config["output_eur_per_million"],
                           config["price_checked_on"])
@@ -81,9 +87,8 @@ def run_first(workspace: Path, config: dict, api_key: str, *, transport: Transpo
         def respond(self, messages: list[dict], tools: list[dict]) -> ModelReply:
             reply = super().respond(messages, tools)
             usage = reply.usage
-            raw = usage.get("raw_response") or {}
             if (usage["accounting"] != "reported_usage" or usage["budget_overrun"]
-                    or not _is_luna_identifier(usage["model"]) or raw.get("service_tier", "default") != "default"):
+                    or not has_luna_standard_rate(usage)):
                 raise ReceivedResponseError({**usage, "pilot_receipt_invalid": True})
             return reply
 

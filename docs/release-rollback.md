@@ -30,6 +30,7 @@ einen Ablauf, keinen bereits durchgeführten Rollback-Test.
   Bewertungen oder wissenschaftlichen Quellenfreigaben für die Abnahme erfinden.
 - In Render CPU/RAM und Ereignisse beobachten. Ein erfolgreicher kleiner Mock
   belegt keine ausreichende Kapazität für jede PDF-Größe oder Hauptmessung.
+- Beim ersten Luna-Rollout angemeldet die gesperrte Pilotansicht prüfen. Vor einem Rollback oder einer Wiederherstellung nach einem begonnenen Pilotversuch den Piloten deaktivieren. Vor dem nächsten Start Versuchsnachweis, Budgetprotokoll und Anbieternutzung abgleichen: Ein älterer Diskstand kann den Nachweis eines bereits berechneten Aufrufs verlieren.
 - Tatsächlich laufenden Commit, Deploy-ID, Zeitpunkt, Prüfergebnisse und
   verbleibende Grenzen im PR dokumentieren.
 

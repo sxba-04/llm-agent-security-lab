@@ -1,4 +1,4 @@
-"""Explicit access boundary for a shared, mock-only hosted workbench.
+"""Explicit access boundary for a authenticated hosted workbench.
 
 This is operator authentication, not tenant isolation or reviewer identity.
 The HTTPS reverse proxy is required. Ephemeral workspaces are explicit demos.
@@ -48,6 +48,7 @@ class HostedSettings:
     token_hashes: tuple[str, ...]
     storage_mode: str = "persistent"
     github: GitHubSettings | None = None
+    luna_pilot_enabled: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "public_origin", _https_origin(self.public_origin))

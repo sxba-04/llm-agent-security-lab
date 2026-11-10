@@ -26,9 +26,9 @@ Die [Online-Werkbank öffnen](https://sxba-04.github.io/llm-agent-security-lab/)
 
 Dafür muss keine lokale Entwicklungsumgebung laufen. GitHub Pages liefert die Oberfläche; das geschützte [Python-Backend auf Render](https://llm-agent-security-lab-demo-api.onrender.com/healthz) führt die Anwendung aus. Der bestehende Render-Dienst verwendet seit dem 2. November 2026 den kostenpflichtigen Plan mit 0,5 CPU und 512 MB RAM und eine separat eingerichtete persistente 1-GB-Disk. Einrichtung, Neustartnachweis und Betrieb sind unter [GitHub Pages und geschütztes Python-Backend](docs/hosting.md) dokumentiert.
 
-**Der Workspace unter `/var/data/security-lab` bleibt bei Neustarts und Deployments erhalten; dies wurde mit synthetischen Belegen nach einem kontrollierten Neustart geprüft.** Die Disk kostet zusätzlich 0,25 USD pro Monat. Wichtige Studienbelege weiterhin als geprüfte Archive herunterladen: Die Disk ersetzt keine externe Sicherung. Laufende Versuche können bei Deployments unterbrochen werden; GitHub-Sitzungen werden bei einem Serverneustart widerrufen. Die Oberfläche bleibt im Mock-Betrieb.
+**Der Workspace unter `/var/data/security-lab` bleibt bei Neustarts und Deployments erhalten; dies wurde mit synthetischen Belegen nach einem kontrollierten Neustart geprüft.** Die Disk kostet zusätzlich 0,25 USD pro Monat. Wichtige Studienbelege weiterhin als geprüfte Archive herunterladen: Die Disk ersetzt keine externe Sicherung. Laufende Versuche können bei Deployments unterbrochen werden; GitHub-Sitzungen werden bei einem Serverneustart widerrufen.
 
-Für spätere echte Modellversuche kann das Sprachmodell beim API-Anbieter laufen. Das eigene Backend steuert die Versuche, prüft Toolvorschläge und wertet Belege aus; es benötigt dafür keine lokalen Modellgewichte oder GPU. Echte API-Aufrufe und ihre Kosten bleiben dem separat freizugebenden Pilotbetrieb vorbehalten.
+Der [Luna-Pilot](docs/api.md) dient der technischen Abnahme am synthetischen Ticket A17. Nach serverseitiger Freigabe können angemeldete Betreiber den sauberen Fall einmal über die gehostete Oberfläche starten. Render ruft das Modell auf, prüft die Ticketberechtigung und erfasst den Verbrauch. Reguläre Webkampagnen verwenden das Testmodell.
 
 [Dokumentationsübersicht](docs/README.md) · [Zugangscode wiederherstellen](docs/hosting.md#verlorener-code-und-ungültige-sitzung) · [Projektstruktur](docs/architecture.md#verzeichnisstruktur-und-modulgrenzen)
 
@@ -80,7 +80,7 @@ uv run --locked --extra web python -m security_lab summarize runs/pilot --output
 
 Zwölf Fälle × zwei Artikelversionen × vier Varianten × eine Wiederholung ergeben **96 technische Aufgabenläufe**. Das Testmodell folgt vorgegebenen Skripten, um erlaubte Aktionen, blockierte Aktionen, Datenoffenlegung und inhaltliche Restfälle gezielt zu prüfen. Seine Ergebnisse sagen nichts über die Angreifbarkeit eines realen Modells aus.
 
-Für echte Modellaufrufe sind ein gesondert eingerichteter API-Zugang, geprüfte lokale Einstellungen und ein ausdrücklich gestarteter kostenpflichtiger Lauf erforderlich. Das Budget der Modell-API-Versuche beträgt höchstens **250 EUR**. Siehe [Modellzugang und Budget](docs/api.md).
+Für echte Modellaufrufe per CLI sind ein gesondert eingerichteter API-Zugang, geprüfte lokale Einstellungen und ein ausdrücklich gestarteter kostenpflichtiger Lauf erforderlich. Das Budget der Modell-API-Versuche beträgt höchstens **250 EUR**. Siehe [Modellzugang und Budget](docs/api.md).
 
 ## Ergebnisse lesen
 
