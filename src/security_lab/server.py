@@ -702,8 +702,10 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        api.jobs.shutdown()
+        try:
+            yield
+        finally:
+            api.jobs.shutdown()
 
     app = FastAPI(title="LLM Agent Security Lab", version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None,

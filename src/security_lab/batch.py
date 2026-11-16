@@ -356,7 +356,8 @@ def _verify_source_document(directory: Path, document_id: str, references: dict[
             or hashlib.sha256(extracted).hexdigest() != metadata.get("text_sha256")
             or confirmation.get("text_sha256") != metadata.get("text_sha256")):
         raise ValueError("PDF source evidence hash or confirmation mismatch")
-    extracted.decode("utf-8")
+    # Validate the encoding without replacing the original hashed bytes.
+    _ = extracted.decode("utf-8")
     expected = references.get(document_id)
     if expected and any(metadata.get(key) != value for key, value in expected.items() if key != "confirmed"):
         raise ValueError("PDF source metadata differs from case snapshot")

@@ -212,7 +212,7 @@ export function useUnsavedChanges(dirty: boolean) {
     if (!dirty) return;
     const owner = Symbol('unsaved review');
     unsavedForms.add(owner);
-    const before = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    const before = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener('beforeunload', before);
     return () => { unsavedForms.delete(owner); window.removeEventListener('beforeunload', before); };
   }, [dirty]);

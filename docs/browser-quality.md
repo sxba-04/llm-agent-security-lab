@@ -9,10 +9,41 @@ im Forschungsbestand `runs/` an; Zugangscode und GitHub-Identität sind Test-Fix
 
 ## Abdeckung
 
+### Browserumfang, entschieden am 16. November 2026
+
+Sebastian hat für die Werkbank die aktuelle und die vorherige stabile Version
+von Chrome, Edge, Firefox und Safari gewählt. Ältere Versionen erhalten keine
+gesonderte Kompatibilitätszusage. Diese Supportentscheidung ist vom tatsächlich
+ausgeführten Testumfang zu unterscheiden: Die CI verwendet die mit der gelockten
+Playwright-Version gelieferten Browser. Chromium ist kein Nachweis für ausgeführte
+Chrome- oder Edge-Produkttests; Playwright-WebKit ist kein ausgeführter Safari-Test.
+Auch die jeweils vorherige stabile Produktversion wird damit nicht automatisch
+geprüft. Diese Produkt-/Versionsmatrix bleibt gesondert nachzuweisen.
+
+Für diesen Umfang verwendet der Schutz ungespeicherter Eingaben
+`BeforeUnloadEvent.preventDefault()`. Der zusätzliche veraltete `returnValue`-
+Fallback entfällt. Dies ersetzt die historische Legacy-Begründung für S1874 in
+`quality-improvements-2026-11-03.md`, deren ursprünglicher Prüfstand erhalten
+bleibt. Grundlage sind die
+[MDN-Ereignisdokumentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event)
+und der [HTML-Standard zur Navigation](https://html.spec.whatwg.org/multipage/browsing-the-web.html#fire-beforeunload).
+Ein Unload-Dialog benötigt vorherige Nutzerinteraktion und kann insbesondere bei
+mobilem Prozessende ausbleiben; er ersetzt weder Speichern noch Konflikterkennung.
+
+`beforeunload.smoke.spec.ts` prüft an einem echten Bewertungsentwurf mit
+Nutzeraktivierung den Browserdialog beim Neuladen und Tab-Schließen: Abbrechen
+erhält die Eingaben; nach erfolgreichem Speichern erfolgen Neuladen und Schließen
+ohne Dialog. Der Test aktiviert weder ein Modell noch einen bezahlten Versuch.
+Er wird durch die vorhandene Smoke-Auswahl in Linux für Chromium, Firefox und
+WebKit und in Windows für Chromium erfasst. Die Versionsangabe des tatsächlich
+gestarteten Browsers wird als Testanhang gespeichert. Eine Testdefinition allein
+behauptet keinen erfolgreichen Lauf.
+
 | Prüfung | Chromium | Firefox / WebKit |
 |---|---|---|
 | Bestehender vollständiger lokaler Ablauf | Windows und Linux | – |
 | Tastatur-Tabs, getrennte Bewertungsentwürfe, Archivdownload | Windows und Linux | Linux-Smoke |
+| Echte Unload-Dialoge: Abbruch erhält Entwurf; gespeicherter Stand ohne Dialog | Windows und Linux | Linux-Smoke |
 | PDF → Mock-Versuch → Vergleich → Entwurf → Archiv bei 320, 390, 768, 1440 px | Windows und Linux | – |
 | WCAG 2 A/AA und 2.1 AA mit axe: Übersicht, Fall, Vorbereitung, PDF in Hell/Dunkel; Vergleich/Bewertung mobil | Windows und Linux | – |
 | Theme-Präferenz, Systemwechsel, geschlossene Navigation und Fokus | Windows und Linux | – |

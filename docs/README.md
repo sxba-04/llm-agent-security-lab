@@ -43,3 +43,6 @@ Die Startseite und Navigation wurden am 2. November 2026 im [GitHub-Wiki](https:
 Bei fachlich relevanten Änderungen werden die betroffenen Anleitungen, der Entscheidungsstand und die Beiträge mitgepflegt. Versuchsfreigaben, menschliche Bewertungen und erfolgreiche Tests werden nur dokumentiert, wenn sie tatsächlich stattgefunden haben.
 
 - [Qualitätskorrekturen vom 3. November 2026](quality-improvements-2026-11-03.md): Refactoring, Sonar-Dispositionen und Prüfnachweise.
+
+
+- [Wartung und Befundabgleich vom 16. November 2026](maintenance-2026-11-16.md): PR46-Sicherungsnachweis, Exportmodus, konkrete Sonar-Dispositionen und Browser-Supportentscheidung.
