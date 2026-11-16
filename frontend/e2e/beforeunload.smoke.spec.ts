@@ -22,10 +22,13 @@ async function createUnsavedReview(page: Page) {
   return { notes, draft };
 }
 
+async function leaveDocument(page: Page) {
+  // Return before the browser starts navigation, so a modal cannot block evaluate.
+  await page.evaluate(() => { setTimeout(() => window.location.assign('about:blank'), 0); });
+}
+
 // Exercise browser-generated unload prompts, not the separate SPA confirm dialog.
-// Keep cancelled tab close and successful tab close on independent pages: each
-// test observes one close attempt without inheriting a prior cancelled close.
-test('unsaved review survives cancelled reload; saved review reloads and closes without a prompt', async ({ page }) => {
+test('unsaved review survives cancelled reload and navigation; saved review leaves without a prompt', async ({ page }) => {
   const { notes, draft } = await createUnsavedReview(page);
   const reviewUrl = page.url();
 
@@ -36,6 +39,16 @@ test('unsaved review survives cancelled reload; saved review reloads and closes 
   const reloadDialogType = reloadDialog.type();
   await reloadDialog.dismiss();
   expect(reloadDialogType).toBe('beforeunload');
+  await expect(page).toHaveURL(reviewUrl);
+  await expect(notes).toHaveValue(draft);
+  await expect(page.getByText('Ungespeicherte Änderungen', { exact: true })).toBeVisible();
+
+  const navigationPrompt = page.waitForEvent('dialog', { timeout: 15000 });
+  await leaveDocument(page);
+  const navigationDialog = await navigationPrompt;
+  const navigationDialogType = navigationDialog.type();
+  await navigationDialog.dismiss();
+  expect(navigationDialogType).toBe('beforeunload');
   await expect(page).toHaveURL(reviewUrl);
   await expect(notes).toHaveValue(draft);
   await expect(page.getByText('Ungespeicherte Änderungen', { exact: true })).toBeVisible();
@@ -57,9 +70,8 @@ test('unsaved review survives cancelled reload; saved review reloads and closes 
     // Activate the reloaded document without editing it; absence of a prompt must
     // reflect a clean form, not the browser's no-user-activation suppression.
     await notes.click();
-    const closed = page.waitForEvent('close', { timeout: 15000 });
-    await page.close({ runBeforeUnload: true });
-    await closed;
+    await leaveDocument(page);
+    await expect(page).toHaveURL('about:blank', { timeout: 15000 });
     expect(unexpectedDialogs).toEqual([]);
   } finally {
     page.off('dialog', dismissUnexpected);

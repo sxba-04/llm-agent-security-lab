@@ -90,6 +90,22 @@ Die vollständige Locked-Installation, Linux-/Windows-Suite und tatsächliche
 Ausführung der neuen Regressionen sind vor Merge erforderlich; endgültiger
 Head, Testzahlen und Codex-Code-/Security-Reviews stehen im PR.
 
+Die neue Unload-Regression wurde gezielt eingegrenzt: In den Linux-Läufen
+[43940235159](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/43940235159)
+(`dd91538`) und
+[43942134420](https://github.com/sxba-04/llm-agent-security-lab/actions/runs/43942134420)
+(`499d6f3`) blieb bei WebKit 27.2 mit Playwright 1.65.0 das erwartete
+`close`-Ereignis nach dem Speichern aus, jeweils auch im Wiederholungsversuch.
+Die vorherigen Prüfungen auf Dialog, Abbruch, erhaltenen Entwurf, Speicherung und
+dialogfreies Neuladen bestanden. Die Trennung der Schließversuche auf unabhängige
+Seiten beseitigte den Fehler nicht; eine konkrete Browser- oder Anwendungsursache
+ist damit nicht nachgewiesen. Der endgültige Test prüft für alle Engines denselben
+vollständigen Dokumentwechsel: ungespeichert erscheint der Dialog und Abbrechen
+erhält den Entwurf; gespeichert wird das Ziel ohne Dialog erreicht. Das echte
+Abbrechen eines Tab-Schließversuchs bleibt separat geprüft. Ein erfolgreicher
+physischer Tab-Abschluss des gespeicherten Stands wird nicht behauptet. Es gibt
+keinen WebKit-Skip; der aktuelle CI-Lauf muss den eingegrenzten Ablauf bestätigen.
+
 ChatGPT/Codex bereitete Code und Dokumentation vor. Unabhängige Agenten prüften
 Ursache, Befundgrenzen und Änderungen. Das ist KI-gestützte Arbeit und keine
 erfundene menschliche Autorenabnahme. B/F/P/FP, Originaldaten, Bewertung und

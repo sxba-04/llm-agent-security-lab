@@ -31,10 +31,16 @@ Ein Unload-Dialog benötigt vorherige Nutzerinteraktion und kann insbesondere be
 mobilem Prozessende ausbleiben; er ersetzt weder Speichern noch Konflikterkennung.
 
 `beforeunload.smoke.spec.ts` prüft an einem echten Bewertungsentwurf mit
-Nutzeraktivierung den Browserdialog beim Neuladen und Tab-Schließen: Abbrechen
-erhält die Eingaben; nach erfolgreichem Speichern erfolgen Neuladen und Schließen
-ohne Dialog. Der Test aktiviert weder ein Modell noch einen bezahlten Versuch.
-Er wird durch die vorhandene Smoke-Auswahl in Linux für Chromium, Firefox und
+Nutzeraktivierung den Browserdialog beim Neuladen, bei vollständiger
+Dokumentnavigation und beim Tab-Schließen: Abbrechen erhält die Eingaben. Nach
+erfolgreichem Speichern erfolgen Neuladen und Dokumentnavigation ohne Dialog.
+Die Navigation verwendet vor und nach dem Speichern denselben Browseraufruf;
+ein unerwarteter Dialog wird abgebrochen und verhindert den erwarteten Zielwechsel.
+Das physische Schließen eines gespeicherten Tabs wird nicht als geprüft behauptet:
+WebKit lieferte dafür in zwei CI-Ständen kein `close`-Ereignis; die Ursache bleibt
+offen (siehe [Wartungsnachweis](maintenance-2026-11-16.md)). Die beiden Tests
+aktivieren weder ein Modell noch einen bezahlten Versuch.
+Sie werden durch die vorhandene Smoke-Auswahl in Linux für Chromium, Firefox und
 WebKit und in Windows für Chromium erfasst. Die Versionsangabe des tatsächlich
 gestarteten Browsers wird als Testanhang gespeichert. Eine Testdefinition allein
 behauptet keinen erfolgreichen Lauf.
@@ -43,7 +49,7 @@ behauptet keinen erfolgreichen Lauf.
 |---|---|---|
 | Bestehender vollständiger lokaler Ablauf | Windows und Linux | – |
 | Tastatur-Tabs, getrennte Bewertungsentwürfe, Archivdownload | Windows und Linux | Linux-Smoke |
-| Echte Unload-Dialoge: Abbruch erhält Entwurf; gespeicherter Stand ohne Dialog | Windows und Linux | Linux-Smoke |
+| Unload beim Neuladen, Navigieren und Schließen: Abbruch erhält Entwurf; gespeicherter Stand erlaubt Neuladen und Dokumentnavigation ohne Dialog | Windows und Linux | Linux-Smoke |
 | PDF → Mock-Versuch → Vergleich → Entwurf → Archiv bei 320, 390, 768, 1440 px | Windows und Linux | – |
 | WCAG 2 A/AA und 2.1 AA mit axe: Übersicht, Fall, Vorbereitung, PDF in Hell/Dunkel; Vergleich/Bewertung mobil | Windows und Linux | – |
 | Theme-Präferenz, Systemwechsel, geschlossene Navigation und Fokus | Windows und Linux | – |
