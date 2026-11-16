@@ -1,12 +1,14 @@
-import { expect, test, type Dialog } from '@playwright/test';
+import { expect, test, type Dialog, type Page } from '@playwright/test';
 import { startCampaign } from './helpers';
 
-// Exercise browser-generated unload prompts, not the separate SPA confirm dialog.
-test('unsaved review survives cancelled reload and tab close; saved review leaves without a prompt', async ({ page, browser, browserName }, testInfo) => {
+test.beforeEach(async ({ browser, browserName }, testInfo) => {
   await testInfo.attach('unload-browser-version', {
     body: JSON.stringify({ engine: browserName, version: browser.version() }),
     contentType: 'application/json',
   });
+});
+
+async function createUnsavedReview(page: Page) {
   await page.goto('/');
   await startCampaign(page);
   await page.getByRole('button', { name: 'Bewertungssatz erstellen', exact: true }).click();
@@ -16,8 +18,16 @@ test('unsaved review survives cancelled reload and tab close; saved review leave
   await notes.click();
   await page.keyboard.type('Synthetischer Entwurf ohne wissenschaftliches Urteil.');
   const draft = await notes.inputValue();
-  const reviewUrl = page.url();
   await expect(page.getByText('Ungespeicherte Änderungen', { exact: true })).toBeVisible();
+  return { notes, draft };
+}
+
+// Exercise browser-generated unload prompts, not the separate SPA confirm dialog.
+// Keep cancelled tab close and successful tab close on independent pages: each
+// test observes one close attempt without inheriting a prior cancelled close.
+test('unsaved review survives cancelled reload; saved review reloads and closes without a prompt', async ({ page }) => {
+  const { notes, draft } = await createUnsavedReview(page);
+  const reviewUrl = page.url();
 
   const reloadPrompt = page.waitForEvent('dialog', { timeout: 15000 });
   // Schedule a real reload after this evaluation returns, so a modal cannot block it.
@@ -29,16 +39,6 @@ test('unsaved review survives cancelled reload and tab close; saved review leave
   await expect(page).toHaveURL(reviewUrl);
   await expect(notes).toHaveValue(draft);
   await expect(page.getByText('Ungespeicherte Änderungen', { exact: true })).toBeVisible();
-
-  const closePrompt = page.waitForEvent('dialog', { timeout: 15000 });
-  const closeAttempt = page.close({ runBeforeUnload: true });
-  const closeDialog = await closePrompt;
-  const closeDialogType = closeDialog.type();
-  await closeDialog.dismiss();
-  await closeAttempt;
-  expect(closeDialogType).toBe('beforeunload');
-  expect(page.isClosed()).toBe(false);
-  await expect(notes).toHaveValue(draft);
 
   await page.getByRole('button', { name: 'Bewertungen speichern', exact: true }).click();
   await expect(page.getByText('Entwurf gespeichert. Offene Felder bleiben unbewertet.')).toBeVisible();
@@ -64,4 +64,20 @@ test('unsaved review survives cancelled reload and tab close; saved review leave
   } finally {
     page.off('dialog', dismissUnexpected);
   }
+});
+
+test('unsaved review survives cancelled tab close', async ({ page }) => {
+  const { notes, draft } = await createUnsavedReview(page);
+  const reviewUrl = page.url();
+  const closePrompt = page.waitForEvent('dialog', { timeout: 15000 });
+  const closeAttempt = page.close({ runBeforeUnload: true });
+  const closeDialog = await closePrompt;
+  const closeDialogType = closeDialog.type();
+  await closeDialog.dismiss();
+  await closeAttempt;
+  expect(closeDialogType).toBe('beforeunload');
+  expect(page.isClosed()).toBe(false);
+  await expect(page).toHaveURL(reviewUrl);
+  await expect(notes).toHaveValue(draft);
+  await expect(page.getByText('Ungespeicherte Änderungen', { exact: true })).toBeVisible();
 });
