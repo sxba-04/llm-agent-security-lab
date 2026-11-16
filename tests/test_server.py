@@ -1,6 +1,7 @@
 """Real local API flows; mock execution only, no provider or network calls."""
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 import shutil
@@ -27,6 +28,21 @@ from security_lab.cases import load_cases
 from security_lab.models import ScriptedModel
 
 CASES = Path(__file__).resolve().parents[1] / "cases" / "dev"
+
+
+@unittest.skipUnless(TestClient, "Install the web and dev extras for server tests")
+class LifespanTests(unittest.IsolatedAsyncioTestCase):
+    async def test_lifespan_exception_and_cancellation_always_shut_down_jobs(self):
+        for failure in (RuntimeError("synthetic lifespan failure"), asyncio.CancelledError()):
+            with self.subTest(failure=type(failure).__name__), tempfile.TemporaryDirectory() as temporary:
+                app = create_app(Path(temporary), CASES)
+                jobs = app.state.jobs
+                with patch.object(jobs, "shutdown", wraps=jobs.shutdown) as shutdown:
+                    with self.assertRaises(type(failure)) as raised:
+                        async with app.router.lifespan_context(app):
+                            raise failure
+                    self.assertIs(raised.exception, failure)
+                    shutdown.assert_called_once_with()
 
 
 @unittest.skipUnless(TestClient, "Install the web and dev extras for server tests")

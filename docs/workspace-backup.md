@@ -146,3 +146,14 @@ Anzahl Kampagnen/PDFs/Bewertungsversionen, Zielordner sowie tatsächlich geprüf
 Ansichten festhalten. Automatische Fixture-Tests ersetzen weder menschliche
 Bewertungen noch Freigaben von PDF-Texten. Dieses Paket wurde mit Codex erstellt;
 es verändert das Versuchsmodell B/F/P/FP nicht.
+
+
+## Dateimodus im Hosting-Checkout
+
+Die Sicherung verlangt weiterhin einen sauberen versionierten Checkout,
+einschließlich der von Git erfassten Dateimodi. Das ausführbare CI-Hilfsskript
+`.github/scripts/prefer-ubuntu-archive.sh` ist als `100755` versioniert.
+Wiederkehrende Modusabweichungen und ihre unveränderten Blobhashes wurden im
+[Wartungsnachweis vom 16. November](maintenance-2026-11-16.md) dokumentiert.
+Bei einem neuen Deployment zuerst Gitstatus und regulären Export prüfen;
+keine pauschale Modusnormalisierung und kein `core.filemode=false` verwenden.
