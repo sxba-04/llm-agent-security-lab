@@ -5,8 +5,9 @@ Das Labor startet standardmäßig mit einem lokalen Testmodell. Echte Modellaufr
 ## Einmaliger A17-Pilot auf dem gehosteten Backend
 
 GitHub Pages zeigt die Bedienoberfläche. Der vorhandene Render-Dienst führt
-den gleichen sauberen A17-Lauf in Variante P aus wie die lokale CLI. Eigene
-Kampagnen, Fallauswahl und PDF-Importe verwenden das Testmodell.
+den gleichen sauberen A17-Lauf in Variante P aus wie die lokale CLI.
+Kampagnen unter **Versuche** verwenden das Testmodell. Fallauswahl, PDF-Import
+und Bestätigung des extrahierten Texts erfolgen ohne Modellaufruf.
 
 1. Den projektgebundenen Dienstkontoschlüssel für `gpt-6-luna` als
    `OPENAI_API_KEY` in der Umgebung des Render-Backends bereitstellen. Der
