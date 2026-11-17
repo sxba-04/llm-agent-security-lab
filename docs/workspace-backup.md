@@ -13,6 +13,7 @@ keine Bewertungen und führt keine Modellaufrufe aus.
 | PDF-Bestand | Auch unzugeordnete und noch nicht bestätigte Originale, Extraktion und Metadaten; vorhandene Bestätigung bleibt erhalten |
 | Bewertungen | Original-CSV, Entwürfe, Versionen und Klärungen; auch ältere Bewertungssätze im Workspace-Hauptverzeichnis |
 | Kampagnennamen, Tags und Studienmanifest | Kanonische Dateien werden mitgesichert |
+| Gehosteter A17-Einzelpilot | Vorhandene Dateien in `studies/luna-clean-first/` und die Budgetbuchungen in `studies/budget.json` werden mitgesichert. Nach der Wiederherstellung Versuchsstatus und Ledger gesondert prüfen, siehe [Pilotanleitung](api.md). |
 | Dokumentierter Betriebsnachweis | Ausschließlich `operations/persistence-20261102/`: alle begrenzten regulären Originaldateien werden bytegleich mitgesichert; gesonderter Nachweis, keine wissenschaftliche Kampagne |
 | Code und Lockdateien | Unveränderliche Git-Snapshots des aktuellen Commits und der verfügbaren, in Kampagnen vermerkten älteren Commits; keine Installation oder Ausführung beim Prüfen |
 | Downloadcache und Betriebssperren | `exports/` nur ohne Kampagnenmanifest und mit ausschließlich regulären ZIP-Dateien sowie direkte `workers/*.lock` werden ausgeschlossen; gleichnamige Belege in Unterordnern bleiben erhalten |
@@ -121,7 +122,7 @@ Workspace-Pfad aus. Alte Sitzungen werden damit nicht wiederhergestellt.
 | `source_evidence_complete` | Alle aufgezeichneten Code-Prüfsummen der Kampagnen passen zu mitgesicherten Git-Snapshots |
 | `campaign_source_verified` | Zeigt fehlende/abweichende Originalstände je Kampagne |
 | `supplementary_operations` | Getrennt aufgeführte historische Betriebsdateien; nur ZIP-Inventar und Byte-Prüfsummen geprüft, keine erneute semantische Freigabe |
-| `engineering_only` | Ausschließlich Mock-Belege; kein empirischer Nachweis realer Modelle |
+| `engineering_only` | `true`, wenn alle erfassten regulären Kampagnen als technische Läufe eingestuft sind. Bei null Kampagnen ist der Wert ebenfalls `true`. Aussagen über einen gehosteten A17-Einzelpilot erfordern dessen eigene Belege und Budgetbuchungen. |
 
 Abbruch oder fehlender historischer Code sind deshalb nicht automatisch ein
 Integritätsfehler. Beschädigte Belege werden dagegen mit einer Fehlermeldung
@@ -140,6 +141,11 @@ fehlgeschlagene atomare Veröffentlichung. Der Test führt die CLI-Befehle
 in den API-Tests geprüft. Ausgeführt am 6. November 2026 auf Linux; ein echter
 Windows-Arbeitsplatz und eine produktive Wiederherstellungsübung benötigen einen
 eigenen Nachweis.
+
+Am 17. November wurden vor und nach dem Render-Deployment von `6dfce02a` die
+authentifizierten Exporte auf Windows getrennt wiederhergestellt. Pro Export
+wurden 249 indizierte Dateien geprüft. Alle 20 Nutzdateien stimmten bytegenau
+mit dem vorherigen Bestand überein. [Nachweis zu PR #51](https://github.com/sxba-04/llm-agent-security-lab/pull/51)
 
 Für eine reale Übung Datum, Quell-Commit, Archiv-SHA256, externen Ablageort,
 Anzahl Kampagnen/PDFs/Bewertungsversionen, Zielordner sowie tatsächlich geprüfte

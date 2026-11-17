@@ -1,6 +1,6 @@
 # Entscheidungsstand
 
-Stand: 22. Oktober 2026. Die Angaben zur Abstimmung mit Ralf Brune und zur Arbeitsumgebung stammen aus den ausdrücklichen Rückmeldungen des Teams im Projektchat. Technische Vorschläge sind als solche gekennzeichnet.
+Ausgangsstand vom 22. Oktober 2026. Die datierten Ergänzungen halten die späteren Entscheidungen fest. Die Angaben zur Abstimmung mit Ralf Brune und zur Arbeitsumgebung stammen aus den ausdrücklichen Rückmeldungen des Teams im Projektchat. Technische Vorschläge sind als solche gekennzeichnet.
 
 | Entscheidung | Stand und Begründung |
 |---|---|
@@ -98,3 +98,9 @@ wurden geprüft. Jonahs Konto ist freigegeben, seine tatsächliche Anmeldung
 bleibt offen. Diese Betreiberkonten ändern weder wissenschaftliche Bewertungen
 noch die experimentelle Autorisierung P. Die getrennten Betriebsnachweise stehen
 in [validation.md](validation.md).
+
+## Stand des gehosteten Einzelpiloten am 17. November 2026
+
+Das Team hat GPT-6 Luna für einen einzelnen Pilotlauf ausgewählt. Dafür ist auf Render der saubere Entwicklungsfall `DEV-G1-01` in Variante P fest vorgegeben. Das Gateway erlaubt in diesem Fall ausschließlich den Lesezugriff auf das synthetische Ticket A17. Die Obergrenzen betragen vier Modellanfragen, drei Werkzeugaufrufe und 0,50 EUR für den Einzelversuch. Reguläre Kampagnen der Werkbank laufen weiter mit dem Testmodell. [Modellzugang und Budget](api.md)
+
+Bei der Prüfung des veröffentlichten Commits `6dfce02a` zeigte die Werkbank „Noch nicht freigeschaltet“. Es lagen null reguläre Kampagnen und eine bestätigte vierseitige QA-PDF vor. Vor der Freischaltung prüfen Sebastian und Jonah die Fälle, PDF-Texte und Bewertungsrubrik. Der Nachweis der äußeren Isolation bleibt offen. Vor dem Start sind außerdem aktuelle Modellkosten, Guthaben und die Freigabe für den konkreten Einzelversuch zu prüfen. Die technischen Abgleiche wurden mit Codex durchgeführt. [Betriebsnachweis zu PR #51](https://github.com/sxba-04/llm-agent-security-lab/pull/51) · [Fachliche Abnahme](manual-acceptance.md) · [Pilotvorprüfung](study-preflight.md)

@@ -1,6 +1,6 @@
 # Lokale Laboroberfläche
 
-Die Oberfläche verbindet FastAPI mit React und TypeScript. Diese Auswahl wurde vom Team am 23. Oktober 2026 ausdrücklich getroffen. Sie verwendet denselben Versuchskern und dieselbe Auswertung wie die CLI. Alle über die Oberfläche gestarteten Versuche verwenden ausschließlich das vorgegebene Testmodell. Ein API-Schlüssel wird dafür nicht benötigt oder abgefragt.
+Die Oberfläche verbindet FastAPI mit React und TypeScript. Diese Auswahl wurde vom Team am 23. Oktober 2026 ausdrücklich getroffen. Sie verwendet denselben Versuchskern und dieselbe Auswertung wie die CLI. Unter **Versuche** laufen alle Kampagnen mit dem Testmodell und benötigen keinen Modellschlüssel. Auf Render gibt es zusätzlich den [Luna-Piloten](api.md). Er kann nach gesonderter Freigabe genau einen festgelegten Entwicklungsfall über die Modell-API ausführen.
 
 ## Start unter Windows
 
