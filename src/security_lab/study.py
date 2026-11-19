@@ -14,7 +14,7 @@ import sys
 from typing import Any
 
 from .batch import SOURCES, VARIANTS, digest, load_results, provenance, schedule, write_json_new
-from .budget import PROJECT_CEILING_EUR, euros
+from .budget import PROJECT_CEILING_EUR, estimated_token_cost, euros
 from .cases import load_cases, validate_case
 from .providers import validate_config
 
@@ -220,8 +220,8 @@ def _record_gates(records: dict[str, Path] | None) -> list[dict]:
 
 def _priced_budget(plan: dict, cost: dict, already_spent_eur: str | None) -> list[dict]:
     config = plan["provider_config"]
-    request = (euros(config["input_eur_per_million"]) * config["max_input_tokens"]
-               + euros(config["output_eur_per_million"]) * config["max_completion_tokens"]) / 1000000
+    request = estimated_token_cost(config["max_input_tokens"], config["max_completion_tokens"],
+                                   euros(config["input_eur_per_million"]), euros(config["output_eur_per_million"]))
     total_requests = sum(min(config["max_requests"], part["planned_runs"] * plan["limits"]["max_model_calls"])
                          for part in plan["parts"])
     planned_cap = euros(config["run_budget_eur"]) * len(plan["parts"])

@@ -91,6 +91,8 @@ class ProviderTests(unittest.TestCase):
         self.assertFalse(captured[0]['parallel_tool_calls'])
         self.assertFalse(captured[0]['store'])
         self.assertNotIn('temperature', captured[0])
+        self.assertNotIn('reasoning_effort', captured[0])
+        self.assertNotIn('service_tier', captured[0])
         self.assertEqual(captured[0]['max_completion_tokens'], 100)
         self.assertEqual(reply.tool_calls[0].arguments, {'ticket_id': 'A17'})
         self.assertEqual(reply.usage['model'], 'resolved-test-model')
@@ -98,6 +100,28 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(float(self.ledger.snapshot()['accounted_eur']), 0.00014)
         self.assertNotIn('FAKE-TEST-KEY', self.ledger.path.read_text())
         self.assertNotIn('FAKE-TEST-KEY', json.dumps(reply.usage))
+
+    def test_unsupported_request_options_are_rejected_before_reservation(self):
+        for key, unsupported in (('reasoning_effort', 'high'), ('service_tier', 'priority')):
+            for value in (unsupported, '', None, False, [], {'token': 'PRIVATE-FIXTURE'}):
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError) as caught:
+                    self.make_model(lambda *args: self.fail('transport called'), **{key: value})
+                self.assertNotIn('PRIVATE-FIXTURE', str(caught.exception))
+        self.assertFalse(self.ledger.path.exists())
+
+    def test_explicit_default_tier_requires_confirmation_before_settlement(self):
+        for reported in ({}, {'service_tier': 'priority'}, {'service_tier': None}):
+            raw = {**response(), **reported}
+            model = self.make_model(lambda *args: raw, service_tier='default')
+            with self.subTest(reported=reported):
+                receipt = model.respond(MESSAGES, TOOLS).usage
+                self.assertEqual(receipt['raw_response'], raw)
+                self.assertEqual(receipt['total_tokens'], 120)
+                self.assertTrue(receipt['accounting_error'])
+                self.assertEqual(receipt['accounting_reason'], 'service_tier_unconfirmed')
+                self.assertIsNone(receipt['estimated_cost_eur'])
+                entry = self.ledger.snapshot()['reservations'][receipt['reservation_id']]
+                self.assertEqual(entry['state'], 'reserved')
 
     def test_transport_failure_is_sanitized_and_not_retried(self):
         calls = []
@@ -116,6 +140,7 @@ class ProviderTests(unittest.TestCase):
     def test_missing_usage_keeps_reservation_but_preserves_response(self):
         reply = self.make_model(lambda *args: response(usage=False)).respond(MESSAGES, TOOLS)
         self.assertEqual(reply.usage['accounting'], 'reservation_retained')
+        self.assertFalse(reply.usage['accounting_error'])
         self.assertGreater(float(self.ledger.snapshot()['accounted_eur']), 0)
         self.assertEqual(reply.text, 'Example answer')
 
@@ -246,6 +271,7 @@ class ProviderTests(unittest.TestCase):
         model = self.make_model(lambda *args: large, run_budget_eur=1)
         reply = model.respond(MESSAGES, TOOLS)
         self.assertTrue(reply.usage['budget_overrun'])
+        self.assertFalse(reply.usage['accounting_error'])
         self.assertTrue(self.ledger.snapshot()['halted'])
         with self.assertRaises(BudgetExceeded):
             model.respond(MESSAGES, TOOLS)

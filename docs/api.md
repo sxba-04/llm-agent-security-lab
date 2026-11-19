@@ -148,6 +148,8 @@ Die Beispielkonfiguration ist absichtlich nicht sofort für bezahlte Aufrufe ver
 | `enabled` | Erst nach vollständiger Einrichtung auf `true` setzen |
 | `model` | Exakte Modellkennung des vorgesehenen Piloten |
 | `expected_returned_model` | Optional: erwartete vom Anbieter zurückgemeldete Modellkennung für den Vergleich mehrerer Messserien |
+| `reasoning_effort` | Optional. Für das Luna-Profil unterstützt das Labor den Zeichenkettenwert `"none"`. |
+| `service_tier` | Optional. Für das Luna-Profil unterstützt das Labor den Zeichenkettenwert `"default"` zur Anforderung des Standardtarifs. |
 | `input_eur_per_million`, `output_eur_per_million` | Geprüfte Preise einschließlich geplanter Umrechnungs- und Kostenreserve |
 | `price_reference`, `price_checked_on` | Herkunft und Datum der Preisprüfung |
 | `run_budget_eur` | Kostenobergrenze für den gesamten CLI-Aufruf, nicht je Ticketaufgabe |
@@ -157,6 +159,27 @@ Die Beispielkonfiguration ist absichtlich nicht sofort für bezahlte Aufrufe ver
 | `timeout_seconds` | Zeitlimit einer einzelnen HTTP-Anfrage |
 
 Die Vorlage begrenzt den ersten Aufruf auf 0,50 EUR und zwölf Modellanfragen. Ein voller Katalog kann diese Grenze deshalb vorzeitig erreichen. Eine Erhöhung erfolgt erst nach geprüftem Verbrauch und einer nachvollziehbaren Budgetplanung. Modellabhängige Samplingparameter werden nur gesetzt, wenn das gewählte Modell sie unterstützt.
+
+Das generische Luna-Profil für die Vorbereitung der sauberen B-Aufgaben setzt
+beide Felder explizit. Lässt eine Konfiguration ein Feld aus, fehlt es auch
+in der Anfrage. Das Kampagnenmanifest hält die angeforderten Werte unter
+`provider_config` fest. Jede Anfrage, auch nach einer Werkzeugantwort, verwendet
+dasselbe Profil. Die Ereignisse enthalten die Originalantwort des Anbieters.
+Bei explizitem Standardtarif muss diese Antwort `service_tier="default"`
+bestätigen. Bei fehlender oder abweichender Angabe stoppt der Lauf vor der
+Werkzeugausführung. Gemeldete Tokens bleiben erhalten und die Reservierung
+bleibt bis zum Kostenabgleich offen.
+
+Der netzwerkfreie CLI-Test mit simulierten Antworten belegt Konfiguration,
+Übertragung und Speicherung für einen sauberen B-Fall. Implementierung und
+technische Prüfung erfolgten mit Codex. In der gehosteten Werkbank liefert der authentifizierte Lesezugriff
+`GET /api/studies/clean-b/plan` den gleichen festen Plan wie die Offline-CLI.
+Die Fähigkeit `clean_b_plan_v1` schaltet den Menüpunkt **B-Versuchsplan** frei.
+Fehlt eine der festgelegten Fallversionen oder weicht ihre Prüfsumme ab, liefert
+die Vorschau HTTP 503. Die B-Serie wartet auf ihre eigene Betriebs- und
+Kostenentscheidung. Die [Pilotvorprüfung](study-preflight.md#zwölf-saubere-entwicklungsaufgaben-in-b)
+beschreibt die Offline-Generalprobe und die Abbruchregeln für Verbrauchsdaten,
+Tarif, Modellkennung und Kostenüberlauf.
 
 Die Anwendung protokolliert zusätzlich die vom Anbieter tatsächlich zurückgemeldete Modellkennung. Innerhalb einer Messserie muss diese Kennung gleich bleiben. Mit `expected_returned_model` kann dieselbe Erwartung auch über mehrere Serien festgelegt werden. Bei einer Abweichung werden die Antwortdaten als Beleg gespeichert und die Serie angehalten. Das erkennt Änderungen der zurückgemeldeten Kennung; unangekündigte Änderungen hinter einer unveränderten Kennung kann diese Prüfung nicht ausschließen.
 

@@ -41,6 +41,28 @@ test('@smoke hosted access requires a token and keeps it out of browser storage'
   await expect(page.getByLabel('Zugangscode', { exact: true })).toBeVisible();
 });
 
+test('reads the fixed clean B schedule from the hosted API without starting a pilot', async ({ page }) => {
+  const planPath = '/api/studies/clean-b/plan';
+  const requests: string[] = [];
+  page.on('request', request => {
+    if ([planPath, '/api/pilot/luna'].includes(new URL(request.url()).pathname)) {
+      requests.push(request.method() + ' ' + new URL(request.url()).pathname);
+    }
+  });
+  await page.goto('./');
+  await login(page);
+  await page.getByRole('link', { name: 'B-Versuchsplan' }).click();
+  await expect(page.getByText('10 von 12', { exact: true })).toBeVisible();
+  await expect(page.getByText('gpt-6-luna', { exact: true })).toBeVisible();
+  await page.getByText('Geplante Fallfolge (12)', { exact: true }).click();
+  const items = page.getByRole('list', { name: 'Geplante Fallfolge' }).getByRole('listitem');
+  await expect(items).toHaveCount(12);
+  await expect(items.first()).toHaveText('DEV-G1-01');
+  await expect(items.last()).toHaveText('DEV-G3-04');
+  await expect(page.getByRole('button', { name: /starten/i })).toHaveCount(0);
+  expect(requests).toEqual(['GET ' + planPath]);
+});
+
 test('GitHub callback, identity, own-session revocation and logout work across HTTPS origins', async ({ page, context }, testInfo) => {
   await context.route('https://github.com/login/oauth/authorize?*', async route => {
     const request = new URL(route.request().url());

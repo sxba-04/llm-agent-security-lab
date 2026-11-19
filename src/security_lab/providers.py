@@ -20,12 +20,14 @@ from typing import Any, Callable
 import urllib.error
 import urllib.request
 
-from .budget import BudgetLedger, euros
+from .budget import BudgetLedger, estimated_token_cost, euros
 from .contracts import BudgetExceeded, ModelError, ModelReply, ReceivedResponseError, ToolCall
 
 API_URL = "https://api.openai.com/v1/chat/completions"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 Transport = Callable[[dict[str, Any], str, float], dict[str, Any]]
+# Only the standard-tier, no-reasoning profile has been prepared for this study.
+LUNA_REQUEST_OPTIONS = {"reasoning_effort": "none", "service_tier": "default"}
 
 
 def _strict_json(value: Any) -> bytes:
@@ -156,7 +158,7 @@ def _configuration_prices(config: dict[str, Any], enabled: bool) -> dict[str, An
     return validated
 
 
-def _configuration_sampling(config: dict[str, Any]) -> dict[str, Any]:
+def _configuration_request_options(config: dict[str, Any]) -> dict[str, Any]:
     validated: dict[str, Any] = {}
     if "temperature" in config:
         value = config["temperature"]
@@ -167,6 +169,11 @@ def _configuration_sampling(config: dict[str, Any]) -> dict[str, Any]:
         if type(config["seed"]) is not int:
             raise ValueError("seed must be an integer")
         validated["seed"] = config["seed"]
+    for key, supported in LUNA_REQUEST_OPTIONS.items():
+        if key in config:
+            if type(config[key]) is not str or config[key] != supported:
+                raise ValueError(f"{key} must be {supported!r} when configured")
+            validated[key] = supported
     return validated
 
 
@@ -181,7 +188,7 @@ def validate_config(config: Any) -> dict[str, Any]:
     allowed = {"enabled", "model", "expected_returned_model", "max_completion_tokens",
                "max_input_tokens", "max_requests", "input_eur_per_million",
                "output_eur_per_million", "run_budget_eur", "price_reference",
-               "price_checked_on", "timeout_seconds", "temperature", "seed"}
+               "price_checked_on", "timeout_seconds", "temperature", "seed", *LUNA_REQUEST_OPTIONS}
     if not isinstance(config, dict) or set(config) - allowed:
         raise ValueError("API configuration contains unsupported fields")
     if type(config.get("enabled")) is not bool:
@@ -195,7 +202,7 @@ def validate_config(config: Any) -> dict[str, Any]:
     if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 120:
         raise ValueError("timeout_seconds must be between 0 and 120")
     validated["timeout_seconds"] = timeout
-    validated.update(_configuration_sampling(config))
+    validated.update(_configuration_request_options(config))
     return validated
 
 
@@ -294,7 +301,9 @@ class OpenAIModel:
         if self.run_budget > ledger.limit:
             raise ValueError("Run budget exceeds ledger limit")
         self.timeout = float(config["timeout_seconds"])
-        self.sampling = {key: config[key] for key in ("temperature", "seed") if key in config}
+        self.request_options = {key: config[key] for key in ("temperature", "seed", *LUNA_REQUEST_OPTIONS)
+                                if key in config}
+        self._expected_service_tier = config.get("service_tier")
         self._key = api_key
         self._ledger = ledger
         self._transport = transport or _http_transport
@@ -303,7 +312,7 @@ class OpenAIModel:
 
     def _cost(self, input_tokens: int, output_tokens: int) -> Decimal:
         # Cached input is deliberately charged at the full configured rate.
-        return (input_tokens * self.input_rate + output_tokens * self.output_rate) / Decimal("1000000")
+        return estimated_token_cost(input_tokens, output_tokens, self.input_rate, self.output_rate)
 
     def respond(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ModelReply:
         if not isinstance(messages, list) or not isinstance(tools, list):
@@ -313,7 +322,7 @@ class OpenAIModel:
             raise ModelError("Only text messages are supported by the budgeted adapter")
         payload = {"model": self.name, "messages": messages, "tools": tools,
                    "parallel_tool_calls": False, "max_completion_tokens": self.max_completion_tokens,
-                   "store": False, **self.sampling}
+                   "store": False, **self.request_options}
         try:
             # Byte count plus generous framing margin; excludes hidden provider changes.
             input_bound = 2 * len(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")) + 4096
@@ -349,21 +358,35 @@ class OpenAIModel:
         reply.usage = usage
         return reply
 
+    def _unconfirmed_cost_reason(self, fields: dict, actual_model: str | None, valid_usage: bool) -> str | None:
+        if self._expected_service_tier is None:
+            return None
+        if fields.get("service_tier") != self._expected_service_tier:
+            return "service_tier_unconfirmed"
+        if self._returned_model is None or actual_model != self._returned_model:
+            return "model_unconfirmed"
+        if not valid_usage:
+            return "usage_unconfirmed"
+        return None
+
     def _account_response(self, raw: Any, reservation: Decimal, reservation_id: str) -> dict[str, Any]:
         fields = raw if isinstance(raw, dict) else {}
         usage = fields.get("usage")
         valid_usage = _valid_reported_usage(usage)
-        if valid_usage:
-            accounting = self._settle_usage(usage, reservation, reservation_id)
-        else:
-            accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
-                          "accounting_error": False, "budget_overrun": False}
         actual_model = _safe_text(fields.get("model"))
         if actual_model and actual_model.strip():
             if self._returned_model is None:
                 self._returned_model = actual_model
             elif actual_model != self._returned_model:
                 self._model_version_changed = True
+        reason = self._unconfirmed_cost_reason(fields, actual_model, valid_usage)
+        if valid_usage and reason is None:
+            accounting = self._settle_usage(usage, reservation, reservation_id)
+        else:
+            accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
+                          "accounting_error": reason is not None, "budget_overrun": False}
+            if reason is not None:
+                accounting["accounting_reason"] = reason
         safe_usage = _safe_reported_usage(usage, valid_usage)
         return {**safe_usage, **accounting, "model_version_changed": self._model_version_changed,
                 "expected_returned_model": self._returned_model,
@@ -384,7 +407,8 @@ class OpenAIModel:
                     "accounting_error": True, "budget_overrun": actual > reservation}
         self._accounted += actual - reservation
         return {"estimated_cost_eur": str(actual), "accounting": "reported_usage",
-                "accounting_error": False, "budget_overrun": not within}
+                "accounting_error": not within and self._expected_service_tier is not None,
+                "budget_overrun": not within}
 
     @staticmethod
     def _parse(raw: Any) -> ModelReply:

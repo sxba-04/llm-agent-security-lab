@@ -1,6 +1,6 @@
-"""Offline regressions: malformed provider output must never erase audit runs."""
+"""Offline regressions for provider requests and persisted campaign evidence."""
 from copy import deepcopy
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import nullcontext, redirect_stderr, redirect_stdout
 import base64
 import http.client
 import io
@@ -14,6 +14,7 @@ from security_lab.batch import load_results, run_batch
 from security_lab.budget import BudgetLedger
 from security_lab.cases import load_cases
 from security_lab.cli import main
+from security_lab.core import run_case
 from security_lab.providers import OpenAIModel
 
 
@@ -69,6 +70,123 @@ class ProviderAuditTests(unittest.TestCase):
         event_file = output / "events" / (record["run_id"] + ".jsonl")
         self.assertEqual([json.loads(line) for line in event_file.read_text().splitlines()], record["events"])
         return manifest, record, ledger, calls
+
+    def test_cli_persists_and_sends_requested_profile_across_clean_tool_round_trip(self):
+        profile = {"reasoning_effort": "none", "service_tier": "default"}
+        config_path = self.root / "config.json"
+        config_path.write_text(json.dumps({**CONFIG, "model": "gpt-6-luna", **profile}), encoding="utf-8")
+        case_path = Path(__file__).parents[1] / "cases/dev/dev-g1-02.json"
+        output = self.root / "campaign"
+        first_reply = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        final_reply = response(text="Offline fixture completed.")
+        replies = [reply | {"model": "gpt-6-luna", "service_tier": "default"}
+                   for reply in (first_reply, final_reply)]
+
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "FAKE-OFFLINE-KEY"}), patch(
+                "security_lab.providers._http_transport", side_effect=deepcopy(replies)) as transport:
+            status = main(["run", "--provider", "openai", "--allow-paid-api", "--isolation-acknowledged",
+                           "--api-config", str(config_path), "--cases", str(case_path),
+                           "--sources", "clean", "--variants", "B", "--ledger", str(self.root / "budget.json"),
+                           "--output", str(output)])
+
+        self.assertEqual(status, 0)
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        for key, value in profile.items():
+            self.assertEqual(manifest["provider_config"][key], value)
+        self.assertEqual(transport.call_count, 2)
+        for call in transport.call_args_list:
+            payload = call.args[0]
+            for key, value in profile.items():
+                self.assertEqual(payload[key], value)
+        record, = load_results(output)
+        self.assertEqual(record["status"], "completed")
+        self.assertEqual([item["ticket_id"] for item in events(record, "context_exposure")], ["A17"])
+        self.assertEqual([item["usage"]["raw_response"] for item in events(record, "model_response")], replies)
+
+    def test_unexpected_service_tier_stops_clean_run_before_reading_ticket(self):
+        reply = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        reply["service_tier"] = "priority"
+        transport = MagicMock(return_value=reply)
+        ledger = BudgetLedger(self.root / "budget.json", 5, 1)
+        model = OpenAIModel({**CONFIG, "service_tier": "default"}, "FAKE-OFFLINE-KEY", ledger, transport)
+
+        record = run_case(self.case, "B", "clean", model)
+
+        transport.assert_called_once()
+        self.assertEqual(record["status"], "technical_error")
+        self.assertEqual(record["tool_calls"], 0)
+        self.assertFalse(events(record, "backend_read"))
+
+    def test_unusable_cost_receipts_stop_before_tools_and_the_next_clean_case(self):
+        cases = load_cases(Path(__file__).parents[1] / "cases/dev")[:2]
+        base_reply = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        base_reply.update(service_tier="default")
+        del base_reply["usage"]
+        normal_usage = {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}
+        overrun_usage = {"prompt_tokens": 100000, "completion_tokens": 20, "total_tokens": 100020}
+        scenarios = (
+            ("missing", {}, "reservation_retained", "reserved"),
+            ("invalid", {"usage": {**normal_usage, "total_tokens": 0}}, "reservation_retained", "reserved"),
+            ("overrun", {"usage": overrun_usage}, "reported_usage", "settled"),
+            ("unwritable", {"usage": normal_usage}, "settlement_failed", "reserved"),
+            ("different-model", {"usage": normal_usage, "model": "other-model"}, "reservation_retained", "reserved"),
+            ("missing-model", {"usage": normal_usage, "model": None}, "reservation_retained", "reserved"),
+        )
+        config = {**CONFIG, "service_tier": "default", "expected_returned_model": base_reply["model"]}
+        for name, changes, accounting, ledger_state in scenarios:
+            with self.subTest(name=name):
+                reply = {**base_reply, **changes}
+                transport = MagicMock(return_value=reply)
+                output = self.root / name
+                ledger = BudgetLedger(self.root / (name + "-ledger.json"), 5, 1)
+                model = OpenAIModel(config, "FAKE-OFFLINE-KEY", ledger, transport)
+                fault = patch.object(ledger, "settle", side_effect=OSError) if name == "unwritable" else nullcontext()
+                with fault:
+                    manifest = run_batch(cases, output, lambda *_: model, variants=["B"], sources=["clean"])
+
+                self.assertEqual((manifest["state"], manifest["planned_runs"]), ("stopped", 2))
+                record, = load_results(output)
+                self.assertEqual((record["status"], record["tool_calls"]), ("technical_error", 0))
+                self.assertFalse(events(record, "backend_read"))
+                transport.assert_called_once()
+                receipt, = events(record, "model_response")
+                usage = receipt["usage"]
+                self.assertTrue(usage["accounting_error"])
+                self.assertEqual(usage["accounting"], accounting)
+                self.assertEqual(usage["raw_response"], reply)
+                for field, count in changes.get("usage", {}).items():
+                    self.assertEqual(usage[field], count)
+                snapshot = ledger.snapshot()
+                entry = snapshot["reservations"][usage["reservation_id"]]
+                self.assertEqual(entry["state"], ledger_state)
+                self.assertEqual(snapshot["halted"], name == "overrun")
+                if accounting == "reservation_retained":
+                    self.assertIsNone(usage["estimated_cost_eur"])
+                if name == "overrun":
+                    self.assertTrue(usage["budget_overrun"])
+                    self.assertEqual(usage["estimated_cost_eur"], "0.10004")
+                    self.assertEqual(entry["amount_eur"], usage["estimated_cost_eur"])
+
+    def test_standard_tier_keeps_the_first_settlement_when_the_returned_model_changes(self):
+        first = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        first["service_tier"] = "default"
+        second = {**first, "model": "different-snapshot"}
+        transport = MagicMock(side_effect=[first, second])
+        ledger = BudgetLedger(self.root / "budget.json", 5, 1)
+        model = OpenAIModel({**CONFIG, "service_tier": "default"}, "FAKE-OFFLINE-KEY", ledger, transport)
+
+        record = run_case(self.case, "B", "clean", model)
+
+        self.assertEqual((record["status"], record["tool_calls"], transport.call_count),
+                         ("technical_error", 1, 2))
+        receipts = [item["usage"] for item in events(record, "model_response")]
+        self.assertEqual([item["raw_response"] for item in receipts], [first, second])
+        self.assertEqual(receipts[1]["accounting_reason"], "model_unconfirmed")
+        self.assertEqual(receipts[1]["expected_returned_model"], first["model"])
+        self.assertTrue(receipts[1]["model_version_changed"])
+        reservations = ledger.snapshot()["reservations"]
+        self.assertEqual([reservations[item["reservation_id"]]["state"] for item in receipts],
+                         ["settled", "reserved"])
 
     def test_cli_rejects_disabled_and_nested_secret_configs_without_creating_artifacts(self):
         template = json.loads((Path(__file__).parents[1] / "configs/api.example.json").read_text())
