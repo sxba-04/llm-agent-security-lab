@@ -15,9 +15,34 @@ const euro = new Intl.NumberFormat('de-DE', {
   style: 'currency', currency: 'EUR', maximumFractionDigits: 8,
 });
 
+function nonemptyText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function readableSchedule(rows: CleanBPlan['schedule']): boolean {
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  const ids = new Set<string>();
+  return rows.every(row => {
+    if (!nonemptyText(row?.case_id) || ids.has(row.case_id)) return false;
+    ids.add(row.case_id);
+    return row.variant === 'B' && row.source === 'clean' && row.repetition === 1;
+  });
+}
+
+function readablePlan(plan: CleanBPlan): boolean {
+  const labels = [plan.plan_id, plan.model_profile?.model, plan.model_profile?.reasoning_effort, plan.model_profile?.service_tier];
+  const counts = [plan.limits?.max_model_calls, plan.limits?.max_tool_calls, plan.limits?.timeout_seconds,
+    plan.budget?.max_requests, plan.acceptance?.min_correct, plan.acceptance?.max_fundamental_tool_errors];
+  const amounts = [plan.budget?.planned_max_eur, plan.budget?.proposed_run_cap_eur];
+  return plan.paid_run_authorized === false && readableSchedule(plan.schedule) && labels.every(nonemptyText)
+    && counts.every(number => Number.isSafeInteger(number) && number >= 0)
+    && amounts.every(amount => nonemptyText(amount) && Number.isFinite(Number(amount)) && Number(amount) >= 0);
+}
+
 export function CleanBPlanPage() {
   const { data, error, loading, refresh } = useResource<CleanBPlan>('/api/studies/clean-b/plan');
-  if (data && (data.paid_run_authorized !== false || !Array.isArray(data.schedule) || !data.model_profile || !data.limits || !data.acceptance || !data.budget)) {
+  const invalidPlan = data == null ? !loading && !error : !readablePlan(data);
+  if (invalidPlan) {
     return <ErrorBox error="Der Server hat keinen lesbaren Vorbereitungsplan geliefert." retry={refresh} />;
   }
   return <>

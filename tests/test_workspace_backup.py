@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from security_lab import backup
+from security_lab import backup, clean_b_rehearsal
 from security_lab.batch import run_batch
 from security_lab.cases import load_cases
 from security_lab.documents import load_document
@@ -45,6 +45,90 @@ class WorkspaceBackupTests(unittest.TestCase):
             self.assertEqual((restored_studies / "budget.json").read_bytes(),
                              (attempt.parent / "budget.json").read_bytes())
             self.assertTrue((restored_studies / "luna-clean-first" / "attempt.json").is_file())
+
+    def test_clean_b_rehearsal_and_its_prior_source_are_verified_after_separate_restore(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace, source, campaign, _ = self.fixture(root)
+            provenance = json.loads((campaign / "manifest.json").read_bytes())["provenance"]
+            shutil.rmtree(campaign)  # Only the rehearsal refers to this source revision.
+            with patch("security_lab.batch.provenance", return_value=provenance):
+                clean_b_rehearsal.rehearse(workspace)
+            subprocess.run(["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                            "commit", "--allow-empty", "-qm", "new source"], cwd=source, check=True)
+            archive = root / "rehearsal.zip"
+            exported = backup.export_workspace(workspace, source, archive)
+            restored = backup.restore_workspace_backup(archive, root / "separate")
+            name = clean_b_rehearsal.REHEARSAL.as_posix()
+            original = (workspace / clean_b_rehearsal.ATTEMPT).read_bytes()
+            for report in (exported, restored):
+                self.assertEqual(report["campaigns"][name]["completed_runs"], 12)
+                self.assertTrue(report["campaigns"][name]["engineering_only"])
+                self.assertTrue(report["campaign_source_verified"][name])
+                self.assertIn(provenance["git_commit"], report["source_snapshots"]["included_commits"])
+                self.assertEqual(report["clean_b_rehearsal"], {
+                    "campaign_present": True, "attempt_sha256": hashlib.sha256(original).hexdigest()})
+            recovered = Path(restored["workspace"])
+            self.assertEqual((recovered / clean_b_rehearsal.ATTEMPT).read_bytes(), original)
+            self.assertEqual(load_results(recovered / name), load_results(workspace / name))
+            with self.assertRaises(FileExistsError):
+                clean_b_rehearsal.rehearse(recovered)
+
+            def rewrite_marker_and_outer_inventory(contents):
+                key = "workspace/" + clean_b_rehearsal.ATTEMPT.as_posix()
+                contents[key] += b" "
+                index = json.loads(contents[backup.INDEX_NAME])
+                index["files"][key] = {"size": len(contents[key]), "sha256": hashlib.sha256(contents[key]).hexdigest()}
+                contents[backup.INDEX_NAME] = json.dumps(index).encode()
+
+            changed = root / "changed.zip"
+            self.rewrite(archive, changed, rewrite_marker_and_outer_inventory)
+            with self.assertRaisesRegex(ValueError, "differs from its original attempt"):
+                backup.restore_workspace_backup(changed, root / "refused")
+            self.assertFalse((root / "refused").exists())
+
+    def test_clean_b_attempt_without_campaign_is_preserved_and_reported_incomplete(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace, source, *_ = self.fixture(root)
+            with patch.object(clean_b_rehearsal, "run_batch", side_effect=OSError), self.assertRaises(OSError):
+                clean_b_rehearsal.rehearse(workspace)
+            archive = root / "marker.zip"
+            backup.export_workspace(workspace, source, archive)
+            restored = backup.restore_workspace_backup(archive, root / "separate")
+            self.assertFalse(restored["clean_b_rehearsal"]["campaign_present"])
+            self.assertFalse(restored["campaigns_complete"])
+            self.assertFalse(restored["evidence_complete"])
+            recovered = Path(restored["workspace"])
+            marker = clean_b_rehearsal.ATTEMPT
+            self.assertEqual((recovered / marker).read_bytes(), (workspace / marker).read_bytes())
+            with self.assertRaises(FileExistsError):
+                clean_b_rehearsal.rehearse(recovered)
+            (workspace / marker).write_bytes(b"{}")
+            with self.assertRaisesRegex(ValueError, "Invalid clean B rehearsal attempt"):
+                backup.export_workspace(workspace, source, root / "invalid-marker.zip")
+
+    def test_damaged_clean_b_rehearsal_evidence_prevents_export(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace, source, *_ = self.fixture(root)
+            clean_b_rehearsal.rehearse(workspace)
+            directory = workspace / clean_b_rehearsal.REHEARSAL
+            marker = workspace / clean_b_rehearsal.ATTEMPT
+            marker_bytes = marker.read_bytes()
+            record = next((directory / "records").glob("*.json"))
+            for path, replacement in ((record, None), (directory / "manifest.json", None),
+                                      (marker, None), (marker, b"{"), (marker, marker_bytes + b" ")):
+                with self.subTest(file=path.name, change=replacement):
+                    original = path.read_bytes()
+                    if replacement is None:
+                        path.unlink()
+                    else:
+                        path.write_bytes(replacement)
+                    with self.assertRaises((OSError, ValueError)):
+                        backup.export_workspace(workspace, source, root / "invalid.zip")
+                    self.assertFalse((root / "invalid.zip").exists())
+                    path.write_bytes(original)
 
     def fixture(self, root):
         source = root / "code"

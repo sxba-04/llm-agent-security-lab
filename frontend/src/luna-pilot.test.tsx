@@ -195,6 +195,12 @@ it('keeps the B plan hidden on a backend that only supports A17, even for a dire
 
 it.each([
   ['HTTP failure', () => reply({ detail: 'Katalogprüfung fehlgeschlagen.' }, 503)],
+  ['a missing schedule row', () => reply({ ...cleanPlan, schedule: [null] })],
+  ['an object as the case ID', () => reply({ ...cleanPlan, schedule: [{ ...schedule[0], case_id: {} }] })],
+  ['a duplicate case', () => reply({ ...cleanPlan, schedule: [schedule[0], schedule[0]] })],
+  ['an unrelated source', () => reply({ ...cleanPlan, schedule: [{ ...schedule[0], source: 'other' }] })],
+  ['an object as the minimum score', () => reply({ ...cleanPlan, acceptance: { ...cleanPlan.acceptance, min_correct: {} } })],
+  ['an unusable budget amount', () => reply({ ...cleanPlan, budget: { ...cleanPlan.budget, planned_max_eur: 'invalid' } })],
   ['unknown plan semantics', () => reply({ ...cleanPlan, paid_run_authorized: true })],
 ])('keeps historical pilot evidence accessible after %s', async (_name, planResponse) => {
   const fetch = backend(() => reply(finished), ['luna_pilot_v1', 'clean_b_plan_v1'], planResponse);

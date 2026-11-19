@@ -1,5 +1,5 @@
 """Offline contracts for the frozen baseline plan."""
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 import hashlib
 import io
 import json
@@ -57,5 +57,22 @@ class CleanBPlanTests(unittest.TestCase):
     def test_cli_offers_no_provider_start_or_case_override(self):
         for args in (["run"], ["plan", "--allow-paid-api"], ["plan", "--cases", "elsewhere"]):
             with self.subTest(args=args), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                clean_b.main(args)
+            self.assertEqual(error.exception.code, 2)
+
+    def test_cli_emits_plan_and_one_rehearsal_with_checked_exit_status(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(clean_b.main(["plan"]), 0)
+        plan = json.loads(output.getvalue())
+        with tempfile.TemporaryDirectory() as directory:
+            args = ["rehearse", "--workspace", directory]
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(clean_b.main(args), 0)
+            receipt = json.loads(output.getvalue())
+            self.assertEqual(receipt["plan_id"], plan["plan_id"])
+            self.assertEqual(receipt["state"], "completed")
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
                 clean_b.main(args)
             self.assertEqual(error.exception.code, 2)

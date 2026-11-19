@@ -23,6 +23,7 @@ import zipfile
 
 from . import archives
 from .batch import MANIFEST_FILE, digest, load_results
+from .clean_b_rehearsal import ATTEMPT as CLEAN_B_ATTEMPT, REHEARSAL as CLEAN_B_REHEARSAL
 from .documents import DOCUMENT_ID, load_document, reject_symlinks
 from .jobs import ACTIVE_STATES, _worker_lease
 
@@ -49,6 +50,10 @@ def _campaign_directories(workspace: Path) -> list[Path]:
         for child in sorted(parent.iterdir()):
             if _has_campaign_manifest(child, workspace, required=parent == workspace / "campaigns"):
                 directories.append(child)
+    rehearsal = reject_symlinks(workspace / CLEAN_B_REHEARSAL, workspace)
+    if rehearsal.exists():
+        _has_campaign_manifest(rehearsal, workspace, required=True)
+        directories.append(rehearsal)
     return directories
 
 
@@ -97,6 +102,33 @@ def _pilot_source_commit(workspace: Path) -> str | None:
     return commit if isinstance(commit, str) and COMMIT_PATTERN.fullmatch(commit) else None
 
 
+def _clean_b_rehearsal_evidence(workspace: Path, campaign_present: bool) -> dict | None:
+    """Bind the archived campaign to the original offline start, including a start without results."""
+    marker = reject_symlinks(workspace / CLEAN_B_ATTEMPT, workspace)
+    campaign = workspace / CLEAN_B_REHEARSAL
+    if not marker.exists() and not campaign_present:
+        return None
+    if not marker.is_file() or marker.stat().st_size > 1024 * 1024:
+        raise ValueError("Missing or invalid clean B rehearsal attempt")
+    raw = marker.read_bytes()
+    attempt = archives._json(raw)
+    if (not isinstance(attempt, dict) or attempt.get("kind") != "clean_b_offline_rehearsal"
+            or attempt.get("campaign") != CLEAN_B_REHEARSAL.as_posix() or attempt.get("provider_cost_eur") != "0"):
+        raise ValueError("Invalid clean B rehearsal attempt")
+    profile, plan = attempt.get("provider_config"), attempt.get("plan")
+    if (not isinstance(profile, dict) or profile.get("provider") != "mock" or profile.get("engineering_only") is not True
+            or not isinstance(plan, dict) or plan.get("paid_run_authorized") is not False
+            or plan.get("plan_sha256") != digest({key: value for key, value in plan.items() if key != "plan_sha256"})):
+        raise ValueError("Invalid clean B rehearsal plan or mock profile")
+    checksum = hashlib.sha256(raw).hexdigest()
+    if campaign_present:
+        manifest = archives._json((campaign / MANIFEST_FILE).read_bytes())
+        if (manifest.get("provider_config") != {**profile, "rehearsal_attempt_sha256": checksum}
+                or manifest.get("schedule") != plan.get("schedule") or manifest.get("limits") != plan.get("limits")):
+            raise ValueError("Clean B rehearsal manifest differs from its original attempt")
+    return {"attempt_sha256": checksum, "campaign_present": campaign_present}
+
+
 def _check_workspace(workspace: Path) -> dict[str, Any]:
     _check_worker_ownership(workspace)
     campaigns = {}
@@ -111,11 +143,14 @@ def _check_workspace(workspace: Path) -> dict[str, Any]:
             load_document(storage, path.name)
             documents.append(path.name)
     root_reviews = _check_root_reviews(workspace)
+    rehearsal = _clean_b_rehearsal_evidence(workspace, CLEAN_B_REHEARSAL.as_posix() in campaigns)
+    marker_only = rehearsal is not None and not rehearsal["campaign_present"]
     return {"campaigns": campaigns, "documents": documents, "verified_root_reviews": root_reviews,
+            **({"clean_b_rehearsal": rehearsal} if rehearsal is not None else {}),
             "luna_pilot_source_commit": _pilot_source_commit(workspace),
             "supplementary_operations": _operational_evidence(workspace),
-            "evidence_complete": all(value["evidence_complete"] for value in campaigns.values()),
-            "campaigns_complete": all(value["campaign_state"] == "completed" and value["completed_runs"] == value["planned_runs"]
+            "evidence_complete": not marker_only and all(value["evidence_complete"] for value in campaigns.values()),
+            "campaigns_complete": not marker_only and all(value["campaign_state"] == "completed" and value["completed_runs"] == value["planned_runs"]
                                       for value in campaigns.values()),
             "engineering_only": all(value["engineering_only"] for value in campaigns.values())}
 
@@ -413,6 +448,8 @@ def export_workspace(workspace: str | Path, source_root: str | Path, output_path
             report = verify_workspace_backup(candidate)
             if set(report["campaigns"]) != set(check["campaigns"]):
                 raise ValueError("Workspace campaign inventory differs from the verified backup")
+            if report.get("clean_b_rehearsal") != check.get("clean_b_rehearsal"):
+                raise ValueError("Clean B rehearsal attempt differs from the verified backup")
             with candidate.open("rb+") as stream:
                 os.fsync(stream.fileno())
             os.link(candidate, output_path)
