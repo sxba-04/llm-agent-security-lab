@@ -158,7 +158,8 @@ es verändert das Versuchsmodell B/F/P/FP nicht.
 
 Die feste Offline-Generalprobe in `studies/clean-b-rehearsal-v1/` wird als
 technische Kampagne geprüft. Der SHA-256 des benachbarten Startbelegs muss zur
-Referenz im Manifest passen. Liegt nach einem Abbruch nur der Startbeleg vor,
+Referenz im Manifest passen. Der Plan bindet den bereinigten Fallkatalog und
+die zwölf sauberen Artikeltexte an die archivierte Fassung. Liegt nach einem Abbruch nur der Startbeleg vor,
 bleibt die Probe gesperrt und wird als unvollständig ausgewiesen. Der
 [B-Versuchsplan](study-preflight.md#zwölf-saubere-entwicklungsaufgaben-in-b)
 beschreibt die Fallfolge und den eigenen Workspace der Probe.

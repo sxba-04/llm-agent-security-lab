@@ -102,6 +102,28 @@ def _pilot_source_commit(workspace: Path) -> str | None:
     return commit if isinstance(commit, str) and COMMIT_PATTERN.fullmatch(commit) else None
 
 
+def _verify_clean_b_snapshot(campaign: Path, manifest: dict, plan: dict) -> str:
+    # The shared campaign verifier has already checked the snapshot against the
+    # manifest. The independent start marker binds it to the plan as issued.
+    full_hash = "clean_cases_sha256" in plan
+    if full_hash and plan["clean_cases_sha256"] != manifest["cases_sha256"]:
+        raise ValueError("Clean B case snapshot differs from the original plan")
+    cases = archives._json((campaign / "cases.snapshot.json").read_bytes())
+    planned = plan.get("cases")
+    if not isinstance(cases, list) or not isinstance(planned, list) or len(cases) != len(planned):
+        raise ValueError("Clean B case inventory differs from the original plan")
+    for case, expected in zip(cases, planned, strict=True):
+        if not isinstance(case, dict) or not isinstance(expected, dict) or case.get("case_id") != expected.get("case_id"):
+            raise ValueError("Clean B case identity differs from the original plan")
+        articles, scripts = case.get("articles"), case.get("mock")
+        if (not isinstance(articles, dict) or articles.keys() != {"clean"} or not isinstance(articles["clean"], str)
+                or not isinstance(scripts, dict) or scripts.keys() != {"clean"}):
+            raise ValueError("Clean B snapshot must contain only the clean article and script")
+        if hashlib.sha256(articles["clean"].encode("utf-8")).hexdigest() != expected.get("clean_article_sha256"):
+            raise ValueError("Clean B article differs from the original plan")
+    return "full_snapshot" if full_hash else "articles_only"
+
+
 def _clean_b_rehearsal_evidence(workspace: Path, campaign_present: bool) -> dict | None:
     """Bind the archived campaign to the original offline start, including a start without results."""
     marker = reject_symlinks(workspace / CLEAN_B_ATTEMPT, workspace)
@@ -121,12 +143,14 @@ def _clean_b_rehearsal_evidence(workspace: Path, campaign_present: bool) -> dict
             or plan.get("plan_sha256") != digest({key: value for key, value in plan.items() if key != "plan_sha256"})):
         raise ValueError("Invalid clean B rehearsal plan or mock profile")
     checksum = hashlib.sha256(raw).hexdigest()
+    evidence = {"attempt_sha256": checksum, "campaign_present": campaign_present}
     if campaign_present:
         manifest = archives._json((campaign / MANIFEST_FILE).read_bytes())
         if (manifest.get("provider_config") != {**profile, "rehearsal_attempt_sha256": checksum}
                 or manifest.get("schedule") != plan.get("schedule") or manifest.get("limits") != plan.get("limits")):
             raise ValueError("Clean B rehearsal manifest differs from its original attempt")
-    return {"attempt_sha256": checksum, "campaign_present": campaign_present}
+        evidence["case_snapshot_binding"] = _verify_clean_b_snapshot(campaign, manifest, plan)
+    return evidence
 
 
 def _check_workspace(workspace: Path) -> dict[str, Any]:

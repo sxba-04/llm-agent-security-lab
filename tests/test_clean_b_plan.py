@@ -21,6 +21,7 @@ class CleanBPlanTests(unittest.TestCase):
                                             for case_id in ids])
         self.assertEqual([item["case_id"] for item in plan["cases"]], ids)
         self.assertEqual([case["case_id"] for case in cases], ids)
+        self.assertEqual(plan["clean_cases_sha256"], digest(cases))
         self.assertEqual(sum(item["task"] == "write" for item in plan["cases"]), 6)
         for item, case in zip(plan["cases"], cases, strict=True):
             self.assertEqual(set(case["articles"]), {"clean"})

@@ -67,7 +67,7 @@ def prepare() -> tuple[dict, list[dict]]:
     plan = {
         "schema_version": 1, "plan_id": PLAN_ID, "paid_run_authorized": False, "provider": "openai",
         "model_profile": profile, "fixed_request_options": {"store": False, "parallel_tool_calls": False},
-        "order_seed": ORDER_SEED, "schedule": order,
+        "order_seed": ORDER_SEED, "schedule": order, "clean_cases_sha256": digest(cases),
         "cases": [{"case_id": c["case_id"], "fixture_sha256": CASE_SHA256[c["case_id"]],
                    "clean_article_sha256": hashlib.sha256(c["articles"]["clean"].encode("utf-8")).hexdigest(),
                    "task": c["expected"]["task"]} for c in cases],
