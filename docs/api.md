@@ -172,8 +172,14 @@ bleibt bis zum Kostenabgleich offen.
 
 Der netzwerkfreie CLI-Test mit simulierten Antworten belegt Konfiguration,
 Übertragung und Speicherung für einen sauberen B-Fall. Implementierung und
-technische Prüfung erfolgten mit Codex. Für die zwölf Aufgaben stehen der
-feste serverseitige Laufplan und die eigene Betriebs- und Kostenentscheidung aus.
+technische Prüfung erfolgten mit Codex. In der gehosteten Werkbank liefert der authentifizierte Lesezugriff
+`GET /api/studies/clean-b/plan` den gleichen festen Plan wie die Offline-CLI.
+Die Fähigkeit `clean_b_plan_v1` schaltet den Menüpunkt **B-Versuchsplan** frei.
+Fehlt eine der festgelegten Fallversionen oder weicht ihre Prüfsumme ab, liefert
+die Vorschau HTTP 503. Die B-Serie wartet auf ihre eigene Betriebs- und
+Kostenentscheidung. Die [Pilotvorprüfung](study-preflight.md#zwölf-saubere-entwicklungsaufgaben-in-b)
+beschreibt die Offline-Generalprobe und die Abbruchregeln für Verbrauchsdaten,
+Tarif, Modellkennung und Kostenüberlauf.
 
 Die Anwendung protokolliert zusätzlich die vom Anbieter tatsächlich zurückgemeldete Modellkennung. Innerhalb einer Messserie muss diese Kennung gleich bleiben. Mit `expected_returned_model` kann dieselbe Erwartung auch über mehrere Serien festgelegt werden. Bei einer Abweichung werden die Antwortdaten als Beleg gespeichert und die Serie angehalten. Das erkennt Änderungen der zurückgemeldeten Kennung; unangekündigte Änderungen hinter einer unveränderten Kennung kann diese Prüfung nicht ausschließen.
 

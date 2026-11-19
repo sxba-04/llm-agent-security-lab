@@ -140,6 +140,7 @@ class ProviderTests(unittest.TestCase):
     def test_missing_usage_keeps_reservation_but_preserves_response(self):
         reply = self.make_model(lambda *args: response(usage=False)).respond(MESSAGES, TOOLS)
         self.assertEqual(reply.usage['accounting'], 'reservation_retained')
+        self.assertFalse(reply.usage['accounting_error'])
         self.assertGreater(float(self.ledger.snapshot()['accounted_eur']), 0)
         self.assertEqual(reply.text, 'Example answer')
 
@@ -270,6 +271,7 @@ class ProviderTests(unittest.TestCase):
         model = self.make_model(lambda *args: large, run_budget_eur=1)
         reply = model.respond(MESSAGES, TOOLS)
         self.assertTrue(reply.usage['budget_overrun'])
+        self.assertFalse(reply.usage['accounting_error'])
         self.assertTrue(self.ledger.snapshot()['halted'])
         with self.assertRaises(BudgetExceeded):
             model.respond(MESSAGES, TOOLS)
