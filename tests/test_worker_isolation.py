@@ -113,7 +113,7 @@ class ObservationTests(unittest.TestCase):
             if (path, mode) == ("/proc/net/dev", "r"):
                 return io.StringIO("lo: 0 0\n")
             if (path, mode) == ("/proc/self/status", "r"):
-                return io.StringIO("NoNewPrivs: 1\n" + "".join(f"{cap}: 0\n" for cap in (*CAPS, "CapBnd")))
+                return io.StringIO("\nNoNewPrivs: 1\n" + "".join(f"{cap}: 0\n" for cap in (*CAPS, "CapBnd")))
             self.fail(f"Unexpected file access {(path, mode)}")
 
         for scenario, failed in [
@@ -231,7 +231,7 @@ class ProbeOutcomeTests(unittest.TestCase):
                 listener = server.return_value.__enter__.return_value
                 listener.server_address = ("127.0.0.1", 43210)
                 code, report = invoke_main()
-                self.assertEqual((code, report["status"]), expected)
+                self.assertEqual(expected, (code, report["status"]))
                 server.assert_called_once_with(("127.0.0.1", 0), probe.Echo)
                 if expected[0] == 2:
                     self.assertIn(detail, report["reason"])

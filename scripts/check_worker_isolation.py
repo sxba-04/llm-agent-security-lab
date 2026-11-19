@@ -53,14 +53,15 @@ def child_observations(spec):
     private = spec["private"]
     private_read = access(private, "rb")
     private_write = access(private, "r+b")
+    input_path = "/fixture/input"
     content = None
     try:
-        with open("/fixture/input", "rb") as stream:
+        with open(input_path, "rb") as stream:
             content = stream.read(128)
         input_read = "allowed"
     except OSError as error:
         input_read = errno.errorcode.get(error.errno, "UNKNOWN")
-    input_write = access("/fixture/input", "ab")
+    input_write = access(input_path, "ab")
     try:
         with open("/fixture/output", "wb") as stream:
             stream.write(b"child:" + (content or b""))
@@ -77,7 +78,11 @@ def child_observations(spec):
     with open("/proc/net/dev", encoding="ascii") as stream:
         interfaces = [line.split(":", 1)[0].strip() for line in stream if ":" in line]
     with open("/proc/self/status", encoding="ascii") as stream:
-        status = dict(line.split(":", 1) for line in stream if ":" in line)
+        status = {}
+        for line in stream:
+            name, separator, value = line.partition(":")
+            if separator:
+                status[name] = value
     return {"namespaces": namespace_ids(), "interfaces": interfaces, "parent_connect": network,
             "private_read": private_read, "private_write": private_write, "input_write": input_write,
             "input_read": input_read, "input_observed_hex": content.hex() if content is not None else None,
