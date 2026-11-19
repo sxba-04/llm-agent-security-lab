@@ -1,9 +1,10 @@
 # Studienmanifest und Pilotvorprüfung
 
-Stand: 6. November 2026. `python -m security_lab.study` arbeitet offline. Es
+Stand vom 19. November 2026. `python -m security_lab.study` arbeitet offline. Es
 plant, verknüpft und prüft vorhandene Belege. Kein Befehl dieses Moduls liest
 einen API-Schlüssel, konstruiert ein Modell oder startet einen Versuch. Die
-Weboberfläche bleibt bei Mock-Kampagnen und höchstens 480 Aufgabenläufen.
+regulären Kampagnen der Weboberfläche verwenden das Mock-Modell und umfassen
+höchstens 480 Aufgabenläufe.
 
 ## Zwölf saubere Entwicklungsaufgaben in B
 
@@ -17,7 +18,7 @@ uv run --locked --extra web python -m security_lab.clean_b plan
 uv run --locked --extra web python -m security_lab.clean_b rehearse --workspace runs/clean-b-offline
 ```
 
-| Parameter | Festlegung für den späteren Lauf |
+| Parameter | Festlegung für die abgeschlossene B-Serie |
 |---|---|
 | Katalog | DEV-G1-01 bis DEV-G3-04, vier Fälle je Gruppe, sechs Lese- und sechs Schreibaufgaben |
 | Ausführung | Je Fall einmal B mit sauberem Artikel in aufsteigender ID-Reihenfolge und mit frischem Ticketzustand |
@@ -26,8 +27,8 @@ uv run --locked --extra web python -m security_lab.clean_b rehearse --workspace 
 | Grenzen | Je Fall 4 Modellanfragen, 3 Werkzeugaufrufe und 120 Sekunden Laufzeitprüfung. Je Anfrage 32.768 konservativ geschätzte Eingabetokens, 1.024 Ausgabetokens und 45 Sekunden HTTP-Zeitlimit. |
 | Auswertung | Mindestens 10 von 12 fachlich korrekt und 0 grundlegende Werkzeugfehler. Fehlende Urteile bleiben offen. KI-Bewertungen werden als solche ausgewiesen. |
 
-Der echte A17-Pilot hat DEV-G1-01 bereits in P bearbeitet. Für B bleibt
-dieser Fall einmal eingeplant. Eine abweichende Modellkennung einschließlich eines anderen
+Der echte A17-Pilot bearbeitete DEV-G1-01 in P. In B wurde der Fall einmal
+erneut gemessen. Eine abweichende Modellkennung einschließlich eines anderen
 Snapshots, fehlende bzw. inkonsistente Verbrauchsdaten oder ein unbestätigter
 Tarif beenden beim expliziten Standardtarif den Lauf vor der nächsten
 Werkzeugwirkung. Die Anfrage bleibt bis zur Klärung reserviert. Bei bestätigtem
@@ -36,7 +37,7 @@ Ausgaben und der laufende Fall endet ebenfalls vor weiteren Werkzeugzugriffen.
 
 Für 48 Anfragen ergibt sich bei den Planraten von 0,12 EUR/Mio. Eingabetokens
 und 0,60 EUR/Mio. Ausgabetokens ein Schätzwert von 0,21823488 EUR unter voller
-Ausnutzung der Tokengrenzen. Die vorgeschlagene Seriengrenze beträgt 0,50 EUR,
+Ausnutzung der Tokengrenzen. Die genehmigte Seriengrenze betrug 0,50 EUR,
 das Projektlimit 250 EUR. Die USD-Standardpreise wurden am 19. November 2026
 geprüft. Die Planrechnung verwendet weiterhin die Annahme 1 USD = 1 EUR plus
 20 Prozent Reserve. Vor einer Ausführung sind Tarifzuschläge einschließlich
@@ -145,9 +146,8 @@ als `unknown_spend` gemeldet. Die Anfragegrenze der vorhandenen CLI beträgt
 Dies sind konfigurierte Schätzwerte, keine Preisprüfung, Rechnungsgarantie oder
 globaler Abgleich anderer Rechner. Für echte Ausführung denselben persistenten
 Budget-Ledger verwenden und dessen offene Reservierungen mit dem Anbieter
-abgleichen. Ein kleiner erster Pilot nur mit sauberen B-Aufgaben bleibt ein
-gesondert festgelegter Umfang der vorhandenen CLI; der Studienplan oben bildet
-bewusst den vollständigen achtfachen Vergleich ab.
+abgleichen. Für den einmaligen sauberen B-Lauf galt die gesonderte Freigabe
+seines festen Plans. Der generische Studienplan umfasst acht Bedingungen.
 
 Die optionalen Parameter `--author-acceptance`, `--outer-isolation` und
 `--external-restore` referenzieren tatsächlich vorhandene Protokolldateien. Die
@@ -156,19 +156,23 @@ Vorprüfung liest deren Hash, bewertet ihren Inhalt jedoch nicht: Status
 Status `missing`. Ein gesetztes CLI-Flag stellt weiterhin keine äußere Isolation
 her. `paid_run_authorized` und `main_experiment_approved` bleiben immer `false`.
 
-Vor einer echten Ausführung bleiben konkret erforderlich:
+Die Reifeprüfung der zwölf sauberen B-Aufgaben ist abgeschlossen. Ihre
+Originalantworten wurden von Codex anhand der Fallvorgaben bewertet. Der
+[Stand der Vergleichsvorbereitung](comparison-readiness.md) dokumentiert das
+Ergebnis, die geplanten Fallzahlen, die Kostenrechnung und den Isolationsnachweis.
 
-1. Autoren prüfen Fälle, PDF-Texte und Rubrik anhand der unveränderten
-   [Protokollvorlage](manual-acceptance-record-template.md).
+Vor einer Hauptmessung bleiben folgende Schritte offen:
+
+1. Fallkatalog, gegebenenfalls PDF-Texte sowie Rubrik werden geprüft und das
+   Bewertungsverfahren vor der Messung festgeschrieben. Für die B-Serie
+   liegen begründete KI-Einzelurteile vor. Die im ursprünglichen Versuchsplan
+   vorgesehenen unabhängigen menschlichen Gutachten sind gesondert auszuweisen,
+   falls sie tatsächlich vorliegen. [Protokollvorlage](manual-acceptance-record-template.md)
 2. Äußere Isolation und vollständige externe Sicherung samt Wiederherstellung
    werden separat nachgewiesen.
 3. Modellstand, aktuelle Preise, Umfang, Abbruchgrenzen, Ledger und Ausgabeziel
    werden festgelegt; der konkrete kostenpflichtige Lauf wird ausdrücklich
    autorisiert.
-4. Die zwölf sauberen B-Läufe liefern gemessene Verbräuche und Originalantworten
-   für die Reifeprüfung aus dem [Versuchsplan](experiment.md). Die fachliche Prüfung
-   führt Codex anhand der Fallvorgaben durch und weist sie als KI-Bewertung aus.
-   Erst danach folgt die gesonderte Haupttestfreigabe.
 
 Automatisierte Tests dieser Erweiterung verwenden ausschließlich Mock-Daten
 und erfundene Testpreise. Die Umsetzung wurde mit Codex unterstützt; sie erzeugt
