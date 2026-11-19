@@ -197,6 +197,14 @@ def _version_path(directory: Path, prefix: str) -> Path:
     return directory / f"{prefix}-{max(versions, default=0) + 1:06d}.json"
 
 
+def _clean_b_plan() -> dict:
+    from .clean_b import build_plan
+    try:
+        return build_plan()
+    except (OSError, ValueError):
+        raise HTTPException(503, "Der feste B-Versuchsplan ist derzeit nicht verfügbar.") from None
+
+
 class _WorkbenchAPI:
     """Per-app workspace operations and handlers, with no shared global state."""
 
@@ -217,6 +225,9 @@ class _WorkbenchAPI:
         if self.pilot:
             app.get("/api/pilot/luna")(self.pilot.status)
             app.post("/api/pilot/luna", responses=CONFLICT_RESPONSE)(self.pilot.start_request)
+            app.get("/api/studies/clean-b/plan", responses={
+                503: {"model": APIError, "description": "Fixed plan inputs are unavailable or invalid."},
+            })(_clean_b_plan)
         app.get("/api/cases")(self.cases)
         app.get("/api/cases/{case_id}/articles/{source}/pdf")(self.sample_pdf)
         app.get("/api/campaigns")(self.campaigns)
@@ -383,7 +394,7 @@ class _WorkbenchAPI:
     def health(self, request: Request):
         capabilities = ["campaign_metadata_v1", "review_revisions_v1", "comparison_csv_v1", "workspace_backup_v1"]
         if self.pilot:
-            capabilities.append("luna_pilot_v1")
+            capabilities.extend(("luna_pilot_v1", "clean_b_plan_v1"))
         return {"version": __version__, "api_contract": 2, "capabilities": capabilities, "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
                 "storage_mode": self.hosted_settings.storage_mode if self.hosted_settings else "local",
                 "storage": storage_status(self.workspace),

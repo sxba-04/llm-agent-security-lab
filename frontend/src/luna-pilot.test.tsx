@@ -9,6 +9,7 @@ const { signIn, signOut } = await import('./api');
 const { LunaPilotPage } = await import('./LunaPilot');
 
 const path = 'https://lab.example/api/pilot/luna';
+const planPath = 'https://lab.example/api/studies/clean-b/plan';
 const code = 'test-only-access-code-with-at-least-32-characters';
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
@@ -22,9 +23,11 @@ const finished = {
   },
 };
 
-function backend(pilot: (options: RequestInit) => Response | Promise<Response>, capabilities = ['luna_pilot_v1']) {
+function backend(pilot: (options: RequestInit) => Response | Promise<Response>, capabilities = ['luna_pilot_v1'],
+  plan?: () => Response) {
   const fetch = vi.fn(async (url: string, options: RequestInit) => {
     if (url === path) return pilot(options);
+    if (url === planPath && plan) return plan();
     if (url.endsWith('/api/health')) return reply({ csrf_token: 'csrf', capabilities });
     if (url.endsWith('/api/cases')) return reply({ cases: [] });
     if (url.endsWith('/api/campaigns')) return reply({ campaigns: [] });
@@ -144,4 +147,63 @@ it.each(['disabled', 'failed'])('prevents starting in state %s even without a re
   render(<LunaPilotPage />);
   await screen.findByText(state === 'disabled' ? 'Noch nicht freigeschaltet' : 'Beendet mit Fehler');
   expect(screen.queryByRole('button', { name: 'Luna-Pilot starten' })).not.toBeInTheDocument();
+});
+
+const schedule = [1, 2, 3].flatMap(group => [1, 2, 3, 4].map(index => ({
+  case_id: `DEV-G${group}-0${index}`, variant: 'B', source: 'clean', repetition: 1,
+})));
+const cleanPlan = {
+  plan_id: 'clean-b-test-plan', schedule, paid_run_authorized: false,
+  model_profile: { model: 'gpt-6-luna', reasoning_effort: 'none', service_tier: 'default' },
+  limits: { max_model_calls: 4, max_tool_calls: 3, timeout_seconds: 120 },
+  budget: { max_requests: 48, planned_max_eur: '0.21823488', proposed_run_cap_eur: '0.50' },
+  acceptance: { min_correct: 10, max_fundamental_tool_errors: 0 },
+};
+
+it('opens the read-only B plan with its own capability and lists the scheduled cases in order', async () => {
+  const fetch = backend(() => reply(finished), ['clean_b_plan_v1'], () => reply(cleanPlan));
+  await signIn(code);
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByRole('link', { name: 'B-Versuchsplan' }));
+  expect(await screen.findByText('clean-b-test-plan')).toBeVisible();
+  expect(screen.getByText('10 von 12')).toBeVisible();
+  expect(screen.getByText('PLANUNG', { exact: true })).toBeVisible();
+  expect(screen.getByText(/0,21823488/)).toBeVisible();
+  expect(screen.getByText('gpt-6-luna')).toBeVisible();
+  expect(screen.queryByRole('link', { name: 'Luna-Pilot' })).not.toBeInTheDocument();
+  await user.click(screen.getByText('Geplante Fallfolge (12)'));
+  expect(screen.getByRole('list', { name: 'Geplante Fallfolge' })).toBeVisible();
+  expect(screen.getAllByRole('listitem').map(item => item.textContent)).toEqual(schedule.map(row => row.case_id));
+  expect(screen.queryByRole('button', { name: /starten/i })).not.toBeInTheDocument();
+  const calls = fetch.mock.calls.filter(([url]) => url === planPath);
+  expect(calls).toHaveLength(1);
+  expect(calls[0][1].method || 'GET').toBe('GET');
+  expect(new Headers(calls[0][1].headers).get('Authorization')).toBe('Bearer ' + code);
+  expect(fetch.mock.calls.some(([url, init]) => url === path || init.method === 'POST')).toBe(false);
+});
+
+it('keeps the B plan hidden on a backend that only supports A17, even for a direct route', async () => {
+  const fetch = backend(() => reply(finished));
+  await signIn(code);
+  window.location.hash = '#clean-b-plan';
+  render(<App />);
+  await screen.findByRole('link', { name: 'Luna-Pilot' });
+  expect(screen.queryByRole('link', { name: 'B-Versuchsplan' })).not.toBeInTheDocument();
+  expect(fetch.mock.calls.some(([url]) => url === planPath)).toBe(false);
+});
+
+it.each([
+  ['HTTP failure', () => reply({ detail: 'Katalogprüfung fehlgeschlagen.' }, 503)],
+  ['unknown plan semantics', () => reply({ ...cleanPlan, paid_run_authorized: true })],
+])('keeps historical pilot evidence accessible after %s', async (_name, planResponse) => {
+  const fetch = backend(() => reply(finished), ['luna_pilot_v1', 'clean_b_plan_v1'], planResponse);
+  await signIn(code);
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByRole('link', { name: 'B-Versuchsplan' }));
+  expect(await screen.findByRole('alert')).toBeVisible();
+  await user.click(screen.getByRole('link', { name: 'Luna-Pilot' }));
+  expect(await screen.findByText(finished.result.final_text)).toBeVisible();
+  expect(fetch.mock.calls.some(([, options]) => options.method === 'POST')).toBe(false);
 });

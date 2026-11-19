@@ -23,6 +23,7 @@ except ImportError:
 CASES = Path(__file__).resolve().parents[1] / "cases" / "dev"
 PUBLIC = "https://lab-api.example.test"
 FRONTEND = "https://sxba-04.github.io"
+CLEAN_B_PLAN = "/api/studies/clean-b/plan"
 # Deliberately synthetic test credentials. Production must generate fresh values.
 ACCESS_A = "synthetic_operator_a_" + "a" * 43
 ACCESS_B = "synthetic_operator_b_" + "b" * 43
@@ -52,7 +53,7 @@ class HostedTests(unittest.TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
         self.assertEqual(response.headers["cache-control"], "no-store")
         for path in ("/api/health", "/api/cases", "/api/documents", "/api/campaigns", "/api/reviews",
-                     "/api/cases/DEV-G1-01/articles/clean/pdf", "/api/campaigns/x/archive", "/healthz/"):
+                     CLEAN_B_PLAN, "/api/cases/DEV-G1-01/articles/clean/pdf", "/api/campaigns/x/archive", "/healthz/"):
             with self.subTest(path=path):
                 response = self.client.get(path, headers={"Origin": FRONTEND})
                 self.assertEqual(response.status_code, 401)
@@ -61,6 +62,37 @@ class HostedTests(unittest.TestCase):
                 self.assertEqual(response.headers["access-control-allow-origin"], FRONTEND)
                 self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertEqual(self.client.post("/healthz").status_code, 401)
+
+    def test_hosted_clean_b_preview_has_no_start_or_workspace_side_effect(self):
+        with patch("security_lab.providers.OpenAIModel.__init__", side_effect=AssertionError("Unexpected model")):
+            health = self.client.get("/api/health", headers=self.headers).json()
+            self.assertIn("clean_b_plan_v1", health["capabilities"])
+            response = self.client.get(CLEAN_B_PLAN, headers=self.headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            plan = response.json()
+            self.assertIs(plan["paid_run_authorized"], False)
+            self.assertEqual(len(plan["schedule"]), 12)
+            self.assertTrue(all(row["variant"] == "B" and row["source"] == "clean" for row in plan["schedule"]))
+            for case in plan["cases"]:
+                self.assertEqual(set(case), {"case_id", "fixture_sha256", "clean_article_sha256", "task"})
+            self.assertNotIn("provenance", plan)
+            self.assertEqual(plan["budget"]["ledger"], "studies/budget.json")
+            self.assertEqual(self.client.post(CLEAN_B_PLAN, headers=self.mutations).status_code, 405)
+            self.assertFalse((self.workspace / "studies").exists())
+        with TestClient(create_app(self.workspace, CASES), base_url="http://localhost") as local:
+            self.assertNotIn("clean_b_plan_v1", local.get("/api/health").json()["capabilities"])
+            self.assertEqual(local.get(CLEAN_B_PLAN).status_code, 404)
+
+    def test_unavailable_clean_b_plan_is_sanitized_and_leaves_pilot_status_readable(self):
+        for failure in (FileNotFoundError("private fixture path"), ValueError("private fixture detail")):
+            with self.subTest(failure=type(failure)), patch("security_lab.clean_b.build_plan", side_effect=failure):
+                response = self.client.get(CLEAN_B_PLAN, headers=self.headers)
+                self.assertEqual(response.status_code, 503)
+                self.assertNotIn("private fixture", response.text)
+                self.assertEqual(self.client.get("/healthz").json(), {"status": "ok"})
+                pilot = self.client.get("/api/pilot/luna", headers=self.headers)
+                self.assertEqual(pilot.status_code, 200)
+                self.assertEqual(pilot.json()["state"], "disabled")
 
     def test_authenticated_health_reports_configured_storage_mode(self):
         self.assertEqual(self.client.get("/api/health", headers=self.headers).json()["storage_mode"], "persistent")

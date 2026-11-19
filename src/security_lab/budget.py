@@ -20,6 +20,12 @@ from .contracts import BudgetExceeded
 PROJECT_CEILING_EUR = Decimal("250")
 
 
+def estimated_token_cost(input_tokens: int, output_tokens: int, input_rate: Decimal,
+                         output_rate: Decimal) -> Decimal:
+    """Local EUR estimate at the configured rates per million tokens."""
+    return (input_tokens * input_rate + output_tokens * output_rate) / Decimal(1_000_000)
+
+
 def euros(value: Any, *, allow_zero: bool = False) -> Decimal:
     if isinstance(value, bool):
         raise ValueError("EUR amount must be a finite number")

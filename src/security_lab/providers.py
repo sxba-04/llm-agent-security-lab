@@ -20,7 +20,7 @@ from typing import Any, Callable
 import urllib.error
 import urllib.request
 
-from .budget import BudgetLedger, euros
+from .budget import BudgetLedger, estimated_token_cost, euros
 from .contracts import BudgetExceeded, ModelError, ModelReply, ReceivedResponseError, ToolCall
 
 API_URL = "https://api.openai.com/v1/chat/completions"
@@ -312,7 +312,7 @@ class OpenAIModel:
 
     def _cost(self, input_tokens: int, output_tokens: int) -> Decimal:
         # Cached input is deliberately charged at the full configured rate.
-        return (input_tokens * self.input_rate + output_tokens * self.output_rate) / Decimal("1000000")
+        return estimated_token_cost(input_tokens, output_tokens, self.input_rate, self.output_rate)
 
     def respond(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> ModelReply:
         if not isinstance(messages, list) or not isinstance(tools, list):
@@ -358,29 +358,35 @@ class OpenAIModel:
         reply.usage = usage
         return reply
 
+    def _unconfirmed_cost_reason(self, fields: dict, actual_model: str | None, valid_usage: bool) -> str | None:
+        if self._expected_service_tier is None:
+            return None
+        if fields.get("service_tier") != self._expected_service_tier:
+            return "service_tier_unconfirmed"
+        if self._returned_model is None or actual_model != self._returned_model:
+            return "model_unconfirmed"
+        if not valid_usage:
+            return "usage_unconfirmed"
+        return None
+
     def _account_response(self, raw: Any, reservation: Decimal, reservation_id: str) -> dict[str, Any]:
         fields = raw if isinstance(raw, dict) else {}
         usage = fields.get("usage")
         valid_usage = _valid_reported_usage(usage)
-        tier_unconfirmed = (self._expected_service_tier is not None
-                            and fields.get("service_tier") != self._expected_service_tier)
-        if tier_unconfirmed:
-            # Token counts remain evidence, but the configured price cannot
-            # settle this reservation. The runner stops on accounting_error.
-            accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
-                          "accounting_error": True, "accounting_reason": "service_tier_unconfirmed",
-                          "budget_overrun": False}
-        elif valid_usage:
-            accounting = self._settle_usage(usage, reservation, reservation_id)
-        else:
-            accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
-                          "accounting_error": False, "budget_overrun": False}
         actual_model = _safe_text(fields.get("model"))
         if actual_model and actual_model.strip():
             if self._returned_model is None:
                 self._returned_model = actual_model
             elif actual_model != self._returned_model:
                 self._model_version_changed = True
+        reason = self._unconfirmed_cost_reason(fields, actual_model, valid_usage)
+        if valid_usage and reason is None:
+            accounting = self._settle_usage(usage, reservation, reservation_id)
+        else:
+            accounting = {"estimated_cost_eur": None, "accounting": "reservation_retained",
+                          "accounting_error": reason is not None, "budget_overrun": False}
+            if reason is not None:
+                accounting["accounting_reason"] = reason
         safe_usage = _safe_reported_usage(usage, valid_usage)
         return {**safe_usage, **accounting, "model_version_changed": self._model_version_changed,
                 "expected_returned_model": self._returned_model,
@@ -401,7 +407,8 @@ class OpenAIModel:
                     "accounting_error": True, "budget_overrun": actual > reservation}
         self._accounted += actual - reservation
         return {"estimated_cost_eur": str(actual), "accounting": "reported_usage",
-                "accounting_error": False, "budget_overrun": not within}
+                "accounting_error": not within and self._expected_service_tier is not None,
+                "budget_overrun": not within}
 
     @staticmethod
     def _parse(raw: Any) -> ModelReply:
