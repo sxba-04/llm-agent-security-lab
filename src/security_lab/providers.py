@@ -15,6 +15,7 @@ import hashlib
 import http.client
 import json
 import math
+import re
 import ssl
 from typing import Any, Callable
 import urllib.error
@@ -283,7 +284,8 @@ class OpenAIModel:
     provider = "openai"
 
     def __init__(self, config: dict[str, Any], api_key: str, ledger: BudgetLedger,
-                 transport: Transport | None = None):
+                 transport: Transport | None = None, *, study_attempt_id: str | None = None,
+                 study_plan_sha256: str | None = None):
         config = validate_config(config)
         if config["enabled"] is not True:
             raise ValueError("Paid API configuration is disabled")
@@ -304,6 +306,12 @@ class OpenAIModel:
         self.request_options = {key: config[key] for key in ("temperature", "seed", *LUNA_REQUEST_OPTIONS)
                                 if key in config}
         self._expected_service_tier = config.get("service_tier")
+        self._study_metadata = {}
+        if study_attempt_id is not None or study_plan_sha256 is not None:
+            if (not isinstance(study_attempt_id, str) or not re.fullmatch(r"[0-9a-f]{32}", study_attempt_id)
+                    or not isinstance(study_plan_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", study_plan_sha256)):
+                raise ValueError("Study billing requires an attempt UUID in hex and a SHA-256 plan digest")
+            self._study_metadata = {"study_attempt_id": study_attempt_id, "study_plan_sha256": study_plan_sha256}
         self._key = api_key
         self._ledger = ledger
         self._transport = transport or _http_transport
@@ -333,8 +341,11 @@ class OpenAIModel:
         reservation = self._cost(input_bound, self.max_completion_tokens)
         if self._requests >= self.max_requests or self._accounted + reservation > self.run_budget:
             raise BudgetExceeded("Model instance request or EUR budget exhausted")
-        reservation_id = self._ledger.reserve(reservation, {"model": self.name, "input_bound": input_bound,
-                                                          "max_completion_tokens": self.max_completion_tokens})
+        metadata = {"model": self.name, "input_bound": input_bound, "max_completion_tokens": self.max_completion_tokens}
+        correlation = {}
+        if self._study_metadata:
+            correlation = {**self._study_metadata, "study_request_index": self._requests + 1}
+        reservation_id = self._ledger.reserve(reservation, {**metadata, **correlation}, require_existing=bool(correlation))
         self._requests += 1
         self._accounted += reservation
         try:
@@ -342,7 +353,8 @@ class OpenAIModel:
         except ReceivedResponseError as error:
             # A complete HTTP response arrived, even when its bytes are invalid
             # JSON/UTF-8. This differs from an uncertain transport failure.
-            error.usage = {**self._account_response(None, reservation, reservation_id), **error.usage}
+            error.usage = {**self._account_response(None, reservation, reservation_id), **error.usage,
+                           **correlation, "reservation_id": reservation_id}
             raise
         except ModelError:
             raise
@@ -351,6 +363,7 @@ class OpenAIModel:
         # Receipt/accounting are independent of whether generated actions parse.
         # Never discard a paid response because its executable plan is invalid.
         usage = self._account_response(raw, reservation, reservation_id)
+        usage.update(correlation)
         try:
             reply = self._parse(raw)
         except ModelError:

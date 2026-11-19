@@ -23,6 +23,8 @@ import zipfile
 
 from . import archives
 from .batch import MANIFEST_FILE, digest, load_results
+from .clean_b_evidence import unpublished_paid_write, verify_paid_attempt
+from .clean_b_run import ATTEMPT as PAID_B_ATTEMPT, CAMPAIGN as PAID_CLEAN_B
 from .clean_b_rehearsal import ATTEMPT as CLEAN_B_ATTEMPT, REHEARSAL as CLEAN_B_REHEARSAL
 from .documents import DOCUMENT_ID, load_document, reject_symlinks
 from .jobs import ACTIVE_STATES, _worker_lease
@@ -54,6 +56,16 @@ def _campaign_directories(workspace: Path) -> list[Path]:
     if rehearsal.exists():
         _has_campaign_manifest(rehearsal, workspace, required=True)
         directories.append(rehearsal)
+    paid = reject_symlinks(workspace / PAID_CLEAN_B, workspace)
+    if _has_campaign_manifest(paid, workspace):
+        # A terminated paid worker can leave its last durable state "running".
+        # Its consumed marker and records are verified separately; live writers
+        # are still excluded by the OS worker lease throughout the export.
+        value = archives._json((paid / MANIFEST_FILE).read_bytes())
+        if not isinstance(value, dict):
+            raise ValueError("Malformed paid clean B manifest")
+        if value.get("state") != "running":
+            directories.append(paid)
     return directories
 
 
@@ -168,15 +180,18 @@ def _check_workspace(workspace: Path) -> dict[str, Any]:
             documents.append(path.name)
     root_reviews = _check_root_reviews(workspace)
     rehearsal = _clean_b_rehearsal_evidence(workspace, CLEAN_B_REHEARSAL.as_posix() in campaigns)
-    marker_only = rehearsal is not None and not rehearsal["campaign_present"]
+    paid = verify_paid_attempt(workspace)
+    marker_only = (rehearsal is not None and not rehearsal["campaign_present"]
+                   or paid is not None and paid["state"] == "interrupted")
     return {"campaigns": campaigns, "documents": documents, "verified_root_reviews": root_reviews,
             **({"clean_b_rehearsal": rehearsal} if rehearsal is not None else {}),
+            **({"clean_b_paid_attempt": paid} if paid is not None else {}),
             "luna_pilot_source_commit": _pilot_source_commit(workspace),
             "supplementary_operations": _operational_evidence(workspace),
             "evidence_complete": not marker_only and all(value["evidence_complete"] for value in campaigns.values()),
             "campaigns_complete": not marker_only and all(value["campaign_state"] == "completed" and value["completed_runs"] == value["planned_runs"]
                                       for value in campaigns.values()),
-            "engineering_only": all(value["engineering_only"] for value in campaigns.values())}
+            "engineering_only": paid is None and all(value["engineering_only"] for value in campaigns.values())}
 
 
 def _operational_directories(workspace: Path) -> list[Path]:
@@ -238,8 +253,11 @@ def _is_download_cache(directory: Path, workspace: Path) -> bool:
 
 
 def _workspace_child_files(child: Path) -> list[tuple[str, Path, tuple]]:
+    def allow_unpublished(path: Path) -> bool:
+        return (child.name == "studies" and (child.parent / PAID_B_ATTEMPT).is_file()
+                and unpublished_paid_write(path, child))
     return [("workspace/" + child.name + "/" + name, path, stamp)
-            for name, path, stamp in archives._export_files(child)
+            for name, path, stamp in archives._export_files(child, allow_unpublished=allow_unpublished)
             if not (child.name == "workers" and "/" not in name and name.endswith(".lock"))]
 
 
@@ -324,8 +342,8 @@ def _requested_commits(check: dict, current: str) -> list[str]:
     requested = {current}
     if check.get("luna_pilot_source_commit"):
         requested.add(check["luna_pilot_source_commit"])
-    for campaign in check["campaigns"].values():
-        commit = campaign["source_provenance"].get("git_commit")
+    for provenance in _source_provenance(check).values():
+        commit = provenance.get("git_commit")
         if isinstance(commit, str) and COMMIT_PATTERN.fullmatch(commit):
             requested.add(commit)
     if len(requested) > MAX_SOURCE_COMMITS:
@@ -387,10 +405,16 @@ def _freeze_sources(source_root: Path, temporary: Path, check: dict) -> dict:
         raise ValueError("A readable Git source checkout is required for a full backup") from exc
 
 
+def _source_provenance(check: dict) -> dict:
+    entries = {name: campaign["source_provenance"] for name, campaign in check["campaigns"].items()}
+    if "clean_b_paid_attempt" in check:
+        entries[PAID_CLEAN_B.as_posix()] = check["clean_b_paid_attempt"]["source_provenance"]
+    return entries
+
+
 def _source_coverage(check: dict, sources: Path) -> dict[str, bool]:
     coverage = {}
-    for name, campaign in check["campaigns"].items():
-        provenance = campaign["source_provenance"]
+    for name, provenance in _source_provenance(check).items():
         commit, hashes = provenance.get("git_commit"), provenance.get("source_sha256")
         matches = isinstance(commit, str) and bool(COMMIT_PATTERN.fullmatch(commit)) and isinstance(hashes, dict) and bool(hashes)
         if matches:
@@ -472,6 +496,8 @@ def export_workspace(workspace: str | Path, source_root: str | Path, output_path
             report = verify_workspace_backup(candidate)
             if set(report["campaigns"]) != set(check["campaigns"]):
                 raise ValueError("Workspace campaign inventory differs from the verified backup")
+            if report.get("clean_b_paid_attempt") != check.get("clean_b_paid_attempt"):
+                raise ValueError("Paid clean B attempt differs from the verified backup")
             if report.get("clean_b_rehearsal") != check.get("clean_b_rehearsal"):
                 raise ValueError("Clean B rehearsal attempt differs from the verified backup")
             with candidate.open("rb+") as stream:

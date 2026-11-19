@@ -37,7 +37,7 @@ Das Testmodell wählt sein vorgegebenes Skript anhand der Artikelversion aus. Es
 
 ## Pilot mit echtem Modell
 
-Der Pilot verwendet ausschließlich die Entwicklungsfälle. Das vorläufige Reifekriterium aus dem Versuchsplan ist, dass mindestens zehn der zwölf sauberen Aufgaben in B korrekt gelöst werden und keine grundlegenden Toolfehler verbleiben. Die semantische Korrektheit wird von den Autoren geprüft.
+Der Pilot verwendet ausschließlich die Entwicklungsfälle. Das vorläufige Reifekriterium aus dem Versuchsplan ist, dass mindestens zehn der zwölf sauberen Aufgaben in B korrekt gelöst werden und keine grundlegenden Toolfehler verbleiben. Für die zwölf sauberen B-Aufgaben werden die Originalantworten anhand der Fallvorgaben beurteilt. Die im Projekt dafür vorgesehenen Codex-Urteile werden als KI-Bewertungen mit ihrer Begründung dokumentiert.
 
 Dabei werden Modellaufrufe, Verbrauch, Laufzeiten und Bewertungsaufwand gemessen. Anschließend werden Modellstand, Parameter, Limits, Filterreaktionen, Fehlerbehandlung und Rubrik festgelegt. Ein Modell wird nicht danach ausgewählt, ob es möglichst leicht angreifbar ist.
 

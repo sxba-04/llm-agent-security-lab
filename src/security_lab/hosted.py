@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse, Response
+from starlette.requests import Request
+from starlette.exceptions import HTTPException
 
 from .github_auth import GitHubSessions, GitHubSettings
 
@@ -49,6 +51,7 @@ class HostedSettings:
     storage_mode: str = "persistent"
     github: GitHubSettings | None = None
     luna_pilot_enabled: bool = False
+    clean_b_approved_plan_sha256: str | None = None
 
     def __post_init__(self):
         object.__setattr__(self, "public_origin", _https_origin(self.public_origin))
@@ -68,6 +71,17 @@ class HostedSettings:
     @property
     def host(self) -> str:
         return urlsplit(self.public_origin).netloc
+
+
+async def validate_fixed_start(request: Request, settings: HostedSettings) -> None:
+    """Only an explicit operator action from this workbench may start a fixed study."""
+    if request.headers.get("origin") not in {settings.frontend_origin, settings.public_origin}:
+        raise HTTPException(403, "Der Start benötigt die konfigurierte Werkbank-Origin.")
+    if request.query_params:
+        raise HTTPException(400, "Der feste Versuch akzeptiert keine Parameter.")
+    async for chunk in request.stream():
+        if chunk:
+            raise HTTPException(400, "Der feste Versuch akzeptiert keinen Anfrageinhalt.")
 
 
 class HostedAccessMiddleware:
