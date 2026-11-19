@@ -13,7 +13,7 @@ from .budget import BudgetLedger, PROJECT_CEILING_EUR
 from .cases import validate_case
 from .contracts import BudgetExceeded, ModelReply, ReceivedResponseError
 from .core import run_case
-from .providers import OpenAIModel, Transport, validate_config
+from .providers import LUNA_REQUEST_OPTIONS, OpenAIModel, Transport, validate_config
 
 ROOT = Path(__file__).resolve().parents[2]
 CASE_ID = "DEV-G1-01"
@@ -93,16 +93,16 @@ def run_first(workspace: Path, config: dict, api_key: str, *, transport: Transpo
             return reply
 
     model = FirstTicketModel(checked, api_key, ledger, transport=transport)
-    # The adapter includes these options in the payload *before* it estimates
-    # cost. Keep this Luna-specific setting out of the general run command.
-    model.sampling.update(reasoning_effort="none", service_tier="default")
+    # The original single-use pilot records these separately from config and
+    # validates receipts with its own historical standard-tier rule above.
+    model.request_options.update(LUNA_REQUEST_OPTIONS)
     output = workspace / "luna-clean-first"
     # Exclusive publication is also the permanent attempt marker, including
     # transport uncertainty, concurrency, crashes and evidence write failure.
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     write_json_new(output / "attempt.json", {
         "case_id": CASE_ID, "case_sha256": CASE_SHA256, "variant": "P", "source": "clean",
-        "config": checked, "request_options": model.sampling, "max_tool_calls": MAX_TOOL_CALLS,
+        "config": checked, "request_options": model.request_options, "max_tool_calls": MAX_TOOL_CALLS,
         "run_timeout_seconds": RUN_TIMEOUT_SECONDS, "provenance": provenance(),
     })
     result = run_case(case, "P", "clean", model, max_tool_calls=MAX_TOOL_CALLS,
@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "plan":
             case = load_pilot_case()
             print(json.dumps({"case_id": case["case_id"], "source": "clean", "variant": "P",
-                              "config": config, "request_options": {"reasoning_effort": "none", "service_tier": "default"},
+                              "config": config, "request_options": LUNA_REQUEST_OPTIONS,
                               "max_tool_calls": MAX_TOOL_CALLS,
                               "ledger": str(args.workspace / "budget.json"),
                               "evidence": str(args.workspace / "luna-clean-first")}, indent=2))

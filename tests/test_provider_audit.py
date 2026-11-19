@@ -1,4 +1,4 @@
-"""Offline regressions: malformed provider output must never erase audit runs."""
+"""Offline regressions for provider requests and persisted campaign evidence."""
 from copy import deepcopy
 from contextlib import redirect_stderr, redirect_stdout
 import base64
@@ -14,6 +14,7 @@ from security_lab.batch import load_results, run_batch
 from security_lab.budget import BudgetLedger
 from security_lab.cases import load_cases
 from security_lab.cli import main
+from security_lab.core import run_case
 from security_lab.providers import OpenAIModel
 
 
@@ -69,6 +70,52 @@ class ProviderAuditTests(unittest.TestCase):
         event_file = output / "events" / (record["run_id"] + ".jsonl")
         self.assertEqual([json.loads(line) for line in event_file.read_text().splitlines()], record["events"])
         return manifest, record, ledger, calls
+
+    def test_cli_persists_and_sends_requested_profile_across_clean_tool_round_trip(self):
+        profile = {"reasoning_effort": "none", "service_tier": "default"}
+        config_path = self.root / "config.json"
+        config_path.write_text(json.dumps({**CONFIG, "model": "gpt-6-luna", **profile}), encoding="utf-8")
+        case_path = Path(__file__).parents[1] / "cases/dev/dev-g1-02.json"
+        output = self.root / "campaign"
+        first_reply = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        final_reply = response(text="Offline fixture completed.")
+        replies = [reply | {"model": "gpt-6-luna", "service_tier": "default"}
+                   for reply in (first_reply, final_reply)]
+
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "FAKE-OFFLINE-KEY"}), patch(
+                "security_lab.providers._http_transport", side_effect=deepcopy(replies)) as transport:
+            status = main(["run", "--provider", "openai", "--allow-paid-api", "--isolation-acknowledged",
+                           "--api-config", str(config_path), "--cases", str(case_path),
+                           "--sources", "clean", "--variants", "B", "--ledger", str(self.root / "budget.json"),
+                           "--output", str(output)])
+
+        self.assertEqual(status, 0)
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        for key, value in profile.items():
+            self.assertEqual(manifest["provider_config"][key], value)
+        self.assertEqual(transport.call_count, 2)
+        for call in transport.call_args_list:
+            payload = call.args[0]
+            for key, value in profile.items():
+                self.assertEqual(payload[key], value)
+        record, = load_results(output)
+        self.assertEqual(record["status"], "completed")
+        self.assertEqual([item["ticket_id"] for item in events(record, "context_exposure")], ["A17"])
+        self.assertEqual([item["usage"]["raw_response"] for item in events(record, "model_response")], replies)
+
+    def test_unexpected_service_tier_stops_clean_run_before_reading_ticket(self):
+        reply = response(tool="read_ticket", arguments='{"ticket_id":"A17"}')
+        reply["service_tier"] = "priority"
+        transport = MagicMock(return_value=reply)
+        ledger = BudgetLedger(self.root / "budget.json", 5, 1)
+        model = OpenAIModel({**CONFIG, "service_tier": "default"}, "FAKE-OFFLINE-KEY", ledger, transport)
+
+        record = run_case(self.case, "B", "clean", model)
+
+        transport.assert_called_once()
+        self.assertEqual(record["status"], "technical_error")
+        self.assertEqual(record["tool_calls"], 0)
+        self.assertFalse(events(record, "backend_read"))
 
     def test_cli_rejects_disabled_and_nested_secret_configs_without_creating_artifacts(self):
         template = json.loads((Path(__file__).parents[1] / "configs/api.example.json").read_text())
