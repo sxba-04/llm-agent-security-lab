@@ -127,6 +127,8 @@ class ObservationTests(unittest.TestCase):
                 self.subTest(scenario=scenario),
                 patch("builtins.open", side_effect=virtual_open) as opened,
                 patch.object(probe.socket, "socket") as socket_factory,
+                # The virtual child's errno name is Linux ENETUNREACH even on a Winsock host.
+                patch.dict(errno.errorcode, {errno.ENETUNREACH: "ENETUNREACH"}),
                 patch.object(probe, "namespace_ids", return_value=synthetic_child()["namespaces"]),
                 patch.dict(os.environ, {"LC_ALL": "C"}, clear=True),
             ):
@@ -135,6 +137,7 @@ class ObservationTests(unittest.TestCase):
                     endpoint.connect.side_effect = OSError(errno.ENETUNREACH, "unreachable")
                 observed = probe.child_observations({"port": 43210, "private": private})
                 endpoint.connect.assert_called_once_with(("127.0.0.1", 43210))
+                self.assertEqual(observed["parent_connect"], "connected" if scenario == "exposed" else "ENETUNREACH")
                 opened.assert_any_call(private, "r+b")
                 if scenario == "denied input":
                     self.assertEqual((observed["input_read"], observed["input_observed_hex"]), ("EACCES", None))
