@@ -16,14 +16,14 @@ from . import luna_pilot
 from .budget import euros
 from .contracts import ModelError
 from .documents import reject_symlinks
-from .hosted import HostedSettings
+from .hosted import HostedSettings, validate_fixed_start
 
 # Same conservative EUR rates as the documented pilot. Recheck before activation.
 INPUT_EUR_PER_MILLION = "0.12"
 OUTPUT_EUR_PER_MILLION = "0.60"
 PRICE_CHECK_DATE = "2026-11-09"
 UNAVAILABLE = "Der gehostete Luna-Pilot ist nicht startbereit."
-BUSY = "Der Pilot oder die Workspace-Sicherung läuft bereits."
+BUSY = "Ein Modellversuch oder die Workspace-Sicherung läuft bereits."
 
 
 def _usage_totals(result: dict) -> tuple[int | None, int | None, str | None]:
@@ -107,13 +107,7 @@ class HostedPilot:
         return {"state": "completed" if summary["technical_acceptance"] else "failed", "result": summary}
 
     async def start_request(self, request: Request) -> dict:
-        if request.headers.get("origin") not in {self.settings.frontend_origin, self.settings.public_origin}:
-            raise HTTPException(403, "Der Pilot benötigt die konfigurierte Werkbank-Origin.")
-        if request.query_params:
-            raise HTTPException(400, "Der feste Pilot akzeptiert keine Parameter.")
-        async for chunk in request.stream():
-            if chunk:
-                raise HTTPException(400, "Der feste Pilot akzeptiert keinen Anfrageinhalt.")
+        await validate_fixed_start(request, self.settings)
         return await run_in_threadpool(self.start)
 
     def start(self) -> dict:

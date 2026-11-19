@@ -10,6 +10,7 @@ const { LunaPilotPage } = await import('./LunaPilot');
 
 const path = 'https://lab.example/api/pilot/luna';
 const planPath = 'https://lab.example/api/studies/clean-b/plan';
+const runPath = 'https://lab.example/api/studies/clean-b/run';
 const code = 'test-only-access-code-with-at-least-32-characters';
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
@@ -24,9 +25,10 @@ const finished = {
 };
 
 function backend(pilot: (options: RequestInit) => Response | Promise<Response>, capabilities = ['luna_pilot_v1'],
-  plan?: () => Response) {
+  plan?: () => Response, run?: (options: RequestInit) => Response | Promise<Response>) {
   const fetch = vi.fn(async (url: string, options: RequestInit) => {
     if (url === path) return pilot(options);
+    if (url === runPath && run) return run(options);
     if (url === planPath && plan) return plan();
     if (url.endsWith('/api/health')) return reply({ csrf_token: 'csrf', capabilities });
     if (url.endsWith('/api/cases')) return reply({ cases: [] });
@@ -180,7 +182,7 @@ it('opens the read-only B plan with its own capability and lists the scheduled c
   expect(calls).toHaveLength(1);
   expect(calls[0][1].method || 'GET').toBe('GET');
   expect(new Headers(calls[0][1].headers).get('Authorization')).toBe('Bearer ' + code);
-  expect(fetch.mock.calls.some(([url, init]) => url === path || init.method === 'POST')).toBe(false);
+  expect(fetch.mock.calls.some(([url, init]) => url === path || url === runPath || init.method === 'POST')).toBe(false);
 });
 
 it('keeps the B plan hidden on a backend that only supports A17, even for a direct route', async () => {
@@ -212,4 +214,83 @@ it.each([
   await user.click(screen.getByRole('link', { name: 'Luna-Pilot' }));
   expect(await screen.findByText(finished.result.final_text)).toBeVisible();
   expect(fetch.mock.calls.some(([, options]) => options.method === 'POST')).toBe(false);
+});
+
+async function openCleanBRun(run: (options: RequestInit) => Response | Promise<Response>, plan = cleanPlan) {
+  const fetch = backend(() => reply(finished), ['clean_b_plan_v1', 'clean_b_run_v1'], () => reply(plan), run);
+  await signIn(code);
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByRole('link', { name: 'B-Versuchsplan' }));
+  return { user, requests: () => fetch.mock.calls.filter(([url]) => url === runPath).map(([, init]) => init) };
+}
+function runStatus(state: string, recorded_runs: number | null = 0) {
+  return reply({ state, planned_runs: 12, recorded_runs });
+}
+
+it('confirms the fixed cost and scope before sending at most one bodyless authenticated B start', async () => {
+  let started = false;
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+  const { user, requests } = await openCleanBRun(options => {
+    if (options.method === 'POST') started = true;
+    return started ? runStatus('completed', 12) : runStatus('ready');
+  });
+  const button = await screen.findByRole('button', { name: 'B-Serie starten' });
+  await user.click(button);
+  expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/zwölf.*0,50 €/));
+  expect(requests()).toHaveLength(1);
+  await user.dblClick(button);
+  expect(await screen.findByText('12 von 12 Laufbelegen gespeichert.')).toBeVisible();
+  expect(screen.getByText(/technisch abgeschlossen/)).toBeVisible();
+  const writes = requests().filter(init => init.method === 'POST');
+  expect(writes).toHaveLength(1);
+  expect(writes[0].body).toBeUndefined();
+  expect(new Headers(writes[0].headers).get('Authorization')).toBe('Bearer ' + code);
+  expect(new Headers(writes[0].headers).get('X-Lab-Token')).toBe('csrf');
+  expect(screen.queryByRole('button', { name: 'B-Serie starten' })).not.toBeInTheDocument();
+});
+
+it('uses only status reads after an unacknowledged B start, including when reopening the plan', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const { user, requests } = await openCleanBRun(options => options.method === 'POST'
+    ? Promise.reject(new TypeError('Response lost')) : runStatus('ready'));
+  await user.click(await screen.findByRole('button', { name: 'B-Serie starten' }));
+  expect(await screen.findByText(/liegt keine Bestätigung vor/)).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Serienstatus aktualisieren' }));
+  await user.click(screen.getByRole('link', { name: 'Übersicht' }));
+  await user.click(screen.getByRole('link', { name: 'B-Versuchsplan' }));
+  expect(await screen.findByText(/Startanfrage wurde ausgelöst/)).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'B-Serie starten' })).not.toBeInTheDocument();
+  expect(requests().filter(r => r.method === 'POST')).toHaveLength(1);
+});
+
+it('automatically reads new counts for a running series and displays its stopped state', async () => {
+  let running = true;
+  const { requests } = await openCleanBRun(() => running ? runStatus('running', 3) : runStatus('stopped', 4));
+  expect(await screen.findByText('3 von 12 Laufbelegen gespeichert.')).toBeVisible();
+  expect(screen.getByText(/automatisch aktualisiert/)).toBeVisible();
+  running = false;
+  expect(await screen.findByText('4 von 12 Laufbelegen gespeichert.', {}, { timeout: 8000 })).toBeVisible();
+  expect(screen.getByText(/wurde gestoppt/)).toBeVisible();
+  expect(requests().every(r => r.method !== 'POST')).toBe(true);
+}, 10000);
+
+it.each([
+  ['disabled', 0, 'noch nicht zum Start freigegeben'],
+  ['interrupted', 1, 'wurde unterbrochen'],
+  ['unavailable', null, 'nicht verlässlich bestimmen'],
+  ['completed', 10, 'keinen lesbaren Serienstatus'],
+  ['ready', 1, 'keinen lesbaren Serienstatus'],
+] as const)('keeps %s read-only and reports unavailable evidence honestly', async (state, count, label) => {
+  const { requests } = await openCleanBRun(() => runStatus(state, count));
+  expect(await screen.findByText(new RegExp(label))).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'B-Serie starten' })).not.toBeInTheDocument();
+  if (count === null) expect(screen.queryByText(/Laufbelegen gespeichert/)).not.toBeInTheDocument();
+  expect(requests().every(r => r.method !== 'POST')).toBe(true);
+});
+
+it('withholds the start action if the advertised budget differs from the fixed confirmation', async () => {
+  await openCleanBRun(() => runStatus('ready'), { ...cleanPlan, budget: { ...cleanPlan.budget, proposed_run_cap_eur: '1' } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Fallzahl oder Seriengrenze');
+  expect(screen.queryByRole('button', { name: 'B-Serie starten' })).not.toBeInTheDocument();
 });

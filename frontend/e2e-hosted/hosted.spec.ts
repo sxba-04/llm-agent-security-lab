@@ -41,11 +41,12 @@ test('@smoke hosted access requires a token and keeps it out of browser storage'
   await expect(page.getByLabel('Zugangscode', { exact: true })).toBeVisible();
 });
 
-test('reads the fixed clean B schedule from the hosted API without starting a pilot', async ({ page }) => {
+test('reads the fixed clean B schedule and disabled series status without starting a model', async ({ page }) => {
   const planPath = '/api/studies/clean-b/plan';
+  const runPath = '/api/studies/clean-b/run';
   const requests: string[] = [];
   page.on('request', request => {
-    if ([planPath, '/api/pilot/luna'].includes(new URL(request.url()).pathname)) {
+    if ([planPath, runPath, '/api/pilot/luna'].includes(new URL(request.url()).pathname)) {
       requests.push(request.method() + ' ' + new URL(request.url()).pathname);
     }
   });
@@ -60,7 +61,10 @@ test('reads the fixed clean B schedule from the hosted API without starting a pi
   await expect(items.first()).toHaveText('DEV-G1-01');
   await expect(items.last()).toHaveText('DEV-G3-04');
   await expect(page.getByRole('button', { name: /starten/i })).toHaveCount(0);
-  expect(requests).toEqual(['GET ' + planPath]);
+  await expect(page.getByText('Der Server hat die B-Serie noch nicht zum Start freigegeben.')).toBeVisible();
+  await expect(page.getByText('0 von 12 Laufbelegen gespeichert.')).toBeVisible();
+  await page.getByRole('button', { name: 'Serienstatus aktualisieren' }).click();
+  await expect.poll(() => requests).toEqual(['GET ' + planPath, 'GET ' + runPath, 'GET ' + runPath]);
 });
 
 test('GitHub callback, identity, own-session revocation and logout work across HTTPS origins', async ({ page, context }, testInfo) => {

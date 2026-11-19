@@ -6,6 +6,7 @@ claim to contain a complete runnable source checkout.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -441,12 +442,12 @@ def export_campaign(directory: str | Path, output_path: str | Path) -> dict[str,
         temp_path.unlink(missing_ok=True)
 
 
-def _export_files(directory: Path) -> list[tuple[str, Path, tuple[int, int, int]]]:
+def _export_files(directory: Path, *, allow_unpublished: Callable[[Path], bool] | None = None) -> list[tuple[str, Path, tuple[int, int, int]]]:
     files = []
     folded = set()
     total = 0
     for path in sorted(directory.rglob("*")):
-        name = _export_file_name(path, directory, folded)
+        name = _export_file_name(path, directory, folded, allow_unpublished)
         if name is None:
             continue
         folded.add(name.casefold())
@@ -461,7 +462,8 @@ def _export_files(directory: Path) -> list[tuple[str, Path, tuple[int, int, int]
     return files
 
 
-def _export_file_name(path: Path, directory: Path, folded: set[str]) -> str | None:
+def _export_file_name(path: Path, directory: Path, folded: set[str],
+                      allow_unpublished: Callable[[Path], bool] | None = None) -> str | None:
     if path.is_symlink():
         raise ValueError("Campaign contains a symbolic link")
     if path.is_dir():
@@ -473,7 +475,7 @@ def _export_file_name(path: Path, directory: Path, folded: set[str]) -> str | No
         raise ValueError("Reserved or colliding campaign path")
     if name.endswith(".tmp"):
         from .campaign_metadata import is_unpublished_metadata_file
-        if not is_unpublished_metadata_file(path):
+        if not is_unpublished_metadata_file(path) and not (allow_unpublished and allow_unpublished(path)):
             raise ValueError("Campaign contains an unfinished temporary write")
     return name
 

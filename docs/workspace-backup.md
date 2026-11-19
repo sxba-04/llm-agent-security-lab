@@ -164,6 +164,16 @@ bleibt die Probe gesperrt und wird als unvollständig ausgewiesen. Der
 [B-Versuchsplan](study-preflight.md#zwölf-saubere-entwicklungsaufgaben-in-b)
 beschreibt die Fallfolge und den eigenen Workspace der Probe.
 
+## Belege des einmaligen B-Laufs
+
+Der gehostete B-Lauf verwendet `studies/clean-b-v1.attempt.json`, die Kampagne
+`studies/clean-b-v1/` und den gemeinsamen Ledger `studies/budget.json`.
+Ein belegter Startplatz bleibt auch ohne fertige Fallprotokolle verbraucht.
+Vor einer Sicherung muss der Hintergrundworker beendet sein. Beim Wiederherstellen
+werden insbesondere die Bindung zwischen Plan, Startbeleg und Kampagne sowie
+die zugehörigen Kostenbuchungen geprüft. Ein unterbrochener Lauf braucht einen
+Abgleich der vorhandenen Originale und offenen Reservierungen.
+
 ## Dateimodus im Hosting-Checkout
 
 Die Sicherung verlangt weiterhin einen sauberen versionierten Checkout,

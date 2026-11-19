@@ -31,6 +31,7 @@ from .evaluation import summarize
 from .jobs import CampaignJobs, checked_tree
 from .hosted import HostedAccessMiddleware, HostedSettings
 from .hosted_pilot import HostedPilot
+from .hosted_clean_b import HostedCleanB
 from .github_auth import GitHubSessions
 from .auth_routes import register_auth_routes
 from .campaign_metadata import MetadataConflict, load_metadata, save_metadata, validate_labels
@@ -219,6 +220,7 @@ class _WorkbenchAPI:
         self.extraction_slot = threading.BoundedSemaphore(1)
         self.hosted_settings = hosted_settings
         self.pilot = HostedPilot(self.workspace, hosted_settings) if hosted_settings else None
+        self.clean_b = HostedCleanB(self.workspace, hosted_settings, self.pilot.slot) if self.pilot else None
 
     def register(self, app: FastAPI) -> None:
         app.get("/api/health")(self.health)
@@ -228,6 +230,11 @@ class _WorkbenchAPI:
             app.get("/api/studies/clean-b/plan", responses={
                 503: {"model": APIError, "description": "Fixed plan inputs are unavailable or invalid."},
             })(_clean_b_plan)
+        if self.clean_b:
+            app.get("/api/studies/clean-b/run")(self.clean_b.status)
+            app.post("/api/studies/clean-b/run", status_code=202, responses={
+                **CONFLICT_RESPONSE, 503: {"model": APIError, "description": "Study preflight or approval unavailable."},
+            })(self.clean_b.start_request)
         app.get("/api/cases")(self.cases)
         app.get("/api/cases/{case_id}/articles/{source}/pdf")(self.sample_pdf)
         app.get("/api/campaigns")(self.campaigns)
@@ -394,7 +401,7 @@ class _WorkbenchAPI:
     def health(self, request: Request):
         capabilities = ["campaign_metadata_v1", "review_revisions_v1", "comparison_csv_v1", "workspace_backup_v1"]
         if self.pilot:
-            capabilities.extend(("luna_pilot_v1", "clean_b_plan_v1"))
+            capabilities.extend(("luna_pilot_v1", "clean_b_plan_v1", "clean_b_run_v1"))
         return {"version": __version__, "api_contract": 2, "capabilities": capabilities, "mode": "mock", "csrf_token": self.token, "running": self.jobs.running,
                 "storage_mode": self.hosted_settings.storage_mode if self.hosted_settings else "local",
                 "storage": storage_status(self.workspace),
@@ -716,6 +723,8 @@ def create_app(workspace: Path, cases_dir: Path, frontend_dir: Path | None = Non
         try:
             yield
         finally:
+            if api.clean_b:
+                await run_in_threadpool(api.clean_b.shutdown)
             api.jobs.shutdown()
 
     app = FastAPI(title="LLM Agent Security Lab", version=__version__, lifespan=lifespan,

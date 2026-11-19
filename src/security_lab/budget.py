@@ -7,11 +7,13 @@ request outcomes keep their reservation until manually reconciled with billing.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any, Iterator
 from uuid import uuid4
 
@@ -55,6 +57,7 @@ class BudgetLedger:
         if self.request_limit > self.limit:
             raise ValueError("Per-request limit exceeds project limit")
         self.lock_path = self.path.with_name(self.path.name + ".lock")
+        self._study_history: dict[str, dict] | None = None
 
     @contextmanager
     def _locked(self) -> Iterator[None]:
@@ -72,8 +75,11 @@ class BudgetLedger:
         finally:
             self.lock_path.unlink(missing_ok=True)
 
-    def _load(self) -> dict[str, Any]:
-        if not self.path.exists():
+    def _load(self, *, require_existing: bool = False) -> dict[str, Any]:
+        require_existing = require_existing or self._study_history is not None
+        if require_existing and (self.path.is_symlink() or not self.path.is_file()):
+            raise BudgetExceeded("The study needs the existing project ledger")
+        if not require_existing and not self.path.exists():
             return {"schema_version": 1, "currency": "EUR", "halted": False, "reservations": {}}
         try:
             value = json.loads(self.path.read_text(encoding="utf-8"))
@@ -87,11 +93,14 @@ class BudgetLedger:
                     raise ValueError
                 euros(entry["amount_eur"], allow_zero=True)
                 euros(entry["reserved_eur"])
+            if self._study_history is not None and any(
+                    value["reservations"].get(key) != expected for key, expected in self._study_history.items()):
+                raise BudgetExceeded("Verified study ledger entries disappeared or changed; reconcile before continuing")
             return value
         except (OSError, ValueError, KeyError, TypeError):
             raise BudgetExceeded("Budget ledger is unreadable or invalid; reconcile it before further requests") from None
 
-    def _save(self, value: dict[str, Any]) -> None:
+    def _save(self, value: dict[str, Any], reservation_id: str) -> None:
         temporary = self.path.with_name(self.path.name + "." + uuid4().hex + ".tmp")
         try:
             descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -101,6 +110,8 @@ class BudgetLedger:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, self.path)
+            if self._study_history is not None:
+                self._study_history[reservation_id] = value["reservations"][reservation_id]
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -109,14 +120,42 @@ class BudgetLedger:
         return sum((euros(item["amount_eur"], allow_zero=True)
                     for item in value["reservations"].values()), Decimal("0"))
 
-    def reserve(self, amount_eur: Any, metadata: dict[str, Any] | None = None) -> str:
+    def review_study(self, run_budget_eur: Any, *, study_plan_sha256: str) -> dict[str, dict]:
+        """Check one published ledger snapshot without creating files or reserving funds."""
+        cap = euros(run_budget_eur)
+        if not isinstance(study_plan_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", study_plan_sha256):
+            raise ValueError("Study billing requires a SHA-256 plan digest")
+        value = self._load(require_existing=True)
+        if value["halted"] or self._total(value) + cap > self.limit:
+            raise BudgetExceeded("Project ledger is halted or lacks room for the study budget")
+        for entry in value["reservations"].values():
+            metadata = entry.get("metadata", {})
+            if entry["state"] != "settled" or not isinstance(metadata, dict):
+                raise BudgetExceeded("Reconcile outstanding or unreadable reservations before the study")
+            if metadata.get("study_plan_sha256") == study_plan_sha256:
+                raise BudgetExceeded("The ledger already records a request for this study plan")
+        return value["reservations"]
+
+    @contextmanager
+    def preflight_study(self, run_budget_eur: Any, *, study_plan_sha256: str) -> Iterator[dict[str, dict]]:
+        """Expose validated reservations under lock and pin them after a successful claim."""
+        with self._locked():
+            reservations = self.review_study(run_budget_eur, study_plan_sha256=study_plan_sha256)
+            yield deepcopy(reservations)
+            self._study_history = reservations
+
+    def reserve(self, amount_eur: Any, metadata: dict[str, Any] | None = None, *, require_existing: bool = False) -> str:
         amount = euros(amount_eur)
         if amount > self.request_limit:
             raise BudgetExceeded("Request reservation exceeds the per-request EUR limit")
         with self._locked():
-            value = self._load()
+            if require_existing and self._study_history is None:
+                raise BudgetExceeded("Study ledger has not passed its start preflight")
+            value = self._load(require_existing=require_existing)
             if value["halted"]:
                 raise BudgetExceeded("Budget ledger is halted after an accounting overrun; reconcile first")
+            if require_existing and any(entry["state"] != "settled" for entry in value["reservations"].values()):
+                raise BudgetExceeded("Reconcile outstanding reservations before another study request")
             if self._total(value) + amount > self.limit:
                 raise BudgetExceeded("Request reservation would exceed the configured project budget")
             reservation_id = uuid4().hex
@@ -124,7 +163,7 @@ class BudgetLedger:
                 "amount_eur": str(amount), "reserved_eur": str(amount), "state": "reserved",
                 "created_at": datetime.now(timezone.utc).isoformat(), "metadata": metadata or {},
             }
-            self._save(value)
+            self._save(value, reservation_id)
             return reservation_id
 
     def settle(self, reservation_id: str, actual_eur: Any) -> bool:
@@ -142,7 +181,7 @@ class BudgetLedger:
             if not within or self._total(value) > self.limit:
                 value["halted"] = True
                 within = False
-            self._save(value)
+            self._save(value, reservation_id)
             return within
 
     def snapshot(self) -> dict[str, Any]:

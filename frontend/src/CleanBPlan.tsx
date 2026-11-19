@@ -1,4 +1,5 @@
-import { useResource } from './api';
+import { useEffect, useState, type RefObject } from 'react';
+import { post, useResource } from './api';
 import { DataFields, Disclosure, ErrorBox, Loading, PageHeader, Panel } from './ui';
 
 interface CleanBPlan {
@@ -39,7 +40,78 @@ function readablePlan(plan: CleanBPlan): boolean {
     && amounts.every(amount => nonemptyText(amount) && Number.isFinite(Number(amount)) && Number(amount) >= 0);
 }
 
-export function CleanBPlanPage() {
+const runPath = '/api/studies/clean-b/run';
+const runLabels = {
+  disabled: 'Der Server hat die B-Serie noch nicht zum Start freigegeben.',
+  ready: 'Der Server hat die B-Serie zum einmaligen Start freigegeben.',
+  running: 'Die B-Serie läuft. Der Fortschritt wird automatisch aktualisiert.',
+  completed: 'Die B-Serie ist technisch abgeschlossen. Die fachliche Auswertung erfolgt separat.',
+  stopped: 'Die B-Serie wurde gestoppt. Laufbelege und Kostenbuchungen müssen geprüft werden.',
+  interrupted: 'Die B-Serie wurde unterbrochen. Die vorhandenen Laufbelege bleiben zur Prüfung erhalten.',
+  unavailable: 'Der Serienstatus lässt sich nicht verlässlich bestimmen.',
+};
+interface RunStatus {
+  state: keyof typeof runLabels;
+  planned_runs: number;
+  recorded_runs: number | null;
+}
+
+function readableRun(status: RunStatus, planned: number): boolean {
+  if (typeof status.state !== 'string' || !Object.hasOwn(runLabels, status.state) || status.planned_runs !== planned) return false;
+  if (status.state === 'unavailable') return status.recorded_runs === null;
+  const recorded = status.recorded_runs;
+  if (recorded === null || !Number.isSafeInteger(recorded) || recorded < 0 || recorded > planned) return false;
+  if (status.state === 'ready' || status.state === 'disabled') return recorded === 0;
+  return status.state !== 'completed' || recorded === planned;
+}
+
+function CleanBRun({ plan, startSent }: Readonly<{ plan: CleanBPlan; startSent: RefObject<boolean> }>) {
+  const { data, error, loading, refresh } = useResource<RunStatus>(runPath);
+  const [starting, setStarting] = useState(false);
+  const [startNotice, setStartNotice] = useState('');
+  const status = data && readableRun(data, plan.schedule.length) ? data : null;
+  useEffect(() => {
+    if (status?.state !== 'running' || error) return;
+    const timer = window.setTimeout(refresh, 4000);
+    return () => window.clearTimeout(timer);
+  }, [status, error, refresh]);
+
+  const matchesScope = plan.schedule.length === 12 && Number(plan.budget.proposed_run_cap_eur) === 0.5;
+  const ready = status?.state === 'ready' && matchesScope && !error && !loading;
+  async function start() {
+    if (!ready || startSent.current) return;
+    if (!window.confirm('Die zwölf sauberen Entwicklungsfälle einmal in B mit GPT-6 Luna starten? Die Seriengrenze beträgt 0,50 €.')) return;
+    startSent.current = true;
+    setStarting(true);
+    try {
+      await post(runPath);
+    } catch {
+      setStartNotice('Für die Startanfrage liegt keine Bestätigung vor. Prüfe den gespeicherten Status.');
+    } finally {
+      setStarting(false);
+      refresh();
+    }
+  }
+
+  return <Panel title="Einmalige B-Serie">
+    <ErrorBox error={error || (!status && !loading ? 'Der Server hat keinen lesbaren Serienstatus geliefert.' : '')} />
+    {loading && <Loading text="Serienstatus wird geladen …" />}
+    {status && <div aria-live="polite">
+      <p>{runLabels[status.state]}</p>
+      {status.recorded_runs !== null && <p>{status.recorded_runs} von {status.planned_runs} Laufbelegen gespeichert.</p>}
+    </div>}
+    {status?.state === 'ready' && !matchesScope && <p role="alert">Fallzahl oder Seriengrenze weichen von der Startfreigabe ab.</p>}
+    {startSent.current && (!status || status.state === 'ready') && <output>
+      {starting ? 'Startanfrage wird gesendet …' : startNotice || 'Die Startanfrage wurde ausgelöst. Prüfe den gespeicherten Status.'}
+    </output>}
+    <div className="button-row">
+      {ready && !startSent.current && <button type="button" className="button primary" onClick={() => void start()}>B-Serie starten</button>}
+      <button type="button" className="button secondary" disabled={loading || starting} onClick={refresh}>Serienstatus aktualisieren</button>
+    </div>
+  </Panel>;
+}
+
+export function CleanBPlanPage({ supportsRun, startSent }: Readonly<{ supportsRun: boolean; startSent: RefObject<boolean> }>) {
   const { data, error, loading, refresh } = useResource<CleanBPlan>('/api/studies/clean-b/plan');
   const invalidPlan = data == null ? !loading && !error : !readablePlan(data);
   if (invalidPlan) {
@@ -51,6 +123,7 @@ export function CleanBPlanPage() {
     <ErrorBox error={error} retry={refresh} />
     {loading && <Loading text="Versuchsplan wird geladen …" />}
     {data && <div className="stack">
+      {supportsRun && <CleanBRun plan={data} startSent={startSent} />}
       <Panel title="Fallfolge und Bewertung">
         <p>Mindestens <strong>{data.acceptance.min_correct} von {data.schedule.length}</strong> Aufgaben müssen fachlich korrekt gelöst werden. Die Obergrenze für grundlegende Werkzeugfehler liegt bei {data.acceptance.max_fundamental_tool_errors}.</p>
         <Disclosure title={`Geplante Fallfolge (${data.schedule.length})`}>

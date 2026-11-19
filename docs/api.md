@@ -185,6 +185,47 @@ Die Anwendung protokolliert zusätzlich die vom Anbieter tatsächlich zurückgem
 
 Die API-Anbindung verwendet den festen OpenAI-Endpunkt für Chat Completions und eigene Funktionen für die beiden Ticket-Tools. Der Modellvorschlag wird weiterhin von der Anwendung geprüft. Anbieterseitige Tools für Browser, Shell oder Dateien werden nicht freigeschaltet.
 
+## Einmaliger Start der sauberen B-Serie
+
+Der gehostete Dienst bietet für die zwölf festen Entwicklungsaufgaben eine
+eigene Start- und Statusroute. Der Menüpunkt **B-Versuchsplan** erkennt sie an
+`clean_b_run_v1`. Ältere Dienste mit `clean_b_plan_v1` zeigen die Vorschau.
+Reguläre Kampagnen unter **Versuche** verwenden weiterhin das Testmodell.
+
+| Aufruf | Wirkung |
+| --- | --- |
+| `GET /api/studies/clean-b/plan` | Liefert den versionierten Plan. Das Feld `paid_run_authorized: false` gehört zur unveränderlichen Vorschau. |
+| `GET /api/studies/clean-b/run` | Liefert den aktuellen Betriebszustand und die Anzahl protokollierter Fälle. Der Zugriff erfordert eine angemeldete Sitzung und verändert keine Belege. |
+| `POST /api/studies/clean-b/run` | Akzeptiert genau den serverseitigen Plan. Die Anfrage braucht eine Operatoranmeldung, die erlaubte Werkbank-Origin und ein gültiges Mutationstoken. Queryparameter und Anfrageinhalt werden abgelehnt. HTTP 202 bestätigt, dass der dauerhafte Startbeleg angelegt und der Auftrag an den Hintergrundworker übergeben wurde. |
+
+Der Dienst startet standardmäßig mit gesperrter B-Serie. Erst nach der
+gesonderten Betriebs- und Kostenentscheidung hinterlegt der Betreiber den
+SHA-256 der genehmigten Planfassung als `LAB_CLEAN_B_APPROVED_PLAN_SHA256`.
+Ein fehlender oder abweichender Wert sperrt den Start. Der Server verlangt
+persistenten Speicher, den bereits konfigurierten Projektschlüssel und den
+bestehenden gemeinsamen Ledger. Vor der Freischaltung den sauberen Quellstand
+und die zugehörige Sicherung mit den aufgezeichneten Prüfsummen abgleichen. Vor einer Änderung auf Render schützt die
+[geprüfte Gesamtsicherung](workspace-backup.md) den aktuellen Forschungsbestand.
+Die Freigabe dokumentiert eine Betriebsentscheidung. Eine eigene Prozessgrenze
+und eine netzseitige Beschränkung auf OpenAI sind gesondert nachzuweisen.
+
+Der Client kann weder Fälle, Quellen, Prompts, Tarife noch Limits vorgeben.
+Vor dem Start prüft der Server unter der Ledgersperre offene Reservierungen,
+einen möglichen Abrechnungsstopp und den verbleibenden Projektetat. Die
+Serie hat für diese Planfassung ein lokales Limit von 0,50 EUR. Vor jedem
+Versand wird die Anfrage mit Versuchskennung, Planhash und fortlaufender Nummer
+im gemeinsamen Ledger reserviert. Unsicherer Verbrauch bleibt reserviert.
+Die Fallprotokolle enthalten die Anbieterrückmeldungen und die überprüfbaren
+Verweise auf ihre Buchungen.
+
+Eine belegte Startsperre oder parallel laufende Sicherung liefert HTTP 409,
+fehlende Freigabe oder fehlgeschlagene Budgetvorprüfung HTTP 503. Nach einem
+Verbindungsabbruch den Status abrufen. Ein Neustart setzt die Serie weder fort
+noch zurück. `completed` bezeichnet den technischen Abschluss der zwölf Fälle.
+Für die fachliche Reifeprüfung müssen die Originalantworten separat nach den
+Kriterien im [Studienplan](study-preflight.md) bewertet werden. Diese
+Implementierung und ihre technischen Prüfungen wurden mit KI-Unterstützung erstellt.
+
 ## Kosten planen
 
 Das vereinbarte Gesamtbudget beträgt höchstens **250 EUR** einschließlich Entwicklung, Pilot und Hauptmessung. Zunächst wird eine kleine Teilgrenze für den echten Pilot verwendet. Aus den tatsächlich erfassten Modellanfragen und Tokenwerten wird der restliche Aufwand hochgerechnet.

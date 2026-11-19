@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMobileNavigation } from './mobile-navigation';
 import { Activity, ArrowDownToLine, ArrowRight, BookOpen, ChevronRight, CircleHelp, ClipboardCheck, ClipboardList, FileText, FlaskConical, GitCompareArrows, LayoutDashboard, Menu, Play, ShieldCheck, X } from 'lucide-react';
 import { confirmDiscardChanges, hosted, navigate, signOut, useResource, useRoute } from './api';
@@ -42,10 +42,12 @@ function strategyLabel(strategy: string) {
 }
 function Workbench() {
   const route = useRoute();
+  const cleanBStartSent = useRef(false);
   const health = useResource<Health>('/api/health', 10000);
   const cases = useResource<{ cases: LabCase[] }>('/api/cases');
   const campaigns = useResource<{ campaigns: Campaign[] }>('/api/campaigns', 2500);
   const navigation = hosted ? [...pages, ...hostedPages.filter(page => health.data?.capabilities?.includes(page.capability))] : pages;
+  const supportsCleanBRun = health.data?.capabilities?.includes('clean_b_run_v1') === true;
   const current = navigation.find(item => item.id === route.page) || pages[0];
   const { menu, mobile, menuButton, sidebar, closeMenu, selectCurrentPage, toggleMenu } = useMobileNavigation(current.label);
   const drawerOpen = mobile && menu;
@@ -64,7 +66,7 @@ function Workbench() {
       <div className="sidebar-footer"><div className="local-indicator"><span />{hosted ? 'Online-Werkbank' : 'Lokale Werkbank'}</div><p>Kontrollierte Szenarien.<br />Nachvollziehbare Entscheidungen.</p><div className="sidebar-version"><span>Entwicklungsphase</span><span>{health.data?.version ? `v${health.data.version}` : '—'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button ref={menuButton} className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} aria-controls="main-navigation" aria-expanded={menu} onClick={toggleMenu}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />{hostedModes[current.id] ?? 'MOCK-MODUS'}</span><ThemePicker />{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
+      <header className="topbar"><div className="breadcrumb"><button ref={menuButton} className="icon-button mobile-menu" aria-label={menu ? 'Menü schließen' : 'Menü öffnen'} aria-controls="main-navigation" aria-expanded={menu} onClick={toggleMenu}>{menu ? <X size={20} /> : <Menu size={20} />}</button><span>Werkbank</span><ChevronRight size={14} /><strong>{current.label}</strong></div><div className="topbar-state"><span className="connection-state"><span className={`tiny-dot ${health.error ? 'offline' : ''}`} />{connectionLabel(health.error, health.loading, Boolean(health.data))}</span><span className="mock-badge"><span />{current.id === 'clean-b-plan' && supportsCleanBRun ? 'B-SERIE' : hostedModes[current.id] ?? 'MOCK-MODUS'}</span><ThemePicker />{hosted && <><SessionMenu /><button className="button quiet small" onClick={() => { if (confirmDiscardChanges()) void signOut(); }}>Abmelden</button></>}</div></header>
       <main id="main-content" tabIndex={-1} inert={drawerOpen}>
         <StorageNotice storage={health.data?.storage} />
         {health.data?.storage_mode === 'ephemeral' && <aside className="notice warning" role="note" aria-label="Flüchtiger Testbetrieb"><div><strong>Testbetrieb · Daten werden nicht dauerhaft gespeichert</strong><br />Hochgeladene PDFs, Versuche und Bewertungen gehen beim Ruhezustand, Neustart oder Deployment des Backends verloren. Benötigte Kampagnenarchive vorher herunterladen; wichtige Studienbelege außerhalb dieser Testumgebung sichern.</div></aside>}
@@ -78,7 +80,7 @@ function Workbench() {
           {current.id === 'compare' && <ComparePage campaigns={campaignRows} selected={route.params.get('id')} />}
           {current.id === 'review' && <ReviewsPage invalidCampaignIds={campaignRows.filter(isDamagedCampaign).map(c => c.campaign_id)} selected={route.params.get('set')} slot={route.params.get('slot') || 'a'} coordinating={route.params.get('mode') === 'coordination'} />}
           {current.id === 'pilot' && <LunaPilotPage />}
-          {current.id === 'clean-b-plan' && <CleanBPlanPage />}
+          {current.id === 'clean-b-plan' && <CleanBPlanPage supportsRun={supportsCleanBRun} startSent={cleanBStartSent} />}
           {current.id === 'documents' && <DocumentsPage cases={caseRows} />}
         </>}
         <footer className="page-footer"><span>LLM Agent Security Lab</span><span>Synthetische Daten · Entwicklungskatalog · {hosted ? 'Gemeinsamer Arbeitsbereich' : 'Lokal'}</span></footer>

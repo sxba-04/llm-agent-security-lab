@@ -48,9 +48,12 @@ exklusiv nach `studies/clean-b-rehearsal-v1.attempt.json`. Die technischen
 Laufbelege liegen in `studies/clean-b-rehearsal-v1/`. Die Startsperre für diesen
 Probeplatz bleibt auch nach Abbruch und Wiederherstellung erhalten. Im
 Manifest steht der SHA-256 des Startbelegs. Die Probedaten sind als
-`engineering_only` gekennzeichnet und kosten 0 EUR. Für den echten B-Lauf
-fehlen noch dessen eigener einmaliger Start, die Bindung an den produktiven
-Ledger und die gesonderte Betriebs- und Kostenfreigabe. Die A17-Einzelfreigabe
+`engineering_only` gekennzeichnet und kosten 0 EUR. Der vorbereitete B-Start verbraucht einen eigenen Startbeleg und verwendet den
+bestehenden produktiven Ledger. Vor seiner Freischaltung müssen die Betreiber
+die Ausführungsumgebung und die Kosten für genau diese Planfassung genehmigen.
+Der Server bindet diese Entscheidung mit `LAB_CLEAN_B_APPROVED_PLAN_SHA256`
+an den Plan. Die [Start- und Statusregeln](api.md#einmaliger-start-der-sauberen-b-serie)
+beschreiben die Bedienung und den Umgang mit Unterbrechungen. Die A17-Einzelfreigabe
 gilt ausschließlich für den abgeschlossenen P-Versuch. Eine separate
 Prozessisolation und ausgehende Netzbeschränkung auf OpenAI sind weiterhin
 offen. Dieses Arbeitspaket wurde mit Codex umgesetzt und technisch geprüft.
@@ -162,8 +165,10 @@ Vor einer echten Ausführung bleiben konkret erforderlich:
 3. Modellstand, aktuelle Preise, Umfang, Abbruchgrenzen, Ledger und Ausgabeziel
    werden festgelegt; der konkrete kostenpflichtige Lauf wird ausdrücklich
    autorisiert.
-4. Der Pilot liefert gemessene Verbräuche und die menschlich geprüfte Reifeprüfung
-   aus dem [Versuchsplan](experiment.md). Erst danach folgt die Haupttestfreigabe.
+4. Die zwölf sauberen B-Läufe liefern gemessene Verbräuche und Originalantworten
+   für die Reifeprüfung aus dem [Versuchsplan](experiment.md). Die fachliche Prüfung
+   führt Codex anhand der Fallvorgaben durch und weist sie als KI-Bewertung aus.
+   Erst danach folgt die gesonderte Haupttestfreigabe.
 
 Automatisierte Tests dieser Erweiterung verwenden ausschließlich Mock-Daten
 und erfundene Testpreise. Die Umsetzung wurde mit Codex unterstützt; sie erzeugt
