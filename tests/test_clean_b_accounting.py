@@ -91,11 +91,12 @@ class CleanBAccountingTests(unittest.TestCase):
     def test_preflight_holds_ledger_lock_during_claim_without_charging(self):
         old = self.historical_entry("0.50")
         original = self.ledger.path.read_bytes()
+        competing_ledger = BudgetLedger(self.ledger.path)
         with self.ledger.preflight_study("0.50", study_plan_sha256=self.plan_hash) as reservations:
             self.assertEqual(reservations, json.loads(original)["reservations"])
             self.assertEqual(reservations[old]["state"], "settled")
             with self.assertRaises(BudgetExceeded):
-                BudgetLedger(self.ledger.path).reserve("0.01")
+                competing_ledger.reserve("0.01")
             self.assertTrue(self.ledger.lock_path.exists())
         self.assertEqual(self.ledger.path.read_bytes(), original)
         self.assertFalse(self.ledger.lock_path.exists())

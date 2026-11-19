@@ -178,6 +178,20 @@ class HostedCleanBTests(unittest.TestCase):
         self.assertEqual(restored_client.post(RUN, headers=headers).status_code, 409)
         self.assertEqual(self.transport.call_count, 12)
 
+    def test_malformed_historical_receipt_is_unavailable_without_consuming_start(self):
+        self.settled_ledger()
+        initial = (self.workspace / LEDGER).read_bytes()
+        pilot = self.workspace / "studies" / "luna-clean-first"
+        pilot.mkdir()
+        for name, raw in (("receipt.json", "[]"), ("attempt.json", "{}"), ("result.json", "{}")):
+            (pilot / name).write_text(raw, encoding="utf-8")
+        client, headers = self.connection(clean_b_approved_plan_sha256=self.plan_hash)
+        self.assertEqual(self.status(client), {"state": "unavailable", "planned_runs": 12, "recorded_runs": None})
+        self.assertEqual(client.post(RUN, headers=headers).status_code, 503)
+        self.assertFalse((self.workspace / CLAIM).exists())
+        self.assertEqual((self.workspace / LEDGER).read_bytes(), initial)
+        self.transport.assert_not_called()
+
     def test_uncertain_transport_stops_once_with_original_reservation_and_no_restart(self):
         self.settled_ledger()
         client, headers = self.connection(clean_b_approved_plan_sha256=self.plan_hash)

@@ -165,19 +165,24 @@ def _clean_b_rehearsal_evidence(workspace: Path, campaign_present: bool) -> dict
     return evidence
 
 
+def _check_documents(storage: Path) -> list[str]:
+    if not storage.exists():
+        return []
+    documents = []
+    for path in sorted(storage.iterdir()):
+        if not DOCUMENT_ID.fullmatch(path.name) or not path.is_dir():
+            raise ValueError("Workspace contains an unfinished or unknown document import")
+        load_document(storage, path.name)
+        documents.append(path.name)
+    return documents
+
+
 def _check_workspace(workspace: Path) -> dict[str, Any]:
     _check_worker_ownership(workspace)
     campaigns = {}
     for directory in _campaign_directories(workspace):
         campaigns[directory.relative_to(workspace).as_posix()] = archives.verify_campaign_directory(directory)
-    documents = []
-    storage = workspace / "documents"
-    if storage.exists():
-        for path in sorted(storage.iterdir()):
-            if not DOCUMENT_ID.fullmatch(path.name) or not path.is_dir():
-                raise ValueError("Workspace contains an unfinished or unknown document import")
-            load_document(storage, path.name)
-            documents.append(path.name)
+    documents = _check_documents(workspace / "documents")
     root_reviews = _check_root_reviews(workspace)
     rehearsal = _clean_b_rehearsal_evidence(workspace, CLEAN_B_REHEARSAL.as_posix() in campaigns)
     paid = verify_paid_attempt(workspace)

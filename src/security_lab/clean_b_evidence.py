@@ -12,6 +12,9 @@ from .clean_b_run import ATTEMPT, CAMPAIGN, LEDGER, PLAN_V1
 from .contracts import BudgetExceeded
 from .documents import reject_symlinks
 
+CASE_SNAPSHOT_FILE = "cases.snapshot.json"
+
+
 def unpublished_paid_write(path: Path, studies: Path) -> bool:
     """Only exact names emitted by the atomic writers after a paid marker exists."""
     relative = path.relative_to(studies).as_posix()
@@ -72,29 +75,37 @@ def _reservations(workspace: Path, attempt: dict) -> tuple[dict, dict]:
     return entries, selected
 
 
+def _verify_study_request(usage: dict, metadata: dict, expected_index: int) -> None:
+    correlation = ("study_attempt_id", "study_plan_sha256", "study_request_index")
+    if (any(usage.get(key) != metadata[key] for key in correlation)
+            or type(usage.get("study_request_index")) is not int or usage["study_request_index"] != expected_index):
+        raise ValueError("Model receipt differs from the paid request index, attempt or plan")
+
+
+def _verify_receipt_settlement(usage: dict, reservation: dict) -> None:
+    accounting = usage.get("accounting")
+    if accounting not in {"reported_usage", "reservation_retained", "settlement_failed"}:
+        raise ValueError("Unknown model receipt accounting state")
+    if accounting == "reported_usage" and (
+            reservation["state"] != "settled"
+            or euros(usage["estimated_cost_eur"], allow_zero=True) != euros(reservation["amount_eur"], allow_zero=True)):
+        raise ValueError("Model receipt differs from its shared ledger settlement")
+
+
 def _receipt_ids(records: list[dict], reservations: dict, *, paid_series: bool = False) -> set[str]:
     seen = set()
-    for record in records:
-        for event in record["events"]:
-            if event["type"] != "model_response":
-                continue
-            usage = event["data"]["usage"]
-            key = usage.get("reservation_id")
-            entry = reservations.get(key)
-            if entry is None or key in seen or euros(usage["reserved_eur"]) != euros(entry["reserved_eur"]):
-                raise ValueError("Model receipt differs from its shared ledger reservation")
-            if paid_series:
-                metadata = entry["metadata"]
-                if (any(usage.get(k) != metadata[k] for k in ("study_attempt_id", "study_plan_sha256", "study_request_index"))
-                        or type(usage.get("study_request_index")) is not int or usage["study_request_index"] != len(seen) + 1):
-                    raise ValueError("Model receipt differs from the paid request index, attempt or plan")
-            if usage.get("accounting") not in {"reported_usage", "reservation_retained", "settlement_failed"}:
-                raise ValueError("Unknown model receipt accounting state")
-            if usage.get("accounting") == "reported_usage" and (
-                    entry["state"] != "settled"
-                    or euros(usage["estimated_cost_eur"], allow_zero=True) != euros(entry["amount_eur"], allow_zero=True)):
-                raise ValueError("Model receipt differs from its shared ledger settlement")
-            seen.add(key)
+    responses = (event["data"]["usage"] for record in records
+                 for event in record["events"] if event["type"] == "model_response")
+    for usage in responses:
+        reservation_id = usage.get("reservation_id")
+        reservation = reservations.get(reservation_id)
+        if (reservation is None or reservation_id in seen
+                or euros(usage["reserved_eur"]) != euros(reservation["reserved_eur"])):
+            raise ValueError("Model receipt differs from its shared ledger reservation")
+        if paid_series:
+            _verify_study_request(usage, reservation["metadata"], len(seen) + 1)
+        _verify_receipt_settlement(usage, reservation)
+        seen.add(reservation_id)
     return seen
 
 
@@ -110,20 +121,23 @@ def verify_pilot_ledger(workspace: Path, reservations: dict) -> set[str]:
             raise ValueError("Incomplete or oversized A17 evidence")
         return path.read_bytes()
 
-    receipt = archives._json(read("receipt.json", 4096))
-    raw = read("result.json", archives.MAX_FILE_BYTES)
-    if (hashlib.sha256(read("attempt.json", 1024 * 1024)).hexdigest() != receipt["attempt_sha256"]
-            or hashlib.sha256(raw).hexdigest() != receipt["result_sha256"]):
-        raise ValueError("A17 originals differ from their receipt")
-    result = archives._json(raw)
-    if (result.get("case_id") != "DEV-G1-01" or result.get("variant") != "P" or result.get("is_mock") is not False
-            or digest(result["events"]) != receipt["events_digest"] or result["status"] != receipt["status"]
-            or result["technical_acceptance"] != receipt["technical_acceptance"]):
-        raise ValueError("A17 result differs from the original evidence")
-    seen = _receipt_ids([result], reservations)
-    if result["status"] == "completed" and (not seen or len(seen) != result["model_calls"]):
-        raise ValueError("A17 receipts do not cover the recorded calls")
-    return seen
+    try:
+        receipt = archives._json(read("receipt.json", 4096))
+        raw = read("result.json", archives.MAX_FILE_BYTES)
+        if (hashlib.sha256(read("attempt.json", 1024 * 1024)).hexdigest() != receipt["attempt_sha256"]
+                or hashlib.sha256(raw).hexdigest() != receipt["result_sha256"]):
+            raise ValueError("A17 originals differ from their receipt")
+        result = archives._json(raw)
+        if (result.get("case_id") != "DEV-G1-01" or result.get("variant") != "P" or result.get("is_mock") is not False
+                or digest(result["events"]) != receipt["events_digest"] or result["status"] != receipt["status"]
+                or result["technical_acceptance"] != receipt["technical_acceptance"]):
+            raise ValueError("A17 result differs from the original evidence")
+        seen = _receipt_ids([result], reservations)
+        if result["status"] == "completed" and (not seen or len(seen) != result["model_calls"]):
+            raise ValueError("A17 receipts do not cover the recorded calls")
+        return seen
+    except (KeyError, TypeError, AttributeError, RecursionError) as error:
+        raise ValueError("Malformed A17 evidence in the shared study workspace") from error
 
 
 def _verify_record(record: dict, case: dict, plan: dict) -> None:
@@ -143,40 +157,60 @@ def _verify_record(record: dict, case: dict, plan: dict) -> None:
         raise ValueError("Paid clean B receipts do not cover the recorded calls")
 
 
-def _verify_records(campaign: Path, attempt: dict, checksum: str, reservations: dict) -> tuple[str, int, list[str]]:
+def _verify_manifest_binding(manifest: dict, attempt: dict, checksum: str) -> None:
     plan = attempt["plan"]
-    manifest = archives._json((campaign / MANIFEST_FILE).read_bytes())
     if (manifest.get("provider_config") != {**attempt["provider_config"], "clean_b_attempt_sha256": checksum}
             or manifest.get("schedule") != plan["schedule"] or manifest.get("limits") != plan["limits"]
             or manifest.get("order_seed") != plan["order_seed"] or manifest.get("cases_sha256") != plan["clean_cases_sha256"]
             or any(manifest["provenance"].get(k) != attempt["provenance"][k] for k in ("git_commit", "source_sha256"))):
         raise ValueError("Paid clean B campaign differs from the original attempt")
-    records = load_results(campaign)
-    cases = {c["case_id"]: c for c in archives._json((campaign / "cases.snapshot.json").read_bytes())}
-    for record in records:
-        _verify_record(record, cases[record["case_id"]], plan)
-    seen = _receipt_ids(records, reservations, paid_series=True)
-    state = manifest["state"]
+
+
+def _verify_campaign_outcomes(state: str, records: list[dict]) -> None:
     stopping = {"budget_exhausted", "technical_error"}
     if ((state == "stopped" and (not records or records[-1]["status"] not in stopping))
-            or (state == "completed" and any(r["status"] in stopping | {"cancelled"} for r in records))):
+            or (state == "completed" and any(row["status"] in stopping | {"cancelled"} for row in records))):
         raise ValueError("Paid clean B campaign state differs from its recorded outcomes")
-    if state == "completed" and (not seen or seen != reservations.keys()
-                                 or any(e["state"] != "settled" for e in reservations.values())):
-        raise ValueError("Completed paid clean B campaign has outstanding or unrecorded requests")
-    if state == "stopped" and set(reservations) - seen:
-        uncertain = any(e["type"] == "model_error" and e["data"].get("kind") == "provider_error"
-                        for e in records[-1]["events"]) if records else False
-        if not uncertain or len(reservations) != len(seen) + 1:
+
+
+def _verify_campaign_reservations(state: str, records: list[dict], reservations: dict, receipt_ids: set[str]) -> None:
+    if state == "completed":
+        if (not receipt_ids or receipt_ids != reservations.keys()
+                or any(entry["state"] != "settled" for entry in reservations.values())):
+            raise ValueError("Completed paid clean B campaign has outstanding or unrecorded requests")
+    if state == "stopped" and set(reservations) - receipt_ids:
+        uncertain = any(event["type"] == "model_error" and event["data"].get("kind") == "provider_error"
+                        for event in records[-1]["events"])
+        if not uncertain or len(reservations) != len(receipt_ids) + 1:
             raise ValueError("Stopped paid clean B campaign has unrelated unrecorded requests")
-    unindexed = []
+
+
+def _unindexed_run_files(campaign: Path, runs: list[dict], recorded: int) -> list[str]:
+    indexed = {run[key] for run in runs for key in ("path", "events_path")}
+    files = {path.relative_to(campaign).as_posix()
+             for folder, suffix in (("records", "*.json"), ("events", "*.jsonl"))
+             for path in (campaign / folder).glob(suffix)}
+    unindexed = sorted(files - indexed)
+    if unindexed and unindexed != [f"records/run-{recorded + 1:05d}.json"]:
+        raise ValueError("Unexpected unindexed files in interrupted paid clean B campaign")
+    return unindexed
+
+
+def _verify_records(campaign: Path, attempt: dict, checksum: str, reservations: dict) -> tuple[str, int, list[str]]:
+    manifest = archives._json((campaign / MANIFEST_FILE).read_bytes())
+    _verify_manifest_binding(manifest, attempt, checksum)
+    records = load_results(campaign)
+    cases = {case["case_id"]: case for case in archives._json((campaign / CASE_SNAPSHOT_FILE).read_bytes())}
+    for record in records:
+        _verify_record(record, cases[record["case_id"]], attempt["plan"])
+
+    receipt_ids = _receipt_ids(records, reservations, paid_series=True)
+    state = manifest["state"]
+    _verify_campaign_outcomes(state, records)
+    _verify_campaign_reservations(state, records, reservations, receipt_ids)
     if state == "running":
-        indexed = {v[k] for v in manifest["runs"] for k in ("path", "events_path")}
-        unindexed = sorted(p.relative_to(campaign).as_posix() for sub, suffix in (("records", "*.json"), ("events", "*.jsonl"))
-                           for p in (campaign / sub).glob(suffix) if p.relative_to(campaign).as_posix() not in indexed)
-        if unindexed and unindexed != [f"records/run-{len(records) + 1:05d}.json"]:
-            raise ValueError("Unexpected unindexed files in interrupted paid clean B campaign")
-    return ("interrupted" if state == "running" else state), len(records), unindexed
+        return "interrupted", len(records), _unindexed_run_files(campaign, manifest["runs"], len(records))
+    return state, len(records), []
 
 
 def _verify_initial_campaign(campaign: Path, plan: dict) -> None:
@@ -184,10 +218,10 @@ def _verify_initial_campaign(campaign: Path, plan: dict) -> None:
         raise ValueError("Invalid partial paid clean B campaign directory")
     for path in campaign.iterdir():
         reject_symlinks(path, campaign)
-        if (not path.is_file() or (path.name != "cases.snapshot.json"
+        if (not path.is_file() or (path.name != CASE_SNAPSHOT_FILE
                 and not re.fullmatch(r"(?:cases\.snapshot|manifest)\.json\.[a-f0-9]{16}\.tmp", path.name))):
             raise ValueError("Unexpected paid clean B evidence before its first manifest")
-    snapshot = campaign / "cases.snapshot.json"
+    snapshot = campaign / CASE_SNAPSHOT_FILE
     if snapshot.exists() and digest(archives._json(snapshot.read_bytes())) != plan["clean_cases_sha256"]:
         raise ValueError("Partial paid clean B case snapshot differs from its plan")
 
@@ -210,7 +244,7 @@ def verify_paid_attempt(workspace: Path) -> dict | None:
         manifest = reject_symlinks(campaign / MANIFEST_FILE, workspace)
         state, recorded, unindexed = "interrupted", 0, []
         if manifest.is_file():
-            reject_symlinks(campaign / "cases.snapshot.json", workspace)
+            reject_symlinks(campaign / CASE_SNAPSHOT_FILE, workspace)
             state, recorded, unindexed = _verify_records(campaign, attempt, checksum, reservations)
         elif campaign.exists():
             _verify_initial_campaign(campaign, attempt["plan"])

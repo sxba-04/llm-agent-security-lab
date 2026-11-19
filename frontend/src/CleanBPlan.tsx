@@ -101,9 +101,9 @@ function CleanBRun({ plan, startSent }: Readonly<{ plan: CleanBPlan; startSent: 
       {status.recorded_runs !== null && <p>{status.recorded_runs} von {status.planned_runs} Laufbelegen gespeichert.</p>}
     </div>}
     {status?.state === 'ready' && !matchesScope && <p role="alert">Fallzahl oder Seriengrenze weichen von der Startfreigabe ab.</p>}
-    {startSent.current && (!status || status.state === 'ready') && <p role="status">
+    {startSent.current && (!status || status.state === 'ready') && <output>
       {starting ? 'Startanfrage wird gesendet …' : startNotice || 'Die Startanfrage wurde ausgelöst. Prüfe den gespeicherten Status.'}
-    </p>}
+    </output>}
     <div className="button-row">
       {ready && !startSent.current && <button type="button" className="button primary" onClick={() => void start()}>B-Serie starten</button>}
       <button type="button" className="button secondary" disabled={loading || starting} onClick={refresh}>Serienstatus aktualisieren</button>
